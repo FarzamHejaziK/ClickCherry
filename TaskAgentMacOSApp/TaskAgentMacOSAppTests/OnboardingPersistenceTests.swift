@@ -1,6 +1,6 @@
 import Testing
 import Security
-@testable import TaskAgentMacOS
+@testable import TaskAgentMacOSApp
 
 private final class InMemoryAPIKeyStore: APIKeyStore {
     var keys: [ProviderIdentifier: String]

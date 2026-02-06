@@ -1,5 +1,5 @@
 import Testing
-@testable import TaskAgentMacOS
+@testable import TaskAgentMacOSApp
 
 struct ProviderSetupStateTests {
     @Test

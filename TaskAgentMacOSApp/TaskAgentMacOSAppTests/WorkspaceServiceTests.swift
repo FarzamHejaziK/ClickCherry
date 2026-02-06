@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import TaskAgentMacOS
+@testable import TaskAgentMacOSApp
 
 struct WorkspaceServiceTests {
     @Test

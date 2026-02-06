@@ -158,7 +158,7 @@ final class OnboardingStateStore {
     }
 
     func refreshPermissionStatus(for permission: AppPermission) {
-        let status = permissionService.currentStatus(for: permission)
+        let status = permissionService.requestAccessIfNeeded(for: permission)
 
         switch permission {
         case .screenRecording:
@@ -174,6 +174,12 @@ final class OnboardingStateStore {
 
     func confirmAutomationPermission(granted: Bool) {
         automationStatus = granted ? .granted : .notGranted
+    }
+
+    func enablePermissionTestingBypass() {
+        screenRecordingStatus = .granted
+        accessibilityStatus = .granted
+        automationStatus = .granted
     }
 
     private func updateProviderSetupState(saved: Bool, for provider: ProviderIdentifier) {

@@ -7,7 +7,7 @@ struct WorkspaceService {
         self.fileManager = fileManager
     }
 
-    func initializeWorkspace(baseDir: URL, taskId: String) throws -> TaskWorkspace {
+    func initializeWorkspace(baseDir: URL, taskId: String, taskTitle: String? = nil) throws -> TaskWorkspace {
         let root = baseDir.appendingPathComponent("workspace-\(taskId)", isDirectory: true)
         let recordingsDir = root.appendingPathComponent("recordings", isDirectory: true)
         let runsDir = root.appendingPathComponent("runs", isDirectory: true)
@@ -18,7 +18,10 @@ struct WorkspaceService {
         try createDirIfNeeded(runsDir)
 
         if !fileManager.fileExists(atPath: heartbeatFile.path) {
-            let initial = "# Task\n\n## Questions\n"
+            let initialTaskBody = taskTitle?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+                ? (taskTitle ?? "")
+                : "Describe the task here."
+            let initial = "# Task\n\(initialTaskBody)\n\n## Questions\n"
             try initial.write(to: heartbeatFile, atomically: true, encoding: .utf8)
         }
 

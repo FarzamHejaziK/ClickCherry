@@ -1,6 +1,6 @@
 import Testing
 import Security
-@testable import TaskAgentMacOS
+@testable import TaskAgentMacOSApp
 
 private final class EmptyAPIKeyStore: APIKeyStore {
     func hasKey(for provider: ProviderIdentifier) -> Bool { false }
@@ -137,6 +137,23 @@ struct OnboardingStateStoreTests {
 
         store.confirmAutomationPermission(granted: true)
         #expect(store.automationStatus == .granted)
+    }
+
+    @Test
+    func permissionTestingBypassMarksAllPermissionsGranted() {
+        let store = makeStore(
+            hasScreenRecordingPermission: false,
+            hasAccessibilityPermission: false,
+            hasAutomationPermission: false
+        )
+        #expect(!store.areRequiredPermissionsGranted)
+
+        store.enablePermissionTestingBypass()
+
+        #expect(store.screenRecordingStatus == .granted)
+        #expect(store.accessibilityStatus == .granted)
+        #expect(store.automationStatus == .granted)
+        #expect(store.areRequiredPermissionsGranted)
     }
 
     @Test

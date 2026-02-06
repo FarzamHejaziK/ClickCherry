@@ -4,37 +4,34 @@ description: Short, continuously updated plan of the immediate next implementati
 
 # Next Steps
 
-1. Step: Unblock local Swift test toolchain.
-2. Why now: This was previously blocking tests, but is now resolved.
-3. Code tasks: None.
-4. Automated tests: `swift test` already passing.
-5. Manual tests: Confirm `xcode-select -p` still returns `/Applications/Xcode.app/Contents/Developer` if toolchain issues recur.
-6. Exit criteria: Complete.
+1. Step: Step 2.5 Xcode app target migration (critical blocker).
+2. Why now: Real screen recording tests are blocked because the current SwiftPM run path does not provide a stable TCC app identity.
+3. Code tasks:
+   - Create a real macOS App target in Xcode. (Done: `TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj`)
+   - Reuse source files from `app/Sources/TaskAgentMacOS/`. (Done: copied into `TaskAgentMacOSApp/TaskAgentMacOSApp/`)
+   - Keep one stable bundle ID (current: `com.farzamh.TaskAgentMacOS.TaskAgentMacOSApp`).
+   - Enable signing (`Apple Development`, automatic signing) with personal team in Xcode UI.
+   - Use this app target as the only target for permission/capture manual tests.
+4. Automated tests:
+   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Debug -sdk macosx CODE_SIGNING_ALLOWED=NO build` (pass)
+   - `swift test` in `app/` (pass, 28 tests)
+5. Manual tests:
+   - Run app from Xcode twice using the same scheme/target.
+   - In onboarding permissions, click `Check Status` once for Screen Recording and Accessibility to trigger macOS prompt/registration.
+   - Confirm active scheme is macOS App target (not package executable scheme).
+   - Confirm signing certificate is `Apple Development` (not `Sign to Run Locally`).
+   - Verify built app signature/ID:
+     - `codesign -dv --verbose=4 "<path-to-app>.app"`
+     - `defaults read "<path-to-app>.app/Contents/Info.plist" CFBundleIdentifier`
+   - Grant Screen Recording in System Settings once.
+   - If app is not listed automatically, add built `.app` via `+` in Screen Recording settings.
+   - Confirm second run does not require re-grant for the same app identity.
+   - Confirm `Start Capture`/`Stop Capture` succeeds and output appears under task `recordings/`.
+6. Exit criteria: Permission grant persists across Xcode runs and capture works end-to-end from Xcode Run.
 
-1. Step: Step 0.5 routing wire-up.
-2. Why now: Routing + onboarding scaffold are implemented; visual verification is the remaining gate to close the onboarding UI sub-step.
-3. Code tasks: Connect provider/permission toggles to real services (Keychain + permission checks) after visual walkthrough confirms flow.
-4. Automated tests: Onboarding state machine + route tests are passing in `swift test`.
-5. Manual tests: Walk through all 4 onboarding steps and verify gating: provider step blocks until OpenAI/Anthropic + Gemini; permissions step blocks until all three permissions; ready step `Finish Setup` transitions to main shell.
-6. Exit criteria: Visual walkthrough passes and worklog marks this Step 0.5 onboarding scaffold sub-step complete.
-
-1. Step: Step 0.5 persistence wiring (next).
-2. Why now: Persistence wiring is implemented; manual relaunch verification is now the final gate for this sub-step.
-3. Code tasks: None for baseline persistence; optional follow-up is replacing provider booleans with secure text entry + real key values.
-4. Automated tests: Persistence + onboarding tests are passing in `swift test` (12 tests).
-5. Manual tests: Complete onboarding, relaunch app, and verify onboarding is skipped; clear saved provider keys and onboarding flag, relaunch, and verify onboarding returns.
-6. Exit criteria: Relaunch behavior matches persisted setup state.
-
-1. Step: Step 0.5 UX hardening (next).
-2. Why now: Implemented; now requires full interactive walkthrough to close the sub-step.
-3. Code tasks: None for baseline UX; optional refinement is replacing per-key save buttons with inline validate-on-submit flow and obscured “saved” chip behavior.
-4. Automated tests: Onboarding/persistence suite passing in `swift test` (15 tests).
-5. Manual tests: Enter OpenAI+Gemini and verify continue enabled; clear OpenAI and enter Anthropic+Gemini and verify continue enabled; clear both core providers and verify continue disabled; relaunch app and verify key-presence state persists from Keychain.
-6. Exit criteria: Provider setup behavior is manually confirmed end-to-end.
-
-1. Step: Step 0.5 permission grant UX (next).
-2. Why now: Implemented with settings deep links and in-app status display; still needs manual confirmation against real macOS permissions.
-3. Code tasks: Optional follow-up is adding a concrete automation-permission probe for a selected target app to replace manual confirmation button.
-4. Automated tests: Permission mapping/status refresh tests passing.
-5. Manual tests: Use `Open Settings` for Screen Recording/Accessibility/Automation; grant each permission; click `Check Status` for Screen Recording and Accessibility; use automation confirmation control and verify all three show `Granted`; confirm continue is disabled until all are granted.
-6. Exit criteria: Permissions flow is manually validated on-device and onboarding proceeds only when all required permissions are confirmed granted.
+1. Step: Step 3 task extraction from recording (next).
+2. Why now: Capture flow is implemented; once real capture testing is unblocked, extraction is the next product milestone.
+3. Code tasks: Build recording-to-task extraction pipeline stub with provider adapter boundary and markdown update path.
+4. Automated tests: Unit tests for extraction request/response parsing and heartbeat update validation.
+5. Manual tests: Run extraction on sample recording and verify `HEARTBEAT.md` updates `# Task` and `## Questions`.
+6. Exit criteria: Recording extraction path updates task markdown with validated content.

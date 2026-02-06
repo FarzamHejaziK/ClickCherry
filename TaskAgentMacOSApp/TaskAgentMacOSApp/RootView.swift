@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct RootView: View {
     @State private var onboardingStateStore: OnboardingStateStore
@@ -191,7 +192,7 @@ private struct PermissionsStepView: View {
             Text("Permissions Preflight")
                 .font(.title2)
                 .fontWeight(.semibold)
-            Text("Open System Settings, grant each permission, then confirm status in-app.")
+            Text("Click Check Status to trigger macOS permission prompts, then use Open Settings to verify grants.")
                 .foregroundStyle(.secondary)
 
             permissionRow(
@@ -246,6 +247,21 @@ private struct PermissionsStepView: View {
                 Text("Continue is disabled until all required permissions are granted.")
                     .foregroundStyle(.orange)
             }
+
+            Divider()
+                .padding(.vertical, 6)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Testing shortcut")
+                    .font(.headline)
+                Text("Use this only for local development when macOS permission grants are not available.")
+                    .foregroundStyle(.secondary)
+                    .font(.footnote)
+                Button("Bypass Permissions For Testing") {
+                    onboardingStateStore.enablePermissionTestingBypass()
+                }
+                .buttonStyle(.borderedProminent)
+            }
         }
     }
 
@@ -296,13 +312,161 @@ private struct ReadyStepView: View {
 }
 
 private struct MainShellView: View {
+    @State private var mainShellStateStore = MainShellStateStore()
+    @State private var isRecordingImporterPresented = false
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Task Agent macOS")
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Tasks")
                 .font(.title)
                 .fontWeight(.semibold)
-            Text("Main task workspace shell.")
-                .foregroundStyle(.secondary)
+
+            HStack(spacing: 10) {
+                TextField("New task title", text: $mainShellStateStore.newTaskTitle)
+                    .textFieldStyle(.roundedBorder)
+                Button("Create Task") {
+                    mainShellStateStore.createTask()
+                }
+                .buttonStyle(.borderedProminent)
+            }
+
+            if let errorMessage = mainShellStateStore.errorMessage {
+                Text(errorMessage)
+                    .foregroundStyle(.red)
+            }
+
+            HStack(alignment: .top, spacing: 20) {
+                List(
+                    selection: Binding(
+                        get: { mainShellStateStore.selectedTaskID },
+                        set: { mainShellStateStore.selectTask($0) }
+                    )
+                ) {
+                    ForEach(mainShellStateStore.tasks) { task in
+                        Text(task.title)
+                            .tag(task.id)
+                    }
+                }
+                .frame(minWidth: 240, maxWidth: 320, minHeight: 320)
+
+                VStack(alignment: .leading, spacing: 10) {
+                    if let selectedTask = mainShellStateStore.selectedTask {
+                        Text(selectedTask.title)
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                        Text("Task ID: \(selectedTask.id)")
+                            .foregroundStyle(.secondary)
+                        Text("Workspace: \(selectedTask.workspace.root.path)")
+                            .foregroundStyle(.secondary)
+                        Text("HEARTBEAT: \(selectedTask.workspace.heartbeatFile.lastPathComponent)")
+                            .foregroundStyle(.secondary)
+
+                        Text("HEARTBEAT.md")
+                            .font(.headline)
+                            .padding(.top, 4)
+                        TextEditor(text: $mainShellStateStore.heartbeatMarkdown)
+                            .font(.body.monospaced())
+                            .frame(minHeight: 220)
+                            .border(.quaternary)
+
+                        HStack {
+                            Button("Reload") {
+                                mainShellStateStore.loadSelectedTaskHeartbeat()
+                            }
+                            .buttonStyle(.bordered)
+
+                            Button("Save HEARTBEAT") {
+                                mainShellStateStore.saveSelectedTaskHeartbeat()
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
+
+                        if let saveStatusMessage = mainShellStateStore.saveStatusMessage {
+                            Text(saveStatusMessage)
+                                .foregroundStyle(.green)
+                        }
+
+                        Divider()
+                            .padding(.vertical, 6)
+
+                        HStack {
+                            Text("Recordings")
+                                .font(.headline)
+                            Spacer()
+                            Button("Start Capture") {
+                                mainShellStateStore.startCapture()
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .disabled(mainShellStateStore.isCapturing)
+                            Button("Stop Capture") {
+                                mainShellStateStore.stopCapture()
+                            }
+                            .buttonStyle(.bordered)
+                            .disabled(!mainShellStateStore.isCapturing)
+                            Button("Import .mp4") {
+                                isRecordingImporterPresented = true
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
+
+                        if mainShellStateStore.isCapturing {
+                            Text("Capture in progress. Use Stop Capture when done.")
+                                .foregroundStyle(.orange)
+                        }
+
+                        if let recordingStatusMessage = mainShellStateStore.recordingStatusMessage {
+                            Text(recordingStatusMessage)
+                                .foregroundStyle(.green)
+                        }
+
+                        if mainShellStateStore.recordings.isEmpty {
+                            Text("No recordings imported yet.")
+                                .foregroundStyle(.secondary)
+                        } else {
+                            List(mainShellStateStore.recordings) { recording in
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(recording.fileName)
+                                        .fontWeight(.medium)
+                                    Text(recording.addedAt.formatted(date: .numeric, time: .shortened))
+                                        .foregroundStyle(.secondary)
+                                        .font(.caption)
+                                }
+                            }
+                            .frame(minHeight: 140, maxHeight: 220)
+                        }
+                    } else {
+                        Text("No tasks yet. Create one to begin.")
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+            }
+        }
+        .onAppear {
+            mainShellStateStore.reloadTasks()
+        }
+        .fileImporter(
+            isPresented: $isRecordingImporterPresented,
+            allowedContentTypes: [UTType.mpeg4Movie],
+            allowsMultipleSelection: false
+        ) { result in
+            switch result {
+            case .success(let urls):
+                guard let url = urls.first else {
+                    return
+                }
+
+                let scoped = url.startAccessingSecurityScopedResource()
+                defer {
+                    if scoped {
+                        url.stopAccessingSecurityScopedResource()
+                    }
+                }
+                mainShellStateStore.importRecording(from: url)
+            case .failure:
+                mainShellStateStore.errorMessage = "File import canceled or failed."
+            }
         }
     }
 }
