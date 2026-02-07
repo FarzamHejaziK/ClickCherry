@@ -227,3 +227,241 @@ description: Running implementation log of completed work, test evidence, blocke
 - Result: Repository structure is now Xcode-first for development and testing.
 - Issues/blockers: Final test evidence should be captured from local terminal/Xcode run.
 - Notes: Use only `TaskAgentMacOSApp.xcodeproj` for ongoing implementation and verification.
+
+## Entry
+- Date: 2026-02-07
+- Step: Capture UX fix for non-responsive Start Capture (incremental)
+- Changes made: Updated `TaskAgentMacOSApp/TaskAgentMacOSApp/Services/RecordingCaptureService.swift` to launch interactive video capture mode (`screencapture -v -i -U -J video`) and include startup stderr/stdout pipes; changed `RecordingCaptureError.failedToStart` to carry underlying reason text; updated `TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift` to surface detailed start-failure message; updated `TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift` for new error signature.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" CODE_SIGNING_ALLOWED=NO build` (pass)
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" CODE_SIGNING_ALLOWED=NO test` (pass; unit + UI tests)
+- Manual tests run: Pending user-side validation of interactive capture prompt and resulting recording file.
+- Result: Start-capture path now explicitly requests interactive selection instead of silent full-screen behavior.
+- Issues/blockers: Need manual validation in signed runtime to confirm desired UX and recording output on-device.
+- Notes: If capture still does not start, UI now shows concrete startup reason text to diagnose environment-level restrictions.
+
+## Entry
+- Date: 2026-02-07
+- Step: Capture UX refinement to display-first selection (incremental)
+- Changes made: Updated `TaskAgentMacOSApp/TaskAgentMacOSApp/Services/RecordingCaptureService.swift` capture arguments to `screencapture -v -i -U -W -S -J video` so interactive capture starts in display/window-oriented selection flow instead of freeform region-first behavior; updated `TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift` status copy to instruct the user to click display and press `Return` to start.
+- Automated tests run:
+  - Attempted: `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" CODE_SIGNING_ALLOWED=NO build` (failed in sandbox: DerivedData permission denied)
+  - Attempted: `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" CODE_SIGNING_ALLOWED=NO test` (failed in sandbox: DerivedData permission denied)
+- Manual tests run: Pending user-side validation from signed Xcode run.
+- Result: In progress; code path changed to display-first behavior, verification pending.
+- Issues/blockers: Automated verification requires running `xcodebuild` outside sandbox (DerivedData write access).
+- Notes: Next action is local signed run: `Start Capture` -> select display/window target -> press `Return` -> verify recording appears under task `recordings/`.
+
+## Entry
+- Date: 2026-02-07
+- Step: Test rerun + UI test stabilization (incremental)
+- Changes made: Updated template UI smoke test in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppUITests/TaskAgentMacOSAppUITests.swift` so `testExample()` no longer depends on launch/terminate process behavior.
+- Automated tests run:
+  - `xcodebuild ... CODE_SIGNING_ALLOWED=NO build` with default DerivedData (failed: sandbox permission denied under `~/Library/Developer/Xcode/DerivedData`)
+  - `xcodebuild ... CODE_SIGNING_ALLOWED=NO test` with default DerivedData (failed: sandbox permission denied under `~/Library/Developer/Xcode/DerivedData`)
+  - `xcodebuild ... -derivedDataPath /tmp/taskagent-dd-<timestamp> CODE_SIGNING_ALLOWED=NO test` (failed in this sandbox environment: Observation macro plugin host error `swift-plugin-server produced malformed response`)
+- Manual tests run: Pending user-side run in normal local shell/Xcode.
+- Result: Test command behavior is diagnosed; reliable verification must run outside this sandboxed execution context.
+- Issues/blockers: Sandbox blocks stable macro/plugin execution for `@Observable` and/or default DerivedData access.
+- Notes: Run tests directly in local terminal/Xcode (non-sandbox) for authoritative pass/fail signal.
+
+## Entry
+- Date: 2026-02-07
+- Step: Display picker capture mode (incremental)
+- Changes made:
+  - Added capture display model and service APIs in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/RecordingCaptureService.swift`:
+    - `CaptureDisplayOption`
+    - `listDisplays()`
+    - `startCapture(outputURL:displayID:)`
+  - Changed capture command to direct display recording (`screencapture -v -D <displayID> <output>`), removing interactive region dependency.
+  - Added display state and selection handling in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`:
+    - `availableCaptureDisplays`
+    - `selectedCaptureDisplayID`
+    - `refreshCaptureDisplays()`
+  - Added in-app display picker in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/RootView.swift` next to capture controls.
+  - Updated test mock/protocol conformance in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`.
+- Automated tests run:
+  - `xcodebuild ... -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests ... test`
+  - Result in sandbox: failed due Swift macro plugin host issue (`ObservationMacros.ObservableMacro` / `swift-plugin-server produced malformed response`), not display-picker logic assertions.
+- Manual tests run: Pending user-side signed app run.
+- Result: In progress; display-picking feature implemented, awaiting local verification.
+- Issues/blockers: Current sandbox environment cannot reliably execute Observation macro plugin for Xcode compile.
+- Notes: Validate locally by selecting Display 1/2/... in app, then Start/Stop capture and confirm recording appears.
+
+## Entry
+- Date: 2026-02-07
+- Step: Capture UX clarity and recording actions (incremental)
+- Changes made:
+  - Added stronger capture-state UX in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`:
+    - `captureStartedAt` timestamp
+    - stop message includes saved filename when available
+    - recording actions: `revealRecordingInFinder(_:)` and `playRecording(_:)`
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/RootView.swift`:
+    - visible red-dot + elapsed timer while recording
+    - recording rows now include `Reveal` and `Play` actions
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test`
+  - Result in sandbox: failed due known Observation macro plugin host issue (`swift-plugin-server produced malformed response`), unrelated to capture logic assertions.
+- Manual tests run: Pending user-side validation.
+- Result: In progress; UX enhancements implemented and ready for local verification.
+- Issues/blockers: Sandbox macro-plugin instability prevents authoritative local test signal from this environment.
+- Notes: Verify manually: start capture shows live timer; stop capture shows saved filename; `Reveal` opens Finder and `Play` opens file.
+
+## Entry
+- Date: 2026-02-07
+- Step: Capture reliability hardening for silent failure cases
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/RecordingCaptureService.swift` to detect and report fast-fail start/stop behavior:
+    - Added `RecordingCaptureError.failedToStop(String)`
+    - Added startup fast-fail check (process exits immediately after launch)
+    - Added stop-time validation for non-zero exit and missing output file
+    - Added stderr/stdout pipe capture for clearer diagnostics
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift` to reset state on failures and surface precise stop error text.
+- Automated tests run: Not run in this sandbox due known Observation macro plugin host issue (`swift-plugin-server produced malformed response`).
+- Manual tests run: Pending user-side validation.
+- Result: In progress; capture failures should now be explicit instead of silent.
+- Issues/blockers: Authoritative compile/test still requires local non-sandbox run.
+- Notes: Next manual check should confirm either file creation on stop or explicit error message with reason.
+
+## Entry
+- Date: 2026-02-07
+- Step: Testing documentation addition
+- Changes made: Added `/Users/farzamh/code-git-local/task-agent-macos/.docs/testing.md` documenting test execution strategy, local authoritative commands, and known sandbox limitations for Swift Observation macro plugin execution.
+- Automated tests run: None (documentation update only).
+- Manual tests run: None (documentation update only).
+- Result: Complete.
+- Issues/blockers: None for docs creation.
+- Notes: Use `.docs/testing.md` as the canonical test-run reference for future iterations.
+
+## Entry
+- Date: 2026-02-07
+- Step: Capture reliability repair for corrupted/failed recordings
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/RecordingCaptureService.swift`:
+    - switched to non-interactive display recording arguments (`-V <long-duration> -D <display> <output>`) to avoid region-picker workflow.
+    - added startup grace-period fail-fast with stderr reason propagation when `screencapture` exits before recording starts.
+    - changed stop flow to graceful interrupt + wait, with file existence/size validation and explicit stop error text.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`:
+    - when stop is called with no active process, now resets `isCapturing` / `captureStartedAt` to avoid stuck UI state.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md` with capture-stabilization-focused validation criteria.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (failed: sandbox DerivedData write permissions).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests -derivedDataPath /tmp/taskagent-dd-local CODE_SIGNING_ALLOWED=NO test` (failed: known sandbox macro host issue `ObservationMacros` / `swift-plugin-server produced malformed response`).
+- Manual tests run: Pending user-side signed Xcode run.
+- Result: In progress; capture pipeline now favors deterministic display recording and graceful stop finalization.
+- Issues/blockers: Authoritative automated verification requires local non-sandbox Xcode/terminal run.
+- Notes: Manual confirmation needed that newly recorded `.mov` opens in QuickTime and appears in task recording list with `Reveal`/`Play`.
+
+## Entry
+- Date: 2026-02-07
+- Step: Capture start failure diagnosis (`screencapture` exit status 1)
+- Changes made:
+  - Diagnosed project configuration issue in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj/project.pbxproj`: app target had `ENABLE_APP_SANDBOX = YES` in both Debug and Release.
+  - Updated app target configs to `ENABLE_APP_SANDBOX = NO` for local-development capture flow so spawned `/usr/sbin/screencapture` is not blocked by app sandbox restrictions.
+- Automated tests run: Not run in this sandbox due known DerivedData + Observation macro plugin limitations.
+- Manual tests run: Pending user-side signed Xcode run after clean/rebuild.
+- Result: In progress; likely root cause for repeated immediate capture start failures addressed at project level.
+- Issues/blockers: Needs user-side validation by starting/stopping a fresh capture.
+- Notes: After this change, run app from Xcode, re-trigger capture, and verify new `.mov` is generated and playable.
+
+## Entry
+- Date: 2026-02-07
+- Step: Capture stop failure diagnosis (`status 2`, no output file)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/RecordingCaptureService.swift`:
+    - switched capture mode from fixed-duration `-V` to continuous `-v` for explicit start/stop control.
+    - added short output-finalization wait after stop before declaring "no recording file created".
+- Automated tests run: Not run in this sandbox (known DerivedData/macro-plugin limits).
+- Manual tests run: Pending user-side run.
+- Result: In progress; likely reduces false stop failures where file appears slightly after process exit.
+- Issues/blockers: Needs manual verification on-device.
+- Notes: Re-test with a 5-10 second capture and verify newest `.mov` is playable via in-app `Play`.
+
+## Entry
+- Date: 2026-02-07
+- Step: Post-patch automated verification attempt
+- Changes made: No code changes; ran project test command after capture stop-path patch.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests -derivedDataPath /tmp/taskagent-dd-local CODE_SIGNING_ALLOWED=NO test`
+  - Result: failed in this sandbox due known macro host issue (`ObservationMacros.ObservableMacro` / `swift-plugin-server produced malformed response`).
+- Manual tests run: Pending user-side run.
+- Result: In progress; automated signal remains environment-blocked in Codex sandbox.
+- Issues/blockers: Local user machine run is required for authoritative pass/fail.
+- Notes: Use Xcode Run + manual capture validation for this iteration.
+
+## Entry
+- Date: 2026-02-07
+- Step: Microphone audio capture enablement
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/RecordingCaptureService.swift` to include `-g` in `screencapture` arguments so recordings include default microphone input.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md` manual checklist to include Microphone permission and spoken-audio verification.
+- Automated tests run: Not run in this sandbox (known Observation macro plugin host issue).
+- Manual tests run: Pending user-side validation.
+- Result: In progress; capture pipeline now requests microphone audio.
+- Issues/blockers: macOS microphone permission must be granted for the app identity.
+- Notes: If mic permission is denied, recording may contain no voice or start may fail depending on OS policy.
+
+## Entry
+- Date: 2026-02-07
+- Step: Mic-mode start failure fallback for Xcode app identity
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/RecordingCaptureService.swift`:
+    - added `lastCaptureIncludesMicrophone` and `lastCaptureStartWarning` status fields.
+    - refactored start into launch helper and added fallback behavior:
+      1) try mic-enabled capture (`-v -g -D ...`)
+      2) on immediate mic-mode failure, retry without mic (`-v -D ...`)
+    - if fallback succeeds, stores warning that microphone was unavailable for this app run.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`:
+    - start status now explicitly reports whether microphone audio is active or fallback-without-mic was used.
+  - Updated test mock protocol conformance in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md` to track mic-fallback validation.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests -derivedDataPath /tmp/taskagent-dd-local CODE_SIGNING_ALLOWED=NO test`
+  - Result: failed in Codex sandbox due known Observation macro plugin host issue (`ObservationMacros` / `swift-plugin-server produced malformed response`).
+- Manual tests run: Pending user-side signed Xcode run.
+- Result: In progress; Xcode-run start failures should no longer hard-block capture when mic mode alone fails.
+- Issues/blockers: Authoritative verification still requires local non-sandbox run.
+- Notes: Expect in-app start message to explicitly indicate mic enabled vs fallback without mic.
+
+## Entry
+- Date: 2026-02-07
+- Step: In-app microphone permission prompt integration
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/RecordingCaptureService.swift`:
+    - added `AVFoundation` integration and explicit mic permission request (`AVCaptureDevice.requestAccess(for: .audio)`) when audio permission is `notDetermined`.
+    - if mic permission is denied/restricted, capture now proceeds in no-mic fallback mode with explicit warning message.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md` manual checklist to require verification that mic prompt appears from app runtime.
+- Automated tests run: Pending local non-sandbox run (Codex sandbox still fails on Observation macro plugin host issue).
+- Manual tests run: Pending user-side validation.
+- Result: In progress; app now proactively asks for microphone permission instead of relying only on manual System Settings pre-configuration.
+- Issues/blockers: macOS will only show the prompt once per app identity when permission state is `notDetermined`.
+- Notes: If permission was previously denied, app cannot re-prompt; user must re-enable from System Settings.
+
+## Entry
+- Date: 2026-02-07
+- Step: Capture start flow now explicitly prompts mic permission before mic mode
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/RecordingCaptureService.swift`:
+    - added `AVFoundation` import.
+    - added `requestMicrophoneAccessIfNeeded()` using `AVCaptureDevice.authorizationStatus(for: .audio)` and `AVCaptureDevice.requestAccess(for: .audio)` for `notDetermined`.
+    - start flow now requests mic permission first; if not granted, capture still starts in no-mic mode with explicit warning.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests -derivedDataPath /tmp/taskagent-dd-local CODE_SIGNING_ALLOWED=NO test`
+  - Result: failed in Codex sandbox due known `ObservationMacros` / `swift-plugin-server` malformed response issue.
+- Manual tests run: Pending user-side Xcode run.
+- Result: In progress; app now has an in-app mic permission request path tied to capture start.
+- Issues/blockers: If permission is already denied, macOS will not show prompt again; must be re-enabled in System Settings.
+- Notes: Expected UX: first start capture with mic should trigger macOS mic prompt from app context.
+
+## Entry
+- Date: 2026-02-07
+- Step: Crash fix for missing microphone usage description
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj/project.pbxproj` to add:
+    - `INFOPLIST_KEY_NSMicrophoneUsageDescription = "TaskAgentMacOSApp records your microphone audio during task capture when enabled."`
+  - Applied to app target Debug and Release build settings (generated Info.plist path).
+- Automated tests run: Pending local non-sandbox run (Codex sandbox still has known Observation macro plugin host issue).
+- Manual tests run: Pending user-side Xcode launch.
+- Result: In progress; privacy-crash precondition should now be resolved.
+- Issues/blockers: None specific to this fix beyond sandbox test limitations.
+- Notes: Rebuild app fully (clean build folder) before retesting capture start.

@@ -4,22 +4,31 @@ import Testing
 
 private final class MockRecordingCaptureService: RecordingCaptureService {
     var isCapturing = false
+    var lastCaptureIncludesMicrophone = true
+    var lastCaptureStartWarning: String?
     var shouldFailStart = false
     var shouldFailStop = false
     var shouldDenyPermission = false
+    var displays: [CaptureDisplayOption] = [CaptureDisplayOption(id: 1, label: "Display 1")]
     var startedOutputURL: URL?
+    var startedDisplayID: Int?
 
-    func startCapture(outputURL: URL) throws {
+    func listDisplays() -> [CaptureDisplayOption] {
+        displays
+    }
+
+    func startCapture(outputURL: URL, displayID: Int) throws {
         if shouldDenyPermission {
             throw RecordingCaptureError.permissionDenied
         }
         if shouldFailStart {
-            throw RecordingCaptureError.failedToStart
+            throw RecordingCaptureError.failedToStart("mock start failure")
         }
         if isCapturing {
             throw RecordingCaptureError.alreadyCapturing
         }
         startedOutputURL = outputURL
+        startedDisplayID = displayID
         isCapturing = true
     }
 
@@ -106,10 +115,12 @@ struct MainShellStateStoreTests {
         let store = MainShellStateStore(taskService: service, captureService: captureService)
         store.reloadTasks()
         store.selectTask(created.id)
+        store.refreshCaptureDisplays()
 
         store.startCapture()
         #expect(store.isCapturing)
         #expect(captureService.startedOutputURL != nil)
+        #expect(captureService.startedDisplayID == 1)
 
         store.stopCapture()
         #expect(!store.isCapturing)
@@ -135,6 +146,7 @@ struct MainShellStateStoreTests {
         let store = MainShellStateStore(taskService: service, captureService: captureService)
         store.reloadTasks()
         store.selectTask(created.id)
+        store.refreshCaptureDisplays()
         store.startCapture()
 
         #expect(!store.isCapturing)

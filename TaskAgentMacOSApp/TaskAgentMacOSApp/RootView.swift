@@ -393,11 +393,20 @@ private struct MainShellView: View {
                             Text("Recordings")
                                 .font(.headline)
                             Spacer()
+                            Picker("Display", selection: Binding(
+                                get: { mainShellStateStore.selectedCaptureDisplayID ?? 1 },
+                                set: { mainShellStateStore.selectedCaptureDisplayID = $0 }
+                            )) {
+                                ForEach(mainShellStateStore.availableCaptureDisplays) { display in
+                                    Text(display.label).tag(display.id)
+                                }
+                            }
+                            .frame(width: 140)
                             Button("Start Capture") {
                                 mainShellStateStore.startCapture()
                             }
                             .buttonStyle(.borderedProminent)
-                            .disabled(mainShellStateStore.isCapturing)
+                            .disabled(mainShellStateStore.isCapturing || mainShellStateStore.selectedCaptureDisplayID == nil)
                             Button("Stop Capture") {
                                 mainShellStateStore.stopCapture()
                             }
@@ -410,8 +419,15 @@ private struct MainShellView: View {
                         }
 
                         if mainShellStateStore.isCapturing {
-                            Text("Capture in progress. Use Stop Capture when done.")
-                                .foregroundStyle(.orange)
+                            TimelineView(.periodic(from: .now, by: 1)) { context in
+                                HStack(spacing: 8) {
+                                    Circle()
+                                        .fill(.red)
+                                        .frame(width: 10, height: 10)
+                                    Text("Recording in progress (\(captureElapsedText(now: context.date))). Click Stop Capture to finish.")
+                                        .foregroundStyle(.orange)
+                                }
+                            }
                         }
 
                         if let recordingStatusMessage = mainShellStateStore.recordingStatusMessage {
@@ -424,12 +440,23 @@ private struct MainShellView: View {
                                 .foregroundStyle(.secondary)
                         } else {
                             List(mainShellStateStore.recordings) { recording in
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(recording.fileName)
-                                        .fontWeight(.medium)
-                                    Text(recording.addedAt.formatted(date: .numeric, time: .shortened))
-                                        .foregroundStyle(.secondary)
-                                        .font(.caption)
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(recording.fileName)
+                                            .fontWeight(.medium)
+                                        Text(recording.addedAt.formatted(date: .numeric, time: .shortened))
+                                            .foregroundStyle(.secondary)
+                                            .font(.caption)
+                                    }
+                                    Spacer()
+                                    Button("Reveal") {
+                                        mainShellStateStore.revealRecordingInFinder(recording)
+                                    }
+                                    .buttonStyle(.borderless)
+                                    Button("Play") {
+                                        mainShellStateStore.playRecording(recording)
+                                    }
+                                    .buttonStyle(.borderless)
                                 }
                             }
                             .frame(minHeight: 140, maxHeight: 220)
@@ -445,6 +472,7 @@ private struct MainShellView: View {
         }
         .onAppear {
             mainShellStateStore.reloadTasks()
+            mainShellStateStore.refreshCaptureDisplays()
         }
         .fileImporter(
             isPresented: $isRecordingImporterPresented,
@@ -468,5 +496,15 @@ private struct MainShellView: View {
                 mainShellStateStore.errorMessage = "File import canceled or failed."
             }
         }
+    }
+
+    private func captureElapsedText(now: Date) -> String {
+        guard let startedAt = mainShellStateStore.captureStartedAt else {
+            return "00:00"
+        }
+        let interval = Int(now.timeIntervalSince(startedAt))
+        let minutes = interval / 60
+        let seconds = interval % 60
+        return String(format: "%02d:%02d", minutes, seconds)
     }
 }
