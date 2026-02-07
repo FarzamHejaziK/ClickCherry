@@ -10,14 +10,24 @@ private final class MockRecordingCaptureService: RecordingCaptureService {
     var shouldFailStop = false
     var shouldDenyPermission = false
     var displays: [CaptureDisplayOption] = [CaptureDisplayOption(id: 1, label: "Display 1")]
+    var audioInputs: [CaptureAudioInputOption] = [
+        CaptureAudioInputOption(id: "default", label: "System Default Microphone", mode: .systemDefault),
+        CaptureAudioInputOption(id: "device-42", label: "Test Mic (ID 42)", mode: .device(42)),
+        CaptureAudioInputOption(id: "none", label: "No Microphone", mode: .none)
+    ]
     var startedOutputURL: URL?
     var startedDisplayID: Int?
+    var startedAudioInput: CaptureAudioInputMode?
 
     func listDisplays() -> [CaptureDisplayOption] {
         displays
     }
 
-    func startCapture(outputURL: URL, displayID: Int) throws {
+    func listAudioInputs() -> [CaptureAudioInputOption] {
+        audioInputs
+    }
+
+    func startCapture(outputURL: URL, displayID: Int, audioInput: CaptureAudioInputMode) throws {
         if shouldDenyPermission {
             throw RecordingCaptureError.permissionDenied
         }
@@ -29,6 +39,7 @@ private final class MockRecordingCaptureService: RecordingCaptureService {
         }
         startedOutputURL = outputURL
         startedDisplayID = displayID
+        startedAudioInput = audioInput
         isCapturing = true
     }
 
@@ -40,6 +51,19 @@ private final class MockRecordingCaptureService: RecordingCaptureService {
             throw RecordingCaptureError.notCapturing
         }
         isCapturing = false
+    }
+}
+
+private final class MockRecordingOverlayService: RecordingOverlayService {
+    var shownDisplayIDs: [Int] = []
+    var hideCallCount = 0
+
+    func showBorder(displayID: Int) {
+        shownDisplayIDs.append(displayID)
+    }
+
+    func hideBorder() {
+        hideCallCount += 1
     }
 }
 
@@ -58,7 +82,11 @@ struct MainShellStateStoreTests {
         )
         let created = try service.createTask(title: "Initial task")
 
-        let store = MainShellStateStore(taskService: service)
+        let store = MainShellStateStore(
+            taskService: service,
+            captureService: MockRecordingCaptureService(),
+            overlayService: MockRecordingOverlayService()
+        )
         store.reloadTasks()
         store.selectTask(created.id)
 
@@ -80,7 +108,11 @@ struct MainShellStateStoreTests {
         )
         let created = try service.createTask(title: "Task one")
 
-        let store = MainShellStateStore(taskService: service)
+        let store = MainShellStateStore(
+            taskService: service,
+            captureService: MockRecordingCaptureService(),
+            overlayService: MockRecordingOverlayService()
+        )
         store.reloadTasks()
         store.selectTask(created.id)
         store.heartbeatMarkdown = """
@@ -111,20 +143,30 @@ struct MainShellStateStoreTests {
         )
         let created = try service.createTask(title: "Capture task")
         let captureService = MockRecordingCaptureService()
+        let overlayService = MockRecordingOverlayService()
 
-        let store = MainShellStateStore(taskService: service, captureService: captureService)
+        let store = MainShellStateStore(
+            taskService: service,
+            captureService: captureService,
+            overlayService: overlayService
+        )
         store.reloadTasks()
         store.selectTask(created.id)
         store.refreshCaptureDisplays()
+        store.refreshCaptureAudioInputs()
+        store.selectedCaptureAudioInputID = "device-42"
 
         store.startCapture()
         #expect(store.isCapturing)
         #expect(captureService.startedOutputURL != nil)
         #expect(captureService.startedDisplayID == 1)
+        #expect(captureService.startedAudioInput == .device(42))
+        #expect(overlayService.shownDisplayIDs == [1])
 
         store.stopCapture()
         #expect(!store.isCapturing)
         #expect(store.recordingStatusMessage == "Capture stopped.")
+        #expect(overlayService.hideCallCount == 1)
     }
 
     @Test
@@ -141,15 +183,22 @@ struct MainShellStateStoreTests {
         )
         let created = try service.createTask(title: "Permission task")
         let captureService = MockRecordingCaptureService()
+        let overlayService = MockRecordingOverlayService()
         captureService.shouldDenyPermission = true
 
-        let store = MainShellStateStore(taskService: service, captureService: captureService)
+        let store = MainShellStateStore(
+            taskService: service,
+            captureService: captureService,
+            overlayService: overlayService
+        )
         store.reloadTasks()
         store.selectTask(created.id)
         store.refreshCaptureDisplays()
+        store.refreshCaptureAudioInputs()
         store.startCapture()
 
         #expect(!store.isCapturing)
         #expect(store.errorMessage == "Screen Recording permission denied. Grant access in System Settings and retry.")
+        #expect(overlayService.hideCallCount == 1)
     }
 }

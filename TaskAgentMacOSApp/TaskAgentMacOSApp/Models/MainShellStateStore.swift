@@ -6,6 +6,7 @@ import AppKit
 final class MainShellStateStore {
     private let taskService: TaskService
     private let captureService: any RecordingCaptureService
+    private let overlayService: any RecordingOverlayService
 
     var tasks: [TaskRecord]
     var selectedTaskID: String?
@@ -13,7 +14,9 @@ final class MainShellStateStore {
     var heartbeatMarkdown: String
     var recordings: [RecordingRecord]
     var availableCaptureDisplays: [CaptureDisplayOption]
+    var availableCaptureAudioInputs: [CaptureAudioInputOption]
     var selectedCaptureDisplayID: Int?
+    var selectedCaptureAudioInputID: String?
     var isCapturing: Bool
     var captureStartedAt: Date?
     var saveStatusMessage: String?
@@ -22,22 +25,30 @@ final class MainShellStateStore {
 
     init(
         taskService: TaskService = TaskService(),
-        captureService: any RecordingCaptureService = ShellRecordingCaptureService()
+        captureService: any RecordingCaptureService = ShellRecordingCaptureService(),
+        overlayService: any RecordingOverlayService = ScreenRecordingOverlayService()
     ) {
         self.taskService = taskService
         self.captureService = captureService
+        self.overlayService = overlayService
         self.tasks = []
         self.selectedTaskID = nil
         self.newTaskTitle = ""
         self.heartbeatMarkdown = ""
         self.recordings = []
         self.availableCaptureDisplays = []
+        self.availableCaptureAudioInputs = []
         self.selectedCaptureDisplayID = nil
+        self.selectedCaptureAudioInputID = nil
         self.isCapturing = false
         self.captureStartedAt = nil
         self.saveStatusMessage = nil
         self.recordingStatusMessage = nil
         self.errorMessage = nil
+    }
+
+    deinit {
+        overlayService.hideBorder()
     }
 
     var selectedTask: TaskRecord? {
@@ -58,6 +69,7 @@ final class MainShellStateStore {
             loadSelectedTaskHeartbeat()
             loadSelectedTaskRecordings()
             refreshCaptureDisplays()
+            refreshCaptureAudioInputs()
             errorMessage = nil
         } catch {
             errorMessage = "Failed to load tasks."
@@ -124,6 +136,36 @@ final class MainShellStateStore {
         selectedCaptureDisplayID = displays.first?.id
     }
 
+    func refreshCaptureAudioInputs() {
+        let inputs = captureService.listAudioInputs()
+        availableCaptureAudioInputs = inputs
+        if let selectedCaptureAudioInputID,
+           inputs.contains(where: { $0.id == selectedCaptureAudioInputID }) {
+            return
+        }
+        selectedCaptureAudioInputID = inputs.first?.id
+    }
+
+    private var selectedAudioInputMode: CaptureAudioInputMode {
+        guard
+            let selectedCaptureAudioInputID,
+            let selected = availableCaptureAudioInputs.first(where: { $0.id == selectedCaptureAudioInputID })
+        else {
+            return .systemDefault
+        }
+        return selected.mode
+    }
+
+    private var selectedAudioInputLabel: String {
+        guard
+            let selectedCaptureAudioInputID,
+            let selected = availableCaptureAudioInputs.first(where: { $0.id == selectedCaptureAudioInputID })
+        else {
+            return "System Default Microphone"
+        }
+        return selected.label
+    }
+
     func saveSelectedTaskHeartbeat() {
         guard let selectedTaskID else {
             return
@@ -174,14 +216,26 @@ final class MainShellStateStore {
         }
 
         do {
+            refreshCaptureAudioInputs()
             let outputURL = try taskService.makeCaptureOutputURL(taskId: selectedTaskID)
-            try captureService.startCapture(outputURL: outputURL, displayID: selectedCaptureDisplayID)
+            let requestedAudioInput = selectedAudioInputMode
+            try captureService.startCapture(
+                outputURL: outputURL,
+                displayID: selectedCaptureDisplayID,
+                audioInput: requestedAudioInput
+            )
             isCapturing = true
             captureStartedAt = Date()
-            if captureService.lastCaptureIncludesMicrophone {
-                recordingStatusMessage = "Capture started on Display \(selectedCaptureDisplayID) with microphone audio."
+            overlayService.showBorder(displayID: selectedCaptureDisplayID)
+            if captureService.lastCaptureIncludesMicrophone,
+               let warning = captureService.lastCaptureStartWarning {
+                recordingStatusMessage = "Capture started on Display \(selectedCaptureDisplayID) with microphone audio. \(warning)"
+            } else if captureService.lastCaptureIncludesMicrophone {
+                recordingStatusMessage = "Capture started on Display \(selectedCaptureDisplayID) with audio input: \(selectedAudioInputLabel)."
             } else if let warning = captureService.lastCaptureStartWarning {
                 recordingStatusMessage = "Capture started on Display \(selectedCaptureDisplayID) without microphone audio. \(warning)"
+            } else if requestedAudioInput == .none {
+                recordingStatusMessage = "Capture started on Display \(selectedCaptureDisplayID) without microphone audio."
             } else {
                 recordingStatusMessage = "Capture started on Display \(selectedCaptureDisplayID)."
             }
@@ -189,16 +243,19 @@ final class MainShellStateStore {
         } catch RecordingCaptureError.permissionDenied {
             isCapturing = false
             captureStartedAt = nil
+            overlayService.hideBorder()
             errorMessage = "Screen Recording permission denied. Grant access in System Settings and retry."
         } catch RecordingCaptureError.alreadyCapturing {
             errorMessage = "Capture is already running."
         } catch RecordingCaptureError.failedToStart(let reason) {
             isCapturing = false
             captureStartedAt = nil
+            overlayService.hideBorder()
             errorMessage = "Failed to start capture: \(reason)"
         } catch {
             isCapturing = false
             captureStartedAt = nil
+            overlayService.hideBorder()
             errorMessage = "Failed to start capture."
         }
     }
@@ -208,6 +265,7 @@ final class MainShellStateStore {
             try captureService.stopCapture()
             isCapturing = false
             captureStartedAt = nil
+            overlayService.hideBorder()
             loadSelectedTaskRecordings()
             if let latest = recordings.first {
                 recordingStatusMessage = "Capture stopped. Saved \(latest.fileName)."
@@ -218,12 +276,15 @@ final class MainShellStateStore {
         } catch RecordingCaptureError.notCapturing {
             isCapturing = false
             captureStartedAt = nil
+            overlayService.hideBorder()
             errorMessage = "No active capture to stop."
         } catch RecordingCaptureError.failedToStop(let reason) {
             isCapturing = false
             captureStartedAt = nil
+            overlayService.hideBorder()
             errorMessage = "Failed to stop capture: \(reason)"
         } catch {
+            overlayService.hideBorder()
             errorMessage = "Failed to stop capture."
         }
     }

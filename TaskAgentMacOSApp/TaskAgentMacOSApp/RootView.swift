@@ -402,6 +402,16 @@ private struct MainShellView: View {
                                 }
                             }
                             .frame(width: 140)
+                            Picker("Microphone", selection: Binding(
+                                get: { mainShellStateStore.selectedCaptureAudioInputID ?? "default" },
+                                set: { mainShellStateStore.selectedCaptureAudioInputID = $0 }
+                            )) {
+                                ForEach(mainShellStateStore.availableCaptureAudioInputs) { input in
+                                    Text(input.label).tag(input.id)
+                                }
+                            }
+                            .frame(width: 220)
+                            .disabled(mainShellStateStore.isCapturing)
                             Button("Start Capture") {
                                 mainShellStateStore.startCapture()
                             }
@@ -424,7 +434,7 @@ private struct MainShellView: View {
                                     Circle()
                                         .fill(.red)
                                         .frame(width: 10, height: 10)
-                                    Text("Recording in progress (\(captureElapsedText(now: context.date))). Click Stop Capture to finish.")
+                                    Text("Recording in progress (\(captureElapsedText(now: context.date))). Red border is shown on the recorded display. Click Stop Capture to finish.")
                                         .foregroundStyle(.orange)
                                 }
                             }
@@ -473,6 +483,7 @@ private struct MainShellView: View {
         .onAppear {
             mainShellStateStore.reloadTasks()
             mainShellStateStore.refreshCaptureDisplays()
+            mainShellStateStore.refreshCaptureAudioInputs()
         }
         .fileImporter(
             isPresented: $isRecordingImporterPresented,

@@ -4,6 +4,10 @@ description: Design decision checklist for the native macOS task agent, includin
 
 # Design Decisions
 
+## Maintenance rule
+
+- Every new design choice introduced during implementation must be documented in this file in the same task/PR.
+
 ## 1) Product scope and success criteria
 - v1 app scope: menu bar app, dock app, or both
 - Single-user local app vs future multi-user sync
@@ -153,3 +157,14 @@ Current status: pending your explicit choice between A and B.
   - OpenAI or Anthropic (Claude) for core agent tasks.
   - Gemini for video understanding path.
 - Keys are stored locally in Keychain (never plaintext in logs).
+
+## Recording UX decisions (locked: 2026-02-07)
+
+- During active recording, the app shows a visible red border around the selected display.
+- The border is removed immediately when capture stops or fails.
+- Capture controls include an in-app microphone source selector with:
+  - `System Default Microphone`
+  - Explicit input device entries (resolved from system audio devices)
+  - `No Microphone`
+- Default selection is `System Default Microphone` to keep voice capture enabled by default.
+- When microphone capture cannot be started, the app may fall back to no-microphone capture and must show an explicit warning/status message.

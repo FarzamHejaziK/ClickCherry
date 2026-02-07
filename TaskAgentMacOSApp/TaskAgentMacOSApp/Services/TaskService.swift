@@ -168,8 +168,11 @@ struct TaskService {
             try fileManager.createDirectory(at: recordingsDir, withIntermediateDirectories: true)
         }
 
-        let timestamp = ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "-")
-        return recordingsDir.appendingPathComponent("capture-\(timestamp).mov", isDirectory: false)
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let timestamp = formatter.string(from: Date()).replacingOccurrences(of: ":", with: "-")
+        let suffix = UUID().uuidString.prefix(8).lowercased()
+        return recordingsDir.appendingPathComponent("capture-\(timestamp)-\(suffix).mov", isDirectory: false)
     }
 
     private func readTaskTitle(from heartbeatFile: URL) throws -> String {

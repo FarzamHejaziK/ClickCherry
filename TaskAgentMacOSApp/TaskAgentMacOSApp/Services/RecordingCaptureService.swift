@@ -1,10 +1,24 @@
 import Foundation
 import CoreGraphics
 import AVFoundation
+import CoreAudio
+import Darwin
 
 struct CaptureDisplayOption: Identifiable, Equatable {
     let id: Int
     let label: String
+}
+
+enum CaptureAudioInputMode: Equatable {
+    case none
+    case systemDefault
+    case device(Int)
+}
+
+struct CaptureAudioInputOption: Identifiable, Equatable {
+    let id: String
+    let label: String
+    let mode: CaptureAudioInputMode
 }
 
 enum RecordingCaptureError: Error {
@@ -20,7 +34,8 @@ protocol RecordingCaptureService {
     var lastCaptureIncludesMicrophone: Bool { get }
     var lastCaptureStartWarning: String? { get }
     func listDisplays() -> [CaptureDisplayOption]
-    func startCapture(outputURL: URL, displayID: Int) throws
+    func listAudioInputs() -> [CaptureAudioInputOption]
+    func startCapture(outputURL: URL, displayID: Int, audioInput: CaptureAudioInputMode) throws
     func stopCapture() throws
 }
 
@@ -32,6 +47,7 @@ final class ShellRecordingCaptureService: RecordingCaptureService {
     private var standardErrorPipe: Pipe?
     private var standardOutputPipe: Pipe?
     private var outputURL: URL?
+    private var currentArguments: [String] = []
     private(set) var lastCaptureIncludesMicrophone: Bool = false
     private(set) var lastCaptureStartWarning: String?
 
@@ -47,7 +63,25 @@ final class ShellRecordingCaptureService: RecordingCaptureService {
         return (1...count).map { CaptureDisplayOption(id: $0, label: "Display \($0)") }
     }
 
-    func startCapture(outputURL: URL, displayID: Int) throws {
+    func listAudioInputs() -> [CaptureAudioInputOption] {
+        let devices = inputAudioDevices()
+        var options: [CaptureAudioInputOption] = [
+            CaptureAudioInputOption(id: "default", label: "System Default Microphone", mode: .systemDefault)
+        ]
+        options.append(
+            contentsOf: devices.map { device in
+                CaptureAudioInputOption(
+                    id: "device-\(device.id)",
+                    label: "\(device.name) (ID \(device.id))",
+                    mode: .device(device.id)
+                )
+            }
+        )
+        options.append(CaptureAudioInputOption(id: "none", label: "No Microphone", mode: .none))
+        return options
+    }
+
+    func startCapture(outputURL: URL, displayID: Int, audioInput: CaptureAudioInputMode) throws {
         guard !isCapturing else {
             throw RecordingCaptureError.alreadyCapturing
         }
@@ -66,6 +100,16 @@ final class ShellRecordingCaptureService: RecordingCaptureService {
             try FileManager.default.createDirectory(at: parentDir, withIntermediateDirectories: true)
         }
 
+        if audioInput == .none {
+            let run = try launchCapture(outputURL: outputURL, displayID: displayID, includeMicrophone: false)
+            process = run.process
+            standardErrorPipe = run.stderrPipe
+            standardOutputPipe = run.stdoutPipe
+            self.outputURL = outputURL
+            lastCaptureIncludesMicrophone = false
+            return
+        }
+
         let microphoneAllowed = requestMicrophoneAccessIfNeeded()
         if !microphoneAllowed {
             let run = try launchCapture(outputURL: outputURL, displayID: displayID, includeMicrophone: false)
@@ -79,7 +123,7 @@ final class ShellRecordingCaptureService: RecordingCaptureService {
         }
 
         do {
-            let run = try launchCapture(outputURL: outputURL, displayID: displayID, includeMicrophone: true)
+            let run = try launchCapture(outputURL: outputURL, displayID: displayID, audioInput: audioInput)
             process = run.process
             standardErrorPipe = run.stderrPipe
             standardOutputPipe = run.stdoutPipe
@@ -88,6 +132,33 @@ final class ShellRecordingCaptureService: RecordingCaptureService {
             return
         } catch RecordingCaptureError.failedToStart(let withMicReason) {
             let micError = withMicReason.isEmpty ? "unknown microphone capture error" : withMicReason
+            if case .device(let requestedDeviceID) = audioInput {
+                do {
+                    let run = try launchCapture(outputURL: outputURL, displayID: displayID, audioInput: .systemDefault)
+                    process = run.process
+                    standardErrorPipe = run.stderrPipe
+                    standardOutputPipe = run.stdoutPipe
+                    self.outputURL = outputURL
+                    lastCaptureIncludesMicrophone = true
+                    lastCaptureStartWarning = "Selected microphone device ID \(requestedDeviceID) was unavailable. Fell back to System Default Microphone."
+                    return
+                } catch RecordingCaptureError.failedToStart(let defaultReason) {
+                    let defaultMicError = defaultReason.isEmpty ? "unknown default-microphone error" : defaultReason
+                    do {
+                        let run = try launchCapture(outputURL: outputURL, displayID: displayID, includeMicrophone: false)
+                        process = run.process
+                        standardErrorPipe = run.stderrPipe
+                        standardOutputPipe = run.stdoutPipe
+                        self.outputURL = outputURL
+                        lastCaptureIncludesMicrophone = false
+                        lastCaptureStartWarning = "Selected microphone failed (\(micError)). Default microphone also failed (\(defaultMicError))."
+                        return
+                    } catch RecordingCaptureError.failedToStart(let noMicReason) {
+                        let fallback = noMicReason.isEmpty ? "unknown non-microphone capture error" : noMicReason
+                        throw RecordingCaptureError.failedToStart("Selected mic failed (\(micError)). Default mic failed (\(defaultMicError)). Fallback failed (\(fallback)).")
+                    }
+                }
+            }
             do {
                 let run = try launchCapture(outputURL: outputURL, displayID: displayID, includeMicrophone: false)
                 process = run.process
@@ -114,7 +185,16 @@ final class ShellRecordingCaptureService: RecordingCaptureService {
         }
 
         if process.isRunning {
+            // For screencapture -v, interrupt is the normal stop signal for recording finalization.
             process.interrupt()
+            Thread.sleep(forTimeInterval: 0.2)
+            if process.isRunning {
+                process.terminate()
+                Thread.sleep(forTimeInterval: 0.2)
+            }
+            if process.isRunning {
+                kill(process.processIdentifier, SIGKILL)
+            }
             process.waitUntilExit()
         }
         defer {
@@ -122,14 +202,23 @@ final class ShellRecordingCaptureService: RecordingCaptureService {
             standardErrorPipe = nil
             standardOutputPipe = nil
             outputURL = nil
+            currentArguments = []
         }
 
-        let reason = readPipe(standardErrorPipe).trimmingCharacters(in: .whitespacesAndNewlines)
+        let stderrReason = readPipe(standardErrorPipe).trimmingCharacters(in: .whitespacesAndNewlines)
+        let stdoutReason = readPipe(standardOutputPipe).trimmingCharacters(in: .whitespacesAndNewlines)
+        let reason = [stderrReason, stdoutReason]
+            .filter { !$0.isEmpty }
+            .joined(separator: " | ")
         if let outputURL {
-            let size = waitForOutputSize(url: outputURL, timeout: Self.outputFinalizeWaitSeconds)
+            let size = waitForOutputSize(url: outputURL, timeout: Self.outputFinalizeWaitSeconds + 3.0)
             guard size > 0 else {
-                let fallback = "Capture ended but no recording file was created (status \(process.terminationStatus))."
+                let argText = currentArguments.joined(separator: " ")
+                let fallback = "Capture ended but no recording file was created (status \(process.terminationStatus)). Command: screencapture \(argText)"
                 throw RecordingCaptureError.failedToStop(reason.isEmpty ? fallback : reason)
+            }
+            if isPNGFile(url: outputURL) {
+                throw RecordingCaptureError.failedToStop("Capture output was a still image, not a video. Retry capture and keep Screen Recording enabled for this app.")
             }
         } else {
             throw RecordingCaptureError.failedToStop("Capture ended without a valid output file path.")
@@ -168,6 +257,18 @@ final class ShellRecordingCaptureService: RecordingCaptureService {
         return (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? NSNumber)?.int64Value ?? 0
     }
 
+    private func isPNGFile(url: URL) -> Bool {
+        guard let handle = try? FileHandle(forReadingFrom: url) else {
+            return false
+        }
+        defer { try? handle.close() }
+        guard let bytes = try? handle.read(upToCount: 8), bytes.count == 8 else {
+            return false
+        }
+        let pngSignature: [UInt8] = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
+        return Array(bytes) == pngSignature
+    }
+
     private func requestMicrophoneAccessIfNeeded() -> Bool {
         switch AVCaptureDevice.authorizationStatus(for: .audio) {
         case .authorized:
@@ -188,15 +289,96 @@ final class ShellRecordingCaptureService: RecordingCaptureService {
         }
     }
 
+    private func inputAudioDevices() -> [(id: Int, name: String)] {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDevices,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var propertySize: UInt32 = 0
+        guard AudioObjectGetPropertyDataSize(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &propertySize) == noErr else {
+            return []
+        }
+
+        let count = Int(propertySize) / MemoryLayout<AudioDeviceID>.size
+        var deviceIDs = [AudioDeviceID](repeating: AudioDeviceID(0), count: count)
+        guard AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &propertySize, &deviceIDs) == noErr else {
+            return []
+        }
+
+        var results: [(id: Int, name: String)] = []
+        for deviceID in deviceIDs {
+            guard deviceHasInput(deviceID) else {
+                continue
+            }
+            let name = deviceName(deviceID) ?? "Audio Device"
+            results.append((id: Int(deviceID), name: name))
+        }
+        return results.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    private func deviceHasInput(_ deviceID: AudioDeviceID) -> Bool {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyStreamConfiguration,
+            mScope: kAudioDevicePropertyScopeInput,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var propertySize: UInt32 = 0
+        guard AudioObjectGetPropertyDataSize(deviceID, &address, 0, nil, &propertySize) == noErr else {
+            return false
+        }
+
+        let bufferListPointer = UnsafeMutableRawPointer.allocate(
+            byteCount: Int(propertySize),
+            alignment: MemoryLayout<AudioBufferList>.alignment
+        )
+        defer { bufferListPointer.deallocate() }
+
+        guard AudioObjectGetPropertyData(deviceID, &address, 0, nil, &propertySize, bufferListPointer) == noErr else {
+            return false
+        }
+
+        let audioBufferList = bufferListPointer.assumingMemoryBound(to: AudioBufferList.self)
+        let buffers = UnsafeMutableAudioBufferListPointer(audioBufferList)
+        let channelCount = buffers.reduce(0) { $0 + Int($1.mNumberChannels) }
+        return channelCount > 0
+    }
+
+    private func deviceName(_ deviceID: AudioDeviceID) -> String? {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioObjectPropertyName,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var name: CFString = "" as CFString
+        var propertySize = UInt32(MemoryLayout<CFString>.size)
+        let result = AudioObjectGetPropertyData(deviceID, &address, 0, nil, &propertySize, &name)
+        guard result == noErr else {
+            return nil
+        }
+        return name as String
+    }
+
     private func launchCapture(outputURL: URL, displayID: Int, includeMicrophone: Bool) throws -> (process: Process, stderrPipe: Pipe, stdoutPipe: Pipe) {
+        let audioInput: CaptureAudioInputMode = includeMicrophone ? .systemDefault : .none
+        return try launchCapture(outputURL: outputURL, displayID: displayID, audioInput: audioInput)
+    }
+
+    private func launchCapture(outputURL: URL, displayID: Int, audioInput: CaptureAudioInputMode) throws -> (process: Process, stderrPipe: Pipe, stdoutPipe: Pipe) {
         let captureProcess = Process()
         captureProcess.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
 
         var args = ["-v"]
-        if includeMicrophone {
+        switch audioInput {
+        case .none:
+            break
+        case .systemDefault:
             args.append("-g")
+        case .device(let deviceID):
+            args.append(contentsOf: ["-G", String(deviceID)])
         }
         args.append(contentsOf: ["-D", String(displayID), outputURL.path])
+        currentArguments = args
         captureProcess.arguments = args
 
         let stderrPipe = Pipe()
