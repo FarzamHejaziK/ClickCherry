@@ -57,10 +57,13 @@ description: Step-by-step implementation plan with code scope, automated tests, 
 
 ### Code
 - Implement video-understanding pipeline (LLM call).
+- Add prompt registry and versioned prompt files (task extraction first), with `stable` alias resolution.
+- Add provider-adapter boundary that maps canonical prompt parts (`system`, `user`, optional schema) to provider-specific payloads.
 - Convert model output into `HEARTBEAT.md` updates.
 - Add output validation to prevent empty/invalid task generation.
 
 ### Automated tests
+- Unit tests for prompt registry resolution (version + alias + missing-file failures).
 - Unit tests for prompt builder and response parser.
 - Unit tests for markdown writer (`Task` + `Questions` sections).
 - Integration test with mocked LLM responses (success and malformed output).

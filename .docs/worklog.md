@@ -630,3 +630,91 @@ description: Running implementation log of completed work, test evidence, blocke
 - Result: In progress; behavior is restored toward the previously working stop path.
 - Issues/blockers: Local Xcode verification still required for final confirmation.
 - Notes: This explains the regression: forced timed mode (`-V`) does not behave reliably for early user-triggered stop in this flow.
+
+## Entry
+- Date: 2026-02-07
+- Step: Microphone device-selection reliability fix (explicit mic fallback path)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/RecordingCaptureService.swift`:
+    - removed the pre-start "set system default input device" override path that was causing every explicit mic selection to report unavailable.
+    - switched microphone option discovery to `AVCaptureDevice.DiscoverySession` device ordering.
+    - added explicit-device launch attempts with compatibility candidates for `screencapture -G` (`requested`, `requested-1`, `requested+1`) before falling back to system default mic.
+    - kept fallback chain safety:
+      1) selected device candidate(s)
+      2) system default mic
+      3) no-mic capture only if microphone attempts fail
+    - removed obsolete CoreAudio default-input mutation helpers tied to the failing override approach.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local CODE_SIGNING_ALLOWED=NO build` (failed in Codex sandbox due known `ObservationMacros` / `swift-plugin-server` host issue).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (failed in Codex sandbox due known `ObservationMacros` / `swift-plugin-server` host issue).
+  - `xcrun swiftc -typecheck -module-cache-path /tmp/swift-modcache /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/RecordingCaptureService.swift` (pass).
+- Manual tests run: Pending user-side signed Xcode run.
+- Result: In progress; explicit mic selection no longer depends on changing global macOS input device and now uses direct `screencapture` device attempts.
+- Issues/blockers: Full app/test compile remains environment-limited in Codex sandbox due macro plugin host failures.
+- Notes: Next manual validation should confirm whether explicit mic selection now captures voice without fallback warning.
+
+## Entry
+- Date: 2026-02-07
+- Step: Hotfix for explicit mic regression (`Capture audio device 0 not found`)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/RecordingCaptureService.swift`:
+    - restored microphone option IDs to CoreAudio `AudioDeviceID` values (removed index-based `0/1/2...` mapping that produced invalid `-G 0` calls).
+    - removed explicit-device candidate remap attempts (`requested-1`/`requested+1`) and now tries the selected device ID directly, then falls back to system default mic.
+    - kept fallback chain: selected explicit mic -> system default mic -> no-mic last resort.
+- Automated tests run:
+  - `xcrun swiftc -typecheck -module-cache-path /tmp/swift-modcache /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/RecordingCaptureService.swift` (pass).
+  - Full `xcodebuild` remains non-authoritative in Codex sandbox due known `ObservationMacros`/`swift-plugin-server` host issue.
+- Manual tests run: Pending user-side signed Xcode run.
+- Result: In progress; the immediate `-G 0` regression is removed.
+- Issues/blockers: Need user-side runtime verification for microphone capture behavior in signed app context.
+- Notes: Expected immediate improvement is removal of `Capture audio device 0 not found` stop/start failures.
+
+## Entry
+- Date: 2026-02-07
+- Step: Open issue tracking setup for explicit microphone fallback problem
+- Changes made:
+  - Added `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md` and captured issue `OI-2026-02-07-001`:
+    - explicit microphone selection fails and falls back to system default mic.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/AGENTS.md` with:
+    - `.docs/open_issues.md` maintenance contract.
+    - explicit `open_issues.md` entry template/rules.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md` with a top-priority resolution step for `OI-2026-02-07-001`.
+- Automated tests run:
+  - `git diff -- AGENTS.md .docs/open_issues.md .docs/worklog.md .docs/next_steps.md`
+  - `git status --short`
+- Manual tests run: N/A (docs-only)
+- Result: Complete for issue tracking/governance updates.
+- Issues/blockers: Explicit microphone device mapping remains unresolved in runtime behavior.
+- Notes: Mitigation remains `System Default Microphone` until `OI-2026-02-07-001` is closed.
+
+## Entry
+- Date: 2026-02-07
+- Step: AGENTS.md instruction deduplication cleanup
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/AGENTS.md` to remove repetitive top-level instructions already covered by the `.docs/` update contract.
+  - Kept all required behavior intact, but consolidated wording for:
+    - `.docs/worklog.md` maintenance
+    - `.docs/next_steps.md` planning requirement
+- Automated tests run:
+  - `git diff -- AGENTS.md .docs/worklog.md .docs/next_steps.md`
+  - `git status --short`
+- Manual tests run: N/A (docs-only)
+- Result: Complete.
+- Issues/blockers: None introduced by docs cleanup.
+- Notes: Active engineering priority remains `OI-2026-02-07-001` in `.docs/open_issues.md`.
+
+## Entry
+- Date: 2026-02-08
+- Step: Prompt management design decision lock + planning reprioritization
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` with locked prompt-management decisions (file-based versioned prompts, alias registry, provider-agnostic composition, schema-bound parsing, prompt metadata observability).
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` Step 3 to include prompt registry/versioning and provider-adapter boundary work.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md` to prioritize Step 3.1 prompt foundation and Step 3.2 extraction pipeline, and explicitly defer `OI-2026-02-07-001`.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md` next action to deferred status until Step 3 baseline is in place.
+- Automated tests run:
+  - `git diff -- .docs/design.md .docs/plan.md .docs/next_steps.md .docs/open_issues.md`
+  - `git status --short`
+- Manual tests run: N/A (docs-only)
+- Result: Complete; design and execution queue now reflect prompt-first implementation strategy.
+- Issues/blockers: None for docs updates.
+- Notes: Next implementation step is prompt registry scaffolding in app code.

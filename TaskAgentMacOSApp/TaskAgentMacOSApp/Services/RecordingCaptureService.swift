@@ -122,17 +122,20 @@ final class ShellRecordingCaptureService: RecordingCaptureService {
             return
         }
 
-        do {
-            let run = try launchCapture(outputURL: outputURL, displayID: displayID, audioInput: audioInput)
-            process = run.process
-            standardErrorPipe = run.stderrPipe
-            standardOutputPipe = run.stdoutPipe
-            self.outputURL = outputURL
-            lastCaptureIncludesMicrophone = true
+        switch audioInput {
+        case .none:
             return
-        } catch RecordingCaptureError.failedToStart(let withMicReason) {
-            let micError = withMicReason.isEmpty ? "unknown microphone capture error" : withMicReason
-            if case .device(let requestedDeviceID) = audioInput {
+        case .device(let requestedDeviceID):
+            do {
+                let run = try launchCapture(outputURL: outputURL, displayID: displayID, audioInput: .device(requestedDeviceID))
+                process = run.process
+                standardErrorPipe = run.stderrPipe
+                standardOutputPipe = run.stdoutPipe
+                self.outputURL = outputURL
+                lastCaptureIncludesMicrophone = true
+                return
+            } catch RecordingCaptureError.failedToStart(let withMicReason) {
+                let micError = withMicReason.isEmpty ? "unknown microphone capture error" : withMicReason
                 do {
                     let run = try launchCapture(outputURL: outputURL, displayID: displayID, audioInput: .systemDefault)
                     process = run.process
@@ -159,23 +162,31 @@ final class ShellRecordingCaptureService: RecordingCaptureService {
                     }
                 }
             }
+        case .systemDefault:
             do {
-                let run = try launchCapture(outputURL: outputURL, displayID: displayID, includeMicrophone: false)
+                let run = try launchCapture(outputURL: outputURL, displayID: displayID, audioInput: .systemDefault)
                 process = run.process
                 standardErrorPipe = run.stderrPipe
                 standardOutputPipe = run.stdoutPipe
                 self.outputURL = outputURL
-                lastCaptureIncludesMicrophone = false
-                lastCaptureStartWarning = "Microphone capture unavailable for this app run: \(micError)"
+                lastCaptureIncludesMicrophone = true
                 return
-            } catch RecordingCaptureError.failedToStart(let noMicReason) {
-                let fallback = noMicReason.isEmpty ? "unknown non-microphone capture error" : noMicReason
-                throw RecordingCaptureError.failedToStart("Mic mode failed (\(micError)). Fallback failed (\(fallback)).")
+            } catch RecordingCaptureError.failedToStart(let withMicReason) {
+                let micError = withMicReason.isEmpty ? "unknown microphone capture error" : withMicReason
+                do {
+                    let run = try launchCapture(outputURL: outputURL, displayID: displayID, includeMicrophone: false)
+                    process = run.process
+                    standardErrorPipe = run.stderrPipe
+                    standardOutputPipe = run.stdoutPipe
+                    self.outputURL = outputURL
+                    lastCaptureIncludesMicrophone = false
+                    lastCaptureStartWarning = "Microphone capture unavailable for this app run: \(micError)"
+                    return
+                } catch RecordingCaptureError.failedToStart(let noMicReason) {
+                    let fallback = noMicReason.isEmpty ? "unknown non-microphone capture error" : noMicReason
+                    throw RecordingCaptureError.failedToStart("Mic mode failed (\(micError)). Fallback failed (\(fallback)).")
+                }
             }
-        } catch let error as RecordingCaptureError {
-            throw error
-        } catch {
-            throw RecordingCaptureError.failedToStart(error.localizedDescription)
         }
     }
 
@@ -257,38 +268,6 @@ final class ShellRecordingCaptureService: RecordingCaptureService {
         return (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? NSNumber)?.int64Value ?? 0
     }
 
-    private func isPNGFile(url: URL) -> Bool {
-        guard let handle = try? FileHandle(forReadingFrom: url) else {
-            return false
-        }
-        defer { try? handle.close() }
-        guard let bytes = try? handle.read(upToCount: 8), bytes.count == 8 else {
-            return false
-        }
-        let pngSignature: [UInt8] = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
-        return Array(bytes) == pngSignature
-    }
-
-    private func requestMicrophoneAccessIfNeeded() -> Bool {
-        switch AVCaptureDevice.authorizationStatus(for: .audio) {
-        case .authorized:
-            return true
-        case .denied, .restricted:
-            return false
-        case .notDetermined:
-            var granted = false
-            let semaphore = DispatchSemaphore(value: 0)
-            AVCaptureDevice.requestAccess(for: .audio) { allowed in
-                granted = allowed
-                semaphore.signal()
-            }
-            _ = semaphore.wait(timeout: .now() + 30)
-            return granted
-        @unknown default:
-            return false
-        }
-    }
-
     private func inputAudioDevices() -> [(id: Int, name: String)] {
         var address = AudioObjectPropertyAddress(
             mSelector: kAudioHardwarePropertyDevices,
@@ -357,6 +336,38 @@ final class ShellRecordingCaptureService: RecordingCaptureService {
             return nil
         }
         return name as String
+    }
+
+    private func isPNGFile(url: URL) -> Bool {
+        guard let handle = try? FileHandle(forReadingFrom: url) else {
+            return false
+        }
+        defer { try? handle.close() }
+        guard let bytes = try? handle.read(upToCount: 8), bytes.count == 8 else {
+            return false
+        }
+        let pngSignature: [UInt8] = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
+        return Array(bytes) == pngSignature
+    }
+
+    private func requestMicrophoneAccessIfNeeded() -> Bool {
+        switch AVCaptureDevice.authorizationStatus(for: .audio) {
+        case .authorized:
+            return true
+        case .denied, .restricted:
+            return false
+        case .notDetermined:
+            var granted = false
+            let semaphore = DispatchSemaphore(value: 0)
+            AVCaptureDevice.requestAccess(for: .audio) { allowed in
+                granted = allowed
+                semaphore.signal()
+            }
+            _ = semaphore.wait(timeout: .now() + 30)
+            return granted
+        @unknown default:
+            return false
+        }
     }
 
     private func launchCapture(outputURL: URL, displayID: Int, includeMicrophone: Bool) throws -> (process: Process, stderrPipe: Pipe, stdoutPipe: Pipe) {

@@ -168,3 +168,22 @@ Current status: pending your explicit choice between A and B.
   - `No Microphone`
 - Default selection is `System Default Microphone` to keep voice capture enabled by default.
 - When microphone capture cannot be started, the app may fall back to no-microphone capture and must show an explicit warning/status message.
+
+## Prompt management decisions (locked: 2026-02-08)
+
+- Prompt source of truth is file-based under:
+  - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/`
+- Prompts are immutable by version:
+  - each prompt family has version folders (`v1.0.0`, `v1.1.0`, etc.).
+  - old versions are never edited in-place.
+- Prompt resolution is alias-based:
+  - aliases like `stable` and `canary` map to concrete versions.
+  - alias mapping is defined in a single registry file and can be updated without code edits.
+- Prompt composition is provider-agnostic:
+  - canonical prompt parts are `system`, `user`, and optional `output schema`.
+  - provider adapters transform canonical prompt parts to provider-specific request payloads.
+- Structured output contract is version-bound:
+  - each prompt version owns its output schema and parser expectations.
+  - parse/validation failures must fail fast and must not write partial `HEARTBEAT.md` updates.
+- Observability requirement:
+  - each LLM run must capture prompt metadata (`prompt_id`, `prompt_version`, `provider`, `model`) in run diagnostics.
