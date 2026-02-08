@@ -1,0 +1,121 @@
+---
+description: Provisional decisions and open product/design questions that are intentionally deferred for future revision.
+---
+
+# Revisits
+
+## Usage
+
+- Add a new entry whenever we intentionally choose a temporary baseline.
+- When an item is revised, update `Status`, `Resolution Date`, and linked docs.
+- Keep newest active revisit items first.
+
+## Revisit RV-2026-02-08-011
+- Revisit ID: RV-2026-02-08-011
+- Source: `.docs/open_issues.md` (`OI-2026-02-07-001`)
+- Status: Open
+- Current Baseline: Explicit mic selection fallback remains; use `System Default Microphone`.
+- Why Revisit: Explicit device routing fails in some local runs.
+- Trigger To Revisit: After Step 4 execution-agent baseline is stable.
+- Owner: Codex + user validation
+- Last Updated: 2026-02-08
+
+## Revisit RV-2026-02-08-010
+- Revisit ID: RV-2026-02-08-010
+- Source: `.docs/open_issues.md` (`OI-2026-02-08-003`)
+- Status: Open
+- Current Baseline: Step 4 clarification local UI verification is deferred.
+- Why Revisit: Runtime persistence behavior still needs local confirmation pass.
+- Trigger To Revisit: After Step 4 execution-agent baseline implementation.
+- Owner: Codex + user validation
+- Last Updated: 2026-02-08
+
+## Revisit RV-2026-02-08-009
+- Revisit ID: RV-2026-02-08-009
+- Source: `.docs/PRD.md` (`Open Questions`)
+- Status: Open
+- Current Baseline: No background daemon in v1; app-open scheduler only.
+- Why Revisit: Product needs may require closed-app scheduling.
+- Trigger To Revisit: After stable v1 scheduled-run metrics are available.
+- Owner: Product + engineering
+- Last Updated: 2026-02-08
+
+## Revisit RV-2026-02-08-008
+- Revisit ID: RV-2026-02-08-008
+- Source: `.docs/PRD.md` (`Open Questions`)
+- Status: Open
+- Current Baseline: `HEARTBEAT.md` remains free-form markdown editor.
+- Why Revisit: Structured editor may improve reliability and validation.
+- Trigger To Revisit: After execution-agent and scheduling flows stabilize.
+- Owner: Product + engineering
+- Last Updated: 2026-02-08
+
+## Revisit RV-2026-02-08-007
+- Revisit ID: RV-2026-02-08-007
+- Source: `.docs/PRD.md` (`Open Questions`)
+- Status: Open
+- Current Baseline: No explicit minimum automation-fidelity threshold is locked.
+- Why Revisit: Need a measurable v1 success threshold for run reliability.
+- Trigger To Revisit: When enough run-history data exists to set KPI threshold.
+- Owner: Product + engineering
+- Last Updated: 2026-02-08
+
+## Revisit RV-2026-02-08-006
+- Revisit ID: RV-2026-02-08-006
+- Source: `.docs/design.md` (`Execution-agent baseline behavior`)
+- Status: Open
+- Current Baseline: No max step limit and no max run-duration limit.
+- Why Revisit: Unlimited runs can increase runaway-risk and resource usage.
+- Trigger To Revisit: First observed runaway/looping run or safety hardening phase.
+- Owner: Engineering
+- Last Updated: 2026-02-08
+
+## Revisit RV-2026-02-08-005
+- Revisit ID: RV-2026-02-08-005
+- Source: `.docs/design.md` (`Execution-agent baseline behavior`)
+- Status: Open
+- Current Baseline: Screenshot artifacts are captured on failures only.
+- Why Revisit: May be insufficient for debugging successful-but-wrong runs.
+- Trigger To Revisit: If run diagnostics are insufficient in user bug reports.
+- Owner: Engineering
+- Last Updated: 2026-02-08
+
+## Revisit RV-2026-02-08-004
+- Revisit ID: RV-2026-02-08-004
+- Source: `.docs/design.md` (`Execution-agent baseline behavior`)
+- Status: Open
+- Current Baseline: Retry policy is `0` retries before asking clarification questions.
+- Why Revisit: Zero retries may increase unnecessary clarification churn.
+- Trigger To Revisit: If repeated transient failures generate excessive questions.
+- Owner: Engineering
+- Last Updated: 2026-02-08
+
+## Revisit RV-2026-02-08-003
+- Revisit ID: RV-2026-02-08-003
+- Source: `.docs/design.md` (`Execution-agent baseline behavior`)
+- Status: Open
+- Current Baseline: No app allowlist/blocklist; execute across apps user requests.
+- Why Revisit: Safety policy may require app boundaries for destructive contexts.
+- Trigger To Revisit: Security review or first high-risk misuse report.
+- Owner: Product + engineering
+- Last Updated: 2026-02-08
+
+## Revisit RV-2026-02-08-002
+- Revisit ID: RV-2026-02-08-002
+- Source: `.docs/design.md` (`Execution-agent baseline behavior`)
+- Status: Open
+- Current Baseline: No per-step confirmations; all actions are allowed by default.
+- Why Revisit: Safety controls may be required for irreversible actions.
+- Trigger To Revisit: Safety hardening phase or first risky-action incident.
+- Owner: Product + engineering
+- Last Updated: 2026-02-08
+
+## Revisit RV-2026-02-08-001
+- Revisit ID: RV-2026-02-08-001
+- Source: `.docs/design.md` (`Run policy with open questions`)
+- Status: Open
+- Current Baseline: Allow run with unresolved questions; ask clarifications when run report is ready.
+- Why Revisit: May trade reliability for speed depending on task class.
+- Trigger To Revisit: If unresolved-question runs materially reduce success rate.
+- Owner: Product + engineering
+- Last Updated: 2026-02-08

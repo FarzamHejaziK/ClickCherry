@@ -171,6 +171,88 @@ struct MainShellStateStoreTests {
     }
 
     @Test
+    func loadSelectedTaskHeartbeatParsesClarificationQuestions() throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let task = try taskService.createTask(title: "Clarification task")
+        try taskService.saveHeartbeat(
+            taskId: task.id,
+            markdown: """
+            # Task
+            Clarification demo
+
+            ## Questions
+            - [required] Which account should be used?
+            - [ ] Should we include archived items?
+            """
+        )
+
+        let store = MainShellStateStore(
+            taskService: taskService,
+            apiKeyStore: MockAPIKeyStore(),
+            captureService: MockRecordingCaptureService(),
+            overlayService: MockRecordingOverlayService()
+        )
+        store.reloadTasks()
+        store.selectTask(task.id)
+
+        #expect(store.clarificationQuestions.count == 2)
+        #expect(store.unresolvedClarificationQuestions.count == 2)
+        #expect(store.selectedClarificationQuestion != nil)
+    }
+
+    @Test
+    func applyClarificationAnswerPersistsResolvedStateInHeartbeat() throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let task = try taskService.createTask(title: "Clarification apply task")
+        try taskService.saveHeartbeat(
+            taskId: task.id,
+            markdown: """
+            # Task
+            Clarification demo
+
+            ## Questions
+            - [required] Which account should be used?
+            - [ ] Should we include archived items?
+            """
+        )
+
+        let store = MainShellStateStore(
+            taskService: taskService,
+            apiKeyStore: MockAPIKeyStore(),
+            captureService: MockRecordingCaptureService(),
+            overlayService: MockRecordingOverlayService()
+        )
+        store.reloadTasks()
+        store.selectTask(task.id)
+        store.clarificationAnswerDraft = "Use the finance-admin account."
+        store.applyClarificationAnswer()
+
+        let persisted = try taskService.readHeartbeat(taskId: task.id)
+        #expect(persisted.contains("- [x] Which account should be used?"))
+        #expect(persisted.contains("Answer: Use the finance-admin account."))
+        #expect(store.clarificationStatusMessage == "Applied clarification answer.")
+        #expect(store.unresolvedClarificationQuestions.count == 1)
+    }
+
+    @Test
     func startAndStopCaptureUpdatesCaptureState() throws {
         let fm = FileManager.default
         let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)

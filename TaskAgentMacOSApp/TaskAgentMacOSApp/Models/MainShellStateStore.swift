@@ -6,6 +6,7 @@ import AppKit
 final class MainShellStateStore {
     private let taskService: TaskService
     private let taskExtractionService: TaskExtractionService
+    private let heartbeatQuestionService: HeartbeatQuestionService
     private let apiKeyStore: any APIKeyStore
     private let captureService: any RecordingCaptureService
     private let overlayService: any RecordingOverlayService
@@ -15,6 +16,9 @@ final class MainShellStateStore {
     var providerSetupState: ProviderSetupState
     var newTaskTitle: String
     var heartbeatMarkdown: String
+    var clarificationQuestions: [HeartbeatQuestion]
+    var selectedClarificationQuestionID: String?
+    var clarificationAnswerDraft: String
     var recordings: [RecordingRecord]
     var availableCaptureDisplays: [CaptureDisplayOption]
     var availableCaptureAudioInputs: [CaptureAudioInputOption]
@@ -27,6 +31,7 @@ final class MainShellStateStore {
     var saveStatusMessage: String?
     var recordingStatusMessage: String?
     var extractionStatusMessage: String?
+    var clarificationStatusMessage: String?
     var apiKeyStatusMessage: String?
     var apiKeyErrorMessage: String?
     var errorMessage: String?
@@ -34,6 +39,7 @@ final class MainShellStateStore {
     init(
         taskService: TaskService = TaskService(),
         taskExtractionService: TaskExtractionService? = nil,
+        heartbeatQuestionService: HeartbeatQuestionService = HeartbeatQuestionService(),
         apiKeyStore: any APIKeyStore = KeychainAPIKeyStore(),
         captureService: any RecordingCaptureService = ShellRecordingCaptureService(),
         overlayService: any RecordingOverlayService = ScreenRecordingOverlayService()
@@ -43,6 +49,7 @@ final class MainShellStateStore {
         self.taskExtractionService = taskExtractionService ?? TaskExtractionService(
             llmClient: GeminiVideoLLMClient(apiKeyStore: apiKeyStore)
         )
+        self.heartbeatQuestionService = heartbeatQuestionService
         self.captureService = captureService
         self.overlayService = overlayService
         self.tasks = []
@@ -54,6 +61,9 @@ final class MainShellStateStore {
         )
         self.newTaskTitle = ""
         self.heartbeatMarkdown = ""
+        self.clarificationQuestions = []
+        self.selectedClarificationQuestionID = nil
+        self.clarificationAnswerDraft = ""
         self.recordings = []
         self.availableCaptureDisplays = []
         self.availableCaptureAudioInputs = []
@@ -66,6 +76,7 @@ final class MainShellStateStore {
         self.saveStatusMessage = nil
         self.recordingStatusMessage = nil
         self.extractionStatusMessage = nil
+        self.clarificationStatusMessage = nil
         self.apiKeyStatusMessage = nil
         self.apiKeyErrorMessage = nil
         self.errorMessage = nil
@@ -80,6 +91,21 @@ final class MainShellStateStore {
             return nil
         }
         return tasks.first(where: { $0.id == selectedTaskID })
+    }
+
+    var unresolvedClarificationQuestions: [HeartbeatQuestion] {
+        clarificationQuestions.filter { !$0.isResolved }
+    }
+
+    var resolvedClarificationQuestions: [HeartbeatQuestion] {
+        clarificationQuestions.filter { $0.isResolved }
+    }
+
+    var selectedClarificationQuestion: HeartbeatQuestion? {
+        guard let selectedClarificationQuestionID else {
+            return nil
+        }
+        return clarificationQuestions.first(where: { $0.id == selectedClarificationQuestionID })
     }
 
     func reloadTasks() {
@@ -158,6 +184,8 @@ final class MainShellStateStore {
 
     func selectTask(_ taskID: String?) {
         selectedTaskID = taskID
+        clarificationAnswerDraft = ""
+        clarificationStatusMessage = nil
         loadSelectedTaskHeartbeat()
         loadSelectedTaskRecordings()
     }
@@ -165,14 +193,20 @@ final class MainShellStateStore {
     func loadSelectedTaskHeartbeat() {
         guard let selectedTaskID else {
             heartbeatMarkdown = ""
+            clarificationQuestions = []
+            selectedClarificationQuestionID = nil
+            clarificationAnswerDraft = ""
             return
         }
 
         do {
             heartbeatMarkdown = try taskService.readHeartbeat(taskId: selectedTaskID)
             saveStatusMessage = nil
+            refreshClarificationQuestions()
         } catch {
             heartbeatMarkdown = ""
+            clarificationQuestions = []
+            selectedClarificationQuestionID = nil
             errorMessage = "Failed to load HEARTBEAT.md."
         }
     }
@@ -247,6 +281,61 @@ final class MainShellStateStore {
         } catch {
             saveStatusMessage = nil
             errorMessage = "Failed to save HEARTBEAT.md."
+        }
+    }
+
+    func refreshClarificationQuestions() {
+        clarificationQuestions = heartbeatQuestionService.parseQuestions(from: heartbeatMarkdown)
+        if let selectedClarificationQuestionID,
+           clarificationQuestions.contains(where: { $0.id == selectedClarificationQuestionID }) {
+            return
+        }
+        selectedClarificationQuestionID = unresolvedClarificationQuestions.first?.id
+            ?? clarificationQuestions.first?.id
+    }
+
+    func selectClarificationQuestion(_ questionID: String?) {
+        selectedClarificationQuestionID = questionID
+        clarificationAnswerDraft = ""
+        clarificationStatusMessage = nil
+    }
+
+    func applyClarificationAnswer() {
+        guard let selectedTaskID else {
+            return
+        }
+        guard let selectedClarificationQuestionID else {
+            errorMessage = "Select a clarification question first."
+            clarificationStatusMessage = nil
+            return
+        }
+
+        do {
+            let updated = try heartbeatQuestionService.applyAnswer(
+                clarificationAnswerDraft,
+                to: selectedClarificationQuestionID,
+                in: heartbeatMarkdown
+            )
+            try taskService.saveHeartbeat(taskId: selectedTaskID, markdown: updated)
+            heartbeatMarkdown = updated
+            clarificationAnswerDraft = ""
+            clarificationStatusMessage = "Applied clarification answer."
+            saveStatusMessage = "Saved."
+            errorMessage = nil
+            refreshClarificationQuestions()
+        } catch HeartbeatQuestionServiceError.answerEmpty {
+            clarificationStatusMessage = nil
+            errorMessage = "Clarification answer cannot be empty."
+        } catch HeartbeatQuestionServiceError.questionsSectionMissing {
+            clarificationStatusMessage = nil
+            errorMessage = "Could not find a '## Questions' section in HEARTBEAT.md."
+        } catch HeartbeatQuestionServiceError.questionNotFound {
+            clarificationStatusMessage = nil
+            errorMessage = "The selected clarification question no longer exists."
+            refreshClarificationQuestions()
+        } catch {
+            clarificationStatusMessage = nil
+            errorMessage = "Failed to apply clarification answer."
         }
     }
 

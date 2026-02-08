@@ -80,22 +80,37 @@ description: Step-by-step implementation plan with code scope, automated tests, 
 - Confirm no-task result does not modify existing `HEARTBEAT.md`.
 - Verify failures show clear errors and recovery options.
 
-## Step 4: Task completion + clarification loop
+## Step 4: Execution agent + clarification loop
 
 ### Code
-- Implement execution runner for task steps.
-- Implement question generation when execution hits ambiguity/failure.
-- Persist unresolved/resolved questions in `HEARTBEAT.md`.
+- Build first concrete execution runner implementing `AutomationEngine`.
+- Add execution-plan parser from `HEARTBEAT.md` goal/plan fields into actionable intents.
+- Integrate Anthropic computer-use execution loop for desktop actions (`claude-opus-4-6` + computer-use tool).
+- Execute app-agnostic desktop actions (open apps, click/type/shortcuts, scroll/drag/wait) through local action executor.
+- On ambiguity/runtime failure, append unresolved blocking questions into `HEARTBEAT.md` `## Questions`.
+- Baseline policy for this implementation increment:
+  - allow run with unresolved open questions and request clarifications in run report.
+  - no per-step confirmations.
+  - no app allowlist/blocklist.
+  - zero retries before raising clarification questions.
+  - screenshot artifacts on failures only.
+  - no max step/runtime limits.
+- Persist per-run artifacts/logs under `runs/`.
+- Keep clarification UI/state parser wired so newly appended runtime questions are immediately actionable.
 
 ### Automated tests
-- Unit tests for question state transitions (open/resolved/reopened).
-- Unit tests for run result persistence under `runs/`.
-- Integration tests for run -> question creation -> answer -> rerun.
+- Unit tests for execution-plan parsing from `HEARTBEAT.md`.
+- Unit tests for automation-engine outcome mapping (`success`, `needs clarification`, `failed`).
+- Unit tests for runtime question append/dedup in markdown.
+- State-store tests for run-trigger flow and persistence of updated heartbeat + run summary state.
+- Integration tests for run -> runtime question creation -> answer -> rerun.
 
 ### Manual test
-- Execute task once; verify run summary is stored.
-- Trigger ambiguous scenario; verify question is asked and persisted.
-- Answer question and rerun; confirm progress.
+- Run at least one extracted task using `Run Task` and confirm real desktop actions execute.
+- Validate a multi-app flow where the runner opens an app and performs click/type steps.
+- Trigger an ambiguity/failure case and confirm `HEARTBEAT.md` receives unresolved blocking question(s).
+- Answer the generated question in-app, rerun, and confirm progression.
+- Reopen task/relaunch app and confirm clarification + run state persists.
 
 ## Step 5: Scheduling (cron-style while app is open)
 

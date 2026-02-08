@@ -967,3 +967,125 @@ description: Running implementation log of completed work, test evidence, blocke
 - Result: Complete for this increment; behavior now matches product decision.
 - Issues/blockers: Full in-sandbox `xcodebuild test` remains blocked by macro host instability.
 - Notes: Local Xcode run should verify UI end-to-end behavior with a real no-task recording and a task recording.
+
+## Entry
+- Date: 2026-02-08
+- Step: Step 3 validation closure + Step 4 reprioritization (docs-only)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`:
+    - moved `OI-2026-02-08-002` to `Closed Issues`.
+    - set `Status` to `Closed`.
+    - added `Resolution Date: 2026-02-08` and resolution summary after user-confirmed local validation.
+    - refreshed `OI-2026-02-07-001` next action to remove stale Step 3 dependency.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`:
+    - marked Step 4 clarification loop as active.
+    - moved scheduling to next milestone.
+    - kept mic issue deferred with updated timing.
+- Automated tests run: N/A (docs-only).
+- Manual tests run: N/A (docs-only).
+- Result: Complete; extraction issue is closed and execution queue now points to Step 4.
+- Issues/blockers: None added.
+- Notes: User reported local automated/manual validation for Step 3 as completed.
+
+## Entry
+- Date: 2026-02-08
+- Step: Step 4 clarification loop UI implementation (incremental)
+- Changes made:
+  - Added `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/HeartbeatQuestionService.swift`:
+    - parses `## Questions` markdown into open/resolved question models.
+    - applies answers back into markdown with resolved format (`- [x] ...` + `Answer: ...`).
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`:
+    - added clarification state (`clarificationQuestions`, selected question, answer draft, status).
+    - added question refresh/select/apply actions.
+    - wires question parsing on heartbeat load and answer persistence on apply.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/RootView.swift`:
+    - added in-app `Clarifications` panel in task detail.
+    - shows unresolved questions, selected question text, answer input, and `Apply Answer` action.
+  - Added tests:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/HeartbeatQuestionServiceTests.swift`
+    - extended `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift` with clarification parse/apply persistence coverage.
+  - Updated docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests/HeartbeatQuestionServiceTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO test` (fails in this sandbox due known `ObservationMacros` / `swift-plugin-server` host issue).
+  - `xcrun swiftc -typecheck -module-cache-path /tmp/swift-modcache /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/HeartbeatQuestionService.swift /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/TaskService.swift /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/WorkspaceService.swift /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/TaskRecord.swift /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/TaskWorkspace.swift /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/RecordingRecord.swift` (pass).
+  - Clarification service smoke harness compiled and executed successfully (output: `clarification-smoke:ok`).
+- Manual tests run:
+  - Manual source walkthrough of clarification panel wiring in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/RootView.swift` and store action flow in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`.
+  - Manual inspection of generated markdown format from smoke run confirming resolved marker + answer line persistence shape.
+- Result: In progress; Step 4 core implementation is complete, local Xcode UI verification remains.
+- Issues/blockers: Full in-sandbox `xcodebuild test` pass remains blocked by macro host instability.
+- Notes: Local user validation should confirm reopen/relaunch persistence and interaction ergonomics.
+
+## Entry
+- Date: 2026-02-08
+- Step: Step 4 local verification deferral + execution queue update (docs-only)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`:
+    - added `OI-2026-02-08-003` to track deferred Step 4 local UI verification for clarification persistence.
+    - aligned `OI-2026-02-07-001` next action with new sequence (resume after Step 5 stabilizes).
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`:
+    - marked Step 5 scheduling as active.
+    - kept deferred Step 4 manual verification explicitly tracked via `OI-2026-02-08-003`.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`:
+    - added sequencing note for intentionally deferred Step 4 manual verification.
+- Automated tests run: N/A (docs-only).
+- Manual tests run: N/A (docs-only).
+- Result: Complete; deferred verification is formally tracked and no longer blocks progression to Step 5.
+- Issues/blockers: `OI-2026-02-08-003` remains open until local UI verification is executed.
+- Notes: Continue with Step 5 implementation while preserving clarification-loop regression coverage.
+
+## Entry
+- Date: 2026-02-08
+- Step: Step 4 execution-agent direction lock (docs-only)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`:
+    - changed v1 automation default from web-first to desktop-wide computer-use execution.
+    - locked execution model/provider decision: Anthropic computer-use using `claude-opus-4-6`.
+    - documented mandatory runtime behavior for ambiguity/failure question writeback into `HEARTBEAT.md`.
+    - documented mandatory safety controls (step/time limits, loop break, user-visible stop).
+    - listed remaining clarifications required to fully close execution-agent design.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`:
+    - redefined Step 4 from clarification-only to execution-agent + clarification loop delivery.
+    - updated Step 4 code/test/manual validation criteria to include runner implementation and runtime question generation.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`:
+    - set Step 4 execution-agent milestone as active highest priority.
+    - moved Step 5 scheduling to next after Step 4 baseline.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`:
+    - aligned deferred-issue next actions with Step 4 execution-agent sequencing.
+- Automated tests run: N/A (docs-only).
+- Manual tests run: N/A (docs-only).
+- Result: Complete; docs now reflect execution-agent-first priority and Opus 4.6 direction.
+- Issues/blockers: Final design closure still depends on explicit user choices listed in `.docs/design.md`.
+- Notes: Next action is to capture user answers for remaining design-closure questions, then start implementation slices.
+
+## Entry
+- Date: 2026-02-08
+- Step: Step 4 execution-agent policy closure + revisit ledger (docs-only)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`:
+    - locked user-selected execution policies:
+      - allow run with unresolved questions and ask clarifications from run/report.
+      - allow all actions without confirmation gates for now.
+      - no app allowlist/blocklist for now.
+      - retry policy `0`.
+      - failure-only screenshot artifacts.
+      - no max step/runtime limits.
+    - removed stale “pending” wording and “clarifications still required” block.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`:
+    - added Step 4 baseline policy bullets to align implementation behavior.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`:
+    - aligned active Step 4 queue with the new baseline policies.
+    - added explicit tracking pointer to `.docs/revisits.md`.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/PRD.md`:
+    - aligned safety and clarification requirements with current baseline policy.
+  - Added `/Users/farzamh/code-git-local/task-agent-macos/.docs/revisits.md`:
+    - created centralized ledger of provisional decisions and open revisit items.
+    - captured existing revisit-worthy items from PRD/design/open_issues.
+- Automated tests run: N/A (docs-only).
+- Manual tests run: N/A (docs-only).
+- Result: Complete; design choices are now closed for current baseline and explicitly tracked for future revision.
+- Issues/blockers: None for docs alignment.
+- Notes: Next action is code implementation of Step 4 execution-agent baseline under these locked policies.

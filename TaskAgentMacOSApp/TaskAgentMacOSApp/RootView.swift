@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -457,6 +458,78 @@ private struct MainShellView: View {
                         if let saveStatusMessage = mainShellStateStore.saveStatusMessage {
                             Text(saveStatusMessage)
                                 .foregroundStyle(.green)
+                        }
+
+                        Divider()
+                            .padding(.vertical, 6)
+
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack {
+                                Text("Clarifications")
+                                    .font(.headline)
+                                Spacer()
+                                Button("Refresh Questions") {
+                                    mainShellStateStore.refreshClarificationQuestions()
+                                }
+                                .buttonStyle(.bordered)
+                            }
+
+                            if let clarificationStatusMessage = mainShellStateStore.clarificationStatusMessage {
+                                Text(clarificationStatusMessage)
+                                    .foregroundStyle(.green)
+                            }
+
+                            if mainShellStateStore.clarificationQuestions.isEmpty {
+                                Text("No clarification questions found in HEARTBEAT.md.")
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                Text("Open: \(mainShellStateStore.unresolvedClarificationQuestions.count) · Resolved: \(mainShellStateStore.resolvedClarificationQuestions.count)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+
+                                if mainShellStateStore.unresolvedClarificationQuestions.isEmpty {
+                                    Text("All clarification questions are resolved.")
+                                        .foregroundStyle(.green)
+                                } else {
+                                    List(
+                                        selection: Binding(
+                                            get: { mainShellStateStore.selectedClarificationQuestionID },
+                                            set: { mainShellStateStore.selectClarificationQuestion($0) }
+                                        )
+                                    ) {
+                                        ForEach(mainShellStateStore.unresolvedClarificationQuestions) { question in
+                                            Text(question.prompt)
+                                                .tag(question.id)
+                                        }
+                                    }
+                                    .frame(minHeight: 110, maxHeight: 180)
+
+                                    if let selectedClarificationQuestion = mainShellStateStore.selectedClarificationQuestion {
+                                        VStack(alignment: .leading, spacing: 8) {
+                                            Text("Selected Question")
+                                                .font(.subheadline)
+                                                .fontWeight(.semibold)
+                                            Text(selectedClarificationQuestion.prompt)
+                                                .foregroundStyle(.secondary)
+                                            TextField(
+                                                "Type your answer",
+                                                text: $mainShellStateStore.clarificationAnswerDraft,
+                                                axis: .vertical
+                                            )
+                                            .lineLimit(2...5)
+                                            .textFieldStyle(.roundedBorder)
+                                            Button("Apply Answer") {
+                                                mainShellStateStore.applyClarificationAnswer()
+                                            }
+                                            .buttonStyle(.borderedProminent)
+                                            .disabled(
+                                                mainShellStateStore.selectedClarificationQuestion == nil ||
+                                                mainShellStateStore.clarificationAnswerDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
 
                         Divider()

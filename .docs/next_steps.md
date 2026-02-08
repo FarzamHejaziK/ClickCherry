@@ -4,48 +4,65 @@ description: Short, continuously updated plan of the immediate next implementati
 
 # Next Steps
 
-1. Step: Step 3 task extraction from recording (active).
-2. Why now: Prompt contract and Gemini-backed extraction wiring are in place; remaining work is end-to-end runtime validation from the app UI and hardening.
+1. Step: Step 4 execution agent (active, highest priority).
+2. Why now: User explicitly prioritized execution-agent delivery as the most important milestone.
 3. Code tasks:
-   - Validate extraction end-to-end from the app using a real Gemini key from onboarding/main-shell key settings.
-   - Keep main-shell `Provider API Keys` settings as the key-rotation path without re-running onboarding.
-   - Keep one LLM call per selected recording with prompt text from `prompt.md` and model from `config.yaml`.
-   - Preserve current validation contract (`# Task`, `## Questions`, `TaskDetected`, `Status`, `NoTaskReason`) while stripping control metadata from persisted `HEARTBEAT.md`.
-   - Keep no-overwrite behavior for both invalid output and `TaskDetected: false` output.
-   - Add explicit UI status/error mapping for provider/network failures.
-   - Keep unit tests Keychain-free (`XCTestConfigurationFilePath` -> in-memory key storage path).
-   - Keep startup key-presence checks prompt-minimized (single service lookup + cache) to avoid repeated Keychain dialogs.
+   - Build first concrete runner implementing `AutomationEngine`.
+   - Add `HEARTBEAT.md` execution-plan parser and map to desktop action intents.
+   - Integrate Anthropic computer-use path with `claude-opus-4-6`.
+   - Execute app-agnostic desktop actions (open app, click, type, shortcuts, scroll/drag/wait).
+   - Append unresolved runtime questions into `HEARTBEAT.md` `## Questions` on ambiguity/failure.
+   - Implement current baseline policies:
+     - allow run with unresolved questions and ask clarifications from run report.
+     - zero retries before generating clarification questions.
+     - no per-step confirmation gates and no app allowlist/blocklist.
+     - failure-only screenshot artifacts and no max step/runtime limits.
+   - Keep provisional choices tracked in `.docs/revisits.md`.
+   - Persist run artifacts under `runs/` and surface run status in task detail.
 4. Automated tests:
-   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test`
-   - Maintain parser/validation tests for success + malformed output.
-   - Maintain tests verifying invalid/no-task extraction output does not overwrite existing `HEARTBEAT.md`.
-   - Maintain tests verifying persisted `HEARTBEAT.md` excludes `TaskDetected`, `Status`, and `NoTaskReason`.
+   - Execution-plan parser tests.
+   - Automation-engine outcome tests (`success`/`needs clarification`/`failed`).
+   - Markdown runtime-question append/dedup tests.
+   - State-store tests for run-trigger and heartbeat update persistence.
 5. Manual tests:
-   - Select a task recording and run extraction from the app UI.
-   - Confirm exactly one provider call is issued and `HEARTBEAT.md` updates on valid output without control metadata lines.
-   - Run extraction on a non-task/low-signal recording and confirm structured no-task output is returned.
-   - Confirm no-task/malformed/empty/provider-failure output preserves existing markdown.
-   - Relaunch app and confirm keychain access dialog does not repeat multiple times for startup key checks.
-6. Exit criteria: At least one real recording updates `HEARTBEAT.md` through provider-backed extraction with validated output.
+   - Run at least one real task and verify desktop actions occur.
+   - Validate ambiguity/failure writes blocking questions to `HEARTBEAT.md`.
+   - Answer generated question and rerun to confirm progression.
+6. Exit criteria: First execution-agent baseline can run a task, generate blocking questions when needed, and persist outcomes.
 
-1. Step: Step 4 clarification loop UI integration (next).
-2. Why now: After extraction creates `## Questions`, users need an in-app answer/apply loop.
+1. Step: Keep `OI-2026-02-08-003` open (deferred clarification-panel local verification).
+2. Why now: Clarification UI verification is deferred while execution-agent milestone is in progress.
 3. Code tasks:
-   - Add Q&A panel for unresolved questions.
-   - Persist answers back into `HEARTBEAT.md`.
+   - Keep clarification parser/apply behavior unchanged during Step 4 execution-agent work.
+   - Preserve regression tests for question parsing and markdown apply.
 4. Automated tests:
-   - Question parsing/state tests.
-   - Markdown update tests for resolved questions.
+   - Keep `HeartbeatQuestionService` tests passing.
+   - Keep `MainShellStateStore` clarification persistence tests passing.
 5. Manual tests:
-   - Answer at least one extracted question in-app.
-   - Confirm answer is persisted and reflected in task markdown.
-6. Exit criteria: Clarification answers can be applied and persisted reliably.
+   - Deferred by decision; do not run now.
+6. Exit criteria: Issue remains tracked until deferred local verification is executed and confirmed.
 
-1. Step: Defer `OI-2026-02-07-001` until extraction baseline ships.
-2. Why now: Mitigation remains available via `System Default Microphone`; extraction milestone is higher priority.
+1. Step: Defer `OI-2026-02-07-001` microphone selection bug (backlog).
+2. Why now: Mitigation remains available via `System Default Microphone`; execution-agent baseline has higher delivery priority.
 3. Code tasks:
    - Keep current mitigation and fallback messaging unchanged.
-   - Re-open mic diagnostics work after Step 3 is stable.
+   - Resume mic diagnostics after Step 4 execution-agent baseline lands.
 4. Automated tests: N/A (deferred backlog item).
 5. Manual tests: N/A (deferred backlog item).
 6. Exit criteria: Issue remains tracked in `.docs/open_issues.md` with mitigation and clear next action.
+
+1. Step: Step 5 scheduling while app is open (next, after Step 4 baseline).
+2. Why now: Scheduling depends on a reliable execution-agent run path.
+3. Code tasks:
+   - Add natural-language schedule input and deterministic validation.
+   - Persist schedule config per task and show `next run` and `last run` in task detail.
+   - Wire scheduler trigger path while app is open and write run history updates.
+4. Automated tests:
+   - Schedule parser validation tests.
+   - Scheduler trigger/deduplication tests.
+   - State-store tests for schedule persistence and status projection (`next run`/`last run`).
+5. Manual tests:
+   - Configure short interval and verify scheduled run triggers while app is open.
+   - Restart app and verify schedule reload behavior.
+   - Confirm task detail status updates after at least one scheduled fire.
+6. Exit criteria: At least one task runs successfully on schedule with correct status updates.

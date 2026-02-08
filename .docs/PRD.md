@@ -111,7 +111,7 @@ Users demonstrate a task once, confirm missing details through a question loop, 
 
 1. Privacy: task data local by default.
 2. Reliability: retries + deterministic step state checks.
-3. Safety: approval gates for risky/destructive actions.
+3. Safety: v1 execution baseline allows autonomous actions without per-step confirmation; approval gates for risky/destructive actions are deferred and tracked for revisit.
 4. Performance: responsive UI during long-running jobs.
 5. Robustness on managed macOS devices with constrained permissions.
 
@@ -207,9 +207,10 @@ Security:
 
 1. After recording analysis, the app opens an in-app Q&A panel (chat-style interaction).
 2. The app sends one round of clarification questions.
-3. Execution is blocked until the user submits answers for that round.
-4. Answers are applied to `HEARTBEAT.md` before execution continues.
-5. v1 requires this panel in task setup flow and task detail view.
+3. Execution is allowed with warnings even when clarification questions remain unresolved.
+4. Clarification follow-ups can be requested after run completion/report.
+5. Answers are applied to `HEARTBEAT.md` for subsequent runs.
+6. v1 requires this panel in task setup flow and task detail view.
 
 ## Platform and Limits Addendum (v1 locked)
 

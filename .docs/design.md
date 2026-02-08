@@ -111,23 +111,28 @@ Use this template per finalized decision:
 
 - Recording input: import `.mp4` first (fastest path), because final artifact needed is the recording file.
 - Task format: `HEARTBEAT.md` only (free-form markdown) for v1.
-- Automation scope: web-first (Chrome/web flows) in v1, expand later.
+- Automation scope: desktop-wide computer-use execution in v1 (not web-only).
 - Scheduler mode: easiest v1 path = run jobs while app is open only (no background helper yet).
 
-## Clarification on question 2 (run policy with open questions)
+## Run policy with open questions (locked: 2026-02-08)
 
 This means: if the agent still has unresolved questions, should execution stop or continue?
 
 - Option A: block run until user answers all open questions.
 - Option B: allow run with warnings, and ask follow-up questions after run.
 
-Current status: pending your explicit choice between A and B.
+- Decision: Option B.
+- Runtime behavior:
+  - `Run Task` is allowed even when unresolved questions exist.
+  - unresolved/open questions are surfaced in run status/report UI.
+  - after run completion (or blocked completion), clarification questions are shown to user for follow-up.
 
 ## Clarification policy (decided)
 
 - After recording analysis, the app sends exactly one round of clarification questions.
-- Execution waits until the user answers that round.
-- After answers are applied to `HEARTBEAT.md`, execution continues.
+- Execution is allowed with warnings even if that round remains unresolved.
+- Unresolved or newly generated questions are surfaced after run/report for user follow-up.
+- After answers are applied to `HEARTBEAT.md`, subsequent runs use the updated context.
 
 ## UI clarification decision (locked)
 
@@ -138,6 +143,15 @@ Current status: pending your explicit choice between A and B.
   2. User answers in panel input.
   3. User confirms with `Apply & Continue`.
   4. App writes answers into `HEARTBEAT.md` and unblocks execution.
+
+## Clarification markdown state format (locked: 2026-02-08)
+
+- Question parsing source of truth is the `## Questions` section in `HEARTBEAT.md`.
+- Parsed open questions come from markdown bullets under that section, excluding `- None.`.
+- Applying an answer rewrites the selected question into a resolved checklist item:
+  - question line: `- [x] <question>`
+  - answer line: `Answer: <answer>` (indented under that question item)
+- The app keeps unresolved/resolved state derived from markdown, not separate storage.
 
 ## Platform decision (locked)
 
@@ -157,6 +171,36 @@ Current status: pending your explicit choice between A and B.
   - OpenAI or Anthropic (Claude) for core agent tasks.
   - Gemini for video understanding path.
 - Keys are stored locally in Keychain (never plaintext in logs).
+
+## Execution agent model/provider decision (locked: 2026-02-08)
+
+- Task execution agent provider for Step 4 is Anthropic computer-use with:
+  - model: `claude-opus-4-6`
+  - tool type: `computer_20251124`
+- Execution loop is tool-driven:
+  1. app captures current desktop screenshot/state
+  2. model returns tool actions
+  3. app executes actions locally
+  4. app returns tool results and continues until stop condition
+- Runner scope in this decision is app-agnostic desktop control, including:
+  - opening apps/windows
+  - clicking, typing, keyboard shortcuts
+  - scrolling/dragging/waiting
+- If execution is blocked by ambiguity or runtime failure, the app must append unresolved blocking questions to `## Questions` in `HEARTBEAT.md` instead of silently guessing.
+
+## Execution-agent baseline behavior (locked, revisit-candidate: 2026-02-08)
+
+- Risk confirmation policy:
+  - allow all actions without per-step confirmation in current baseline.
+- App boundary policy:
+  - no allowlist/blocklist in current baseline; run across apps the user asks for.
+- Failure retry policy:
+  - zero retries (`0`) before generating runtime clarification questions.
+- Artifact policy:
+  - capture screenshots for failure cases only.
+- Execution limits policy:
+  - no max step limit and no max run-duration limit in current baseline.
+- These are explicitly provisional and tracked for future revision in `.docs/revisits.md`.
 
 ## Provider key management UX (locked: 2026-02-08)
 
