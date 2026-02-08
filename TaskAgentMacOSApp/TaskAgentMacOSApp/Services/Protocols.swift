@@ -1,7 +1,7 @@
 import Foundation
 
 protocol LLMClient {
-    func analyzeVideo(at url: URL) async throws -> String
+    func analyzeVideo(at url: URL, prompt: String, model: String) async throws -> String
 }
 
 protocol AutomationEngine {
@@ -10,6 +10,16 @@ protocol AutomationEngine {
 
 protocol Scheduler {
     func schedule(taskId: String, expression: String) throws
+}
+
+enum LLMClientError: Error, Equatable {
+    case notConfigured
+}
+
+struct UnconfiguredLLMClient: LLMClient {
+    func analyzeVideo(at url: URL, prompt: String, model: String) async throws -> String {
+        throw LLMClientError.notConfigured
+    }
 }
 
 struct ProviderSetupState: Equatable {

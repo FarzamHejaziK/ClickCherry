@@ -57,20 +57,27 @@ description: Step-by-step implementation plan with code scope, automated tests, 
 
 ### Code
 - Implement video-understanding pipeline (LLM call).
-- Add prompt registry and versioned prompt files (task extraction first), with `stable` alias resolution.
-- Add provider-adapter boundary that maps canonical prompt parts (`system`, `user`, optional schema) to provider-specific payloads.
-- Convert model output into `HEARTBEAT.md` updates.
+- Add file-based prompt folders where each prompt defines `prompt.md` and `config.yaml` (`version`, `llm`).
+- Use an outcome-first, path-flexible extraction prompt contract with explicit task-detection flags (`TaskDetected`, `Status`, `NoTaskReason`).
+- Implement Gemini video adapter using upload -> poll-until-`ACTIVE` -> `generateContent`.
+- Normalize configured model alias `gemini-3-pro` to provider-compatible runtime model ID when needed.
+- Convert model output into `HEARTBEAT.md` updates while stripping control metadata fields (`TaskDetected`, `Status`, `NoTaskReason`).
 - Add output validation to prevent empty/invalid task generation.
+- Keep a strict persistence gate:
+  - invalid extraction output must never overwrite existing `HEARTBEAT.md`.
+  - `TaskDetected: false` output must not overwrite existing `HEARTBEAT.md`.
 
 ### Automated tests
-- Unit tests for prompt registry resolution (version + alias + missing-file failures).
 - Unit tests for prompt builder and response parser.
 - Unit tests for markdown writer (`Task` + `Questions` sections).
+- Unit tests for metadata stripping before persistence.
 - Integration test with mocked LLM responses (success and malformed output).
 
 ### Manual test
 - Use a sample recording and generate `HEARTBEAT.md`.
 - Verify task detail is specific, not over-summarized.
+- Use a non-task/low-signal sample and verify structured no-task output is produced.
+- Confirm no-task result does not modify existing `HEARTBEAT.md`.
 - Verify failures show clear errors and recovery options.
 
 ## Step 4: Task completion + clarification loop
@@ -150,6 +157,7 @@ description: Step-by-step implementation plan with code scope, automated tests, 
   4. Ready state
 - Persist API keys in Keychain.
 - Add validation for missing/invalid keys before continuing.
+- Add a post-onboarding settings surface in main shell to update/remove saved API keys.
 
 ### Automated tests
 - Unit tests for Keychain read/write wrappers.

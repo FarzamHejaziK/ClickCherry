@@ -19,6 +19,10 @@ private final class InMemoryAPIKeyStore: APIKeyStore {
         return !value.isEmpty
     }
 
+    func readKey(for provider: ProviderIdentifier) throws -> String? {
+        keys[provider]
+    }
+
     func setKey(_ key: String?, for provider: ProviderIdentifier) throws {
         if shouldFailWrites {
             throw KeychainStoreError.unhandledStatus(errSecParam)
@@ -55,6 +59,19 @@ private final class InMemoryOnboardingCompletionStore: OnboardingCompletionStore
 }
 
 struct OnboardingPersistenceTests {
+    @Test
+    func keychainStoreUsesInMemoryPathDuringXCTest() throws {
+        let keychainStore = KeychainAPIKeyStore()
+
+        try keychainStore.setKey("gemini-test-key", for: .gemini)
+        #expect(keychainStore.hasKey(for: .gemini))
+        #expect(try keychainStore.readKey(for: .gemini) == "gemini-test-key")
+
+        try keychainStore.setKey(nil, for: .gemini)
+        #expect(!keychainStore.hasKey(for: .gemini))
+        #expect(try keychainStore.readKey(for: .gemini) == nil)
+    }
+
     @Test
     func initializesProviderStateFromKeyStore() {
         let keyStore = InMemoryAPIKeyStore(keys: [.anthropic: "anthropic-key", .gemini: "gemini-key"])

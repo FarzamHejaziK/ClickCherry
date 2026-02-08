@@ -67,6 +67,45 @@ private final class MockRecordingOverlayService: RecordingOverlayService {
     }
 }
 
+private final class MockStoreLLMClient: LLMClient {
+    var output: String
+    var shouldThrowNotConfigured = false
+
+    init(output: String) {
+        self.output = output
+    }
+
+    func analyzeVideo(at url: URL, prompt: String, model: String) async throws -> String {
+        if shouldThrowNotConfigured {
+            throw LLMClientError.notConfigured
+        }
+        return output
+    }
+}
+
+private final class MockAPIKeyStore: APIKeyStore {
+    private var values: [ProviderIdentifier: String]
+
+    init(initialValues: [ProviderIdentifier: String] = [:]) {
+        self.values = initialValues
+    }
+
+    func hasKey(for provider: ProviderIdentifier) -> Bool {
+        guard let value = values[provider] else {
+            return false
+        }
+        return !value.isEmpty
+    }
+
+    func readKey(for provider: ProviderIdentifier) throws -> String? {
+        values[provider]
+    }
+
+    func setKey(_ key: String?, for provider: ProviderIdentifier) throws {
+        values[provider] = key
+    }
+}
+
 struct MainShellStateStoreTests {
     @Test
     func selectTaskLoadsHeartbeatMarkdown() throws {
@@ -84,6 +123,7 @@ struct MainShellStateStoreTests {
 
         let store = MainShellStateStore(
             taskService: service,
+            apiKeyStore: MockAPIKeyStore(),
             captureService: MockRecordingCaptureService(),
             overlayService: MockRecordingOverlayService()
         )
@@ -110,6 +150,7 @@ struct MainShellStateStoreTests {
 
         let store = MainShellStateStore(
             taskService: service,
+            apiKeyStore: MockAPIKeyStore(),
             captureService: MockRecordingCaptureService(),
             overlayService: MockRecordingOverlayService()
         )
@@ -147,6 +188,7 @@ struct MainShellStateStoreTests {
 
         let store = MainShellStateStore(
             taskService: service,
+            apiKeyStore: MockAPIKeyStore(),
             captureService: captureService,
             overlayService: overlayService
         )
@@ -188,6 +230,7 @@ struct MainShellStateStoreTests {
 
         let store = MainShellStateStore(
             taskService: service,
+            apiKeyStore: MockAPIKeyStore(),
             captureService: captureService,
             overlayService: overlayService
         )
@@ -200,5 +243,315 @@ struct MainShellStateStoreTests {
         #expect(!store.isCapturing)
         #expect(store.errorMessage == "Screen Recording permission denied. Grant access in System Settings and retry.")
         #expect(overlayService.hideCallCount == 1)
+    }
+
+    @Test
+    func extractTaskUpdatesHeartbeatOnValidOutput() async throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let promptsRoot = tempRoot.appendingPathComponent("prompts", isDirectory: true)
+        let promptDir = promptsRoot.appendingPathComponent("task_extraction", isDirectory: true)
+        try fm.createDirectory(at: promptDir, withIntermediateDirectories: true)
+        try """
+        version: v2
+        llm: gemini-3-pro
+        """.write(
+            to: promptDir.appendingPathComponent("config.yaml", isDirectory: false),
+            atomically: true,
+            encoding: .utf8
+        )
+        try "Prompt body".write(
+            to: promptDir.appendingPathComponent("prompt.md", isDirectory: false),
+            atomically: true,
+            encoding: .utf8
+        )
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let task = try taskService.createTask(title: "Extraction task")
+
+        let sourceRecording = tempRoot.appendingPathComponent("sample.mp4", isDirectory: false)
+        try Data("video".utf8).write(to: sourceRecording)
+        _ = try taskService.importRecording(taskId: task.id, sourceURL: sourceRecording)
+        let recording = try #require(taskService.listRecordings(taskId: task.id).first)
+
+        let llm = MockStoreLLMClient(output: """
+        # Task
+        TaskDetected: true
+        Status: TASK_FOUND
+        NoTaskReason: NONE
+        Title: Extracted Task
+        Goal: Perform extracted task
+        AppsObserved:
+        - Browser
+        
+        ## Questions
+        - None.
+        """)
+        let extractionService = TaskExtractionService(
+            fileManager: fm,
+            promptCatalog: PromptCatalogService(promptsRootURL: promptsRoot, fileManager: fm),
+            llmClient: llm
+        )
+        let store = MainShellStateStore(
+            taskService: taskService,
+            taskExtractionService: extractionService,
+            apiKeyStore: MockAPIKeyStore(),
+            captureService: MockRecordingCaptureService(),
+            overlayService: MockRecordingOverlayService()
+        )
+
+        store.reloadTasks()
+        store.selectTask(task.id)
+        await store.extractTask(from: recording)
+
+        #expect(store.errorMessage == nil)
+        #expect(store.extractionStatusMessage?.contains("Extraction complete") == true)
+        #expect(store.heartbeatMarkdown.contains("Title: Extracted Task"))
+        #expect(!store.heartbeatMarkdown.contains("TaskDetected:"))
+        #expect(!store.heartbeatMarkdown.contains("Status:"))
+        #expect(!store.heartbeatMarkdown.contains("NoTaskReason:"))
+    }
+
+    @Test
+    func extractTaskDoesNotOverwriteHeartbeatWhenOutputIsInvalid() async throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let promptsRoot = tempRoot.appendingPathComponent("prompts", isDirectory: true)
+        let promptDir = promptsRoot.appendingPathComponent("task_extraction", isDirectory: true)
+        try fm.createDirectory(at: promptDir, withIntermediateDirectories: true)
+        try """
+        version: v2
+        llm: gemini-3-pro
+        """.write(
+            to: promptDir.appendingPathComponent("config.yaml", isDirectory: false),
+            atomically: true,
+            encoding: .utf8
+        )
+        try "Prompt body".write(
+            to: promptDir.appendingPathComponent("prompt.md", isDirectory: false),
+            atomically: true,
+            encoding: .utf8
+        )
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let task = try taskService.createTask(title: "Extraction invalid task")
+        let originalHeartbeat = try taskService.readHeartbeat(taskId: task.id)
+
+        let sourceRecording = tempRoot.appendingPathComponent("sample.mp4", isDirectory: false)
+        try Data("video".utf8).write(to: sourceRecording)
+        _ = try taskService.importRecording(taskId: task.id, sourceURL: sourceRecording)
+        let recording = try #require(taskService.listRecordings(taskId: task.id).first)
+
+        let llm = MockStoreLLMClient(output: """
+        # Task
+        Status: TASK_FOUND
+        NoTaskReason: NONE
+        Title: Missing required field
+        """)
+        let extractionService = TaskExtractionService(
+            fileManager: fm,
+            promptCatalog: PromptCatalogService(promptsRootURL: promptsRoot, fileManager: fm),
+            llmClient: llm
+        )
+        let store = MainShellStateStore(
+            taskService: taskService,
+            taskExtractionService: extractionService,
+            apiKeyStore: MockAPIKeyStore(),
+            captureService: MockRecordingCaptureService(),
+            overlayService: MockRecordingOverlayService()
+        )
+
+        store.reloadTasks()
+        store.selectTask(task.id)
+        await store.extractTask(from: recording)
+
+        let persistedHeartbeat = try taskService.readHeartbeat(taskId: task.id)
+        #expect(persistedHeartbeat == originalHeartbeat)
+        #expect(store.errorMessage == "Extraction output was invalid. HEARTBEAT.md was not changed.")
+    }
+
+    @Test
+    func extractTaskDoesNotOverwriteHeartbeatWhenNoTaskDetected() async throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let promptsRoot = tempRoot.appendingPathComponent("prompts", isDirectory: true)
+        let promptDir = promptsRoot.appendingPathComponent("task_extraction", isDirectory: true)
+        try fm.createDirectory(at: promptDir, withIntermediateDirectories: true)
+        try """
+        version: v2
+        llm: gemini-3-pro
+        """.write(
+            to: promptDir.appendingPathComponent("config.yaml", isDirectory: false),
+            atomically: true,
+            encoding: .utf8
+        )
+        try "Prompt body".write(
+            to: promptDir.appendingPathComponent("prompt.md", isDirectory: false),
+            atomically: true,
+            encoding: .utf8
+        )
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let task = try taskService.createTask(title: "Extraction no-task")
+        let originalHeartbeat = try taskService.readHeartbeat(taskId: task.id)
+
+        let sourceRecording = tempRoot.appendingPathComponent("sample.mp4", isDirectory: false)
+        try Data("video".utf8).write(to: sourceRecording)
+        _ = try taskService.importRecording(taskId: task.id, sourceURL: sourceRecording)
+        let recording = try #require(taskService.listRecordings(taskId: task.id).first)
+
+        let llm = MockStoreLLMClient(output: """
+        # Task
+        TaskDetected: false
+        Status: NO_TASK
+        NoTaskReason: NON_TASK_CONTENT
+        Title: N/A
+        Goal: N/A
+        AppsObserved:
+        - N/A
+        PreferredDemonstratedApproach:
+        - N/A
+        ExecutionPolicy: Use demonstrated flow when practical, but any valid method is acceptable if it reaches the same goal and respects constraints.
+        HardConstraints:
+        - N/A
+        SuccessCriteria:
+        - N/A
+        SuggestedPlan:
+        1. N/A
+        AlternativeValidApproaches:
+        - N/A
+        Evidence:
+        - [00:00-00:05] Non-task clip.
+
+        ## Questions
+        - None.
+        """)
+        let extractionService = TaskExtractionService(
+            fileManager: fm,
+            promptCatalog: PromptCatalogService(promptsRootURL: promptsRoot, fileManager: fm),
+            llmClient: llm
+        )
+        let store = MainShellStateStore(
+            taskService: taskService,
+            taskExtractionService: extractionService,
+            apiKeyStore: MockAPIKeyStore(),
+            captureService: MockRecordingCaptureService(),
+            overlayService: MockRecordingOverlayService()
+        )
+
+        store.reloadTasks()
+        store.selectTask(task.id)
+        await store.extractTask(from: recording)
+
+        let persistedHeartbeat = try taskService.readHeartbeat(taskId: task.id)
+        #expect(persistedHeartbeat == originalHeartbeat)
+        #expect(store.heartbeatMarkdown == originalHeartbeat)
+        #expect(store.errorMessage == nil)
+        #expect(
+            store.extractionStatusMessage ==
+            "No actionable task detected. HEARTBEAT.md was not changed (gemini-3-pro, v2)."
+        )
+    }
+
+    @Test
+    func saveProviderKeyUpdatesSavedState() throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let keyStore = MockAPIKeyStore()
+        let store = MainShellStateStore(
+            taskService: taskService,
+            apiKeyStore: keyStore,
+            captureService: MockRecordingCaptureService(),
+            overlayService: MockRecordingOverlayService()
+        )
+
+        #expect(!store.providerSetupState.hasGeminiKey)
+        let saved = store.saveProviderKey("gemini-secret", for: .gemini)
+        #expect(saved)
+        #expect(store.providerSetupState.hasGeminiKey)
+        #expect(store.apiKeyStatusMessage == "Saved Gemini API key.")
+        #expect(store.apiKeyErrorMessage == nil)
+    }
+
+    @Test
+    func clearProviderKeyUpdatesSavedState() throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let keyStore = MockAPIKeyStore(initialValues: [.openAI: "test-key"])
+        let store = MainShellStateStore(
+            taskService: taskService,
+            apiKeyStore: keyStore,
+            captureService: MockRecordingCaptureService(),
+            overlayService: MockRecordingOverlayService()
+        )
+
+        #expect(store.providerSetupState.hasOpenAIKey)
+        store.clearProviderKey(for: .openAI)
+        #expect(!store.providerSetupState.hasOpenAIKey)
+        #expect(store.apiKeyStatusMessage == "Removed OpenAI API key.")
+        #expect(store.apiKeyErrorMessage == nil)
+    }
+
+    @Test
+    func saveProviderKeyRejectsEmptyValue() throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let store = MainShellStateStore(
+            taskService: taskService,
+            apiKeyStore: MockAPIKeyStore(),
+            captureService: MockRecordingCaptureService(),
+            overlayService: MockRecordingOverlayService()
+        )
+
+        let saved = store.saveProviderKey("   ", for: .anthropic)
+        #expect(!saved)
+        #expect(!store.providerSetupState.hasAnthropicKey)
+        #expect(store.apiKeyStatusMessage == nil)
+        #expect(store.apiKeyErrorMessage == "API key cannot be empty.")
     }
 }

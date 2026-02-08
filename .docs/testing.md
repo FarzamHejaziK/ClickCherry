@@ -56,3 +56,5 @@ xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacO
 - Use a dedicated `-derivedDataPath` to avoid permission or lock conflicts.
 - Avoid running multiple `xcodebuild` commands concurrently against the same DerivedData path.
 - If you hit stale lock issues, remove the chosen DerivedData directory and rerun.
+- Unit tests run inside an XCTest host app process. To avoid macOS Keychain popups during test runs, `KeychainAPIKeyStore` automatically uses in-memory storage when `XCTestConfigurationFilePath` is present.
+- Runtime behavior is unchanged outside XCTest: provider keys are still read/written in macOS Keychain.

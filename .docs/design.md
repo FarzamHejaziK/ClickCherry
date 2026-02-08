@@ -158,6 +158,16 @@ Current status: pending your explicit choice between A and B.
   - Gemini for video understanding path.
 - Keys are stored locally in Keychain (never plaintext in logs).
 
+## Provider key management UX (locked: 2026-02-08)
+
+- Users can update or remove provider API keys after onboarding from main shell UI (`Provider API Keys` section).
+- This settings surface manages keys for:
+  - OpenAI
+  - Anthropic
+  - Gemini
+- Saved keys remain non-readable in UI; UI only shows saved/not-saved status.
+- All key writes/removals use the same Keychain-backed store as onboarding.
+
 ## Recording UX decisions (locked: 2026-02-07)
 
 - During active recording, the app shows a visible red border around the selected display.
@@ -169,21 +179,49 @@ Current status: pending your explicit choice between A and B.
 - Default selection is `System Default Microphone` to keep voice capture enabled by default.
 - When microphone capture cannot be started, the app may fall back to no-microphone capture and must show an explicit warning/status message.
 
-## Prompt management decisions (locked: 2026-02-08)
+## Prompt folder decision (locked: 2026-02-08)
 
-- Prompt source of truth is file-based under:
+- For each prompt, use one folder under:
   - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/`
-- Prompts are immutable by version:
-  - each prompt family has version folders (`v1.0.0`, `v1.1.0`, etc.).
-  - old versions are never edited in-place.
-- Prompt resolution is alias-based:
-  - aliases like `stable` and `canary` map to concrete versions.
-  - alias mapping is defined in a single registry file and can be updated without code edits.
-- Prompt composition is provider-agnostic:
-  - canonical prompt parts are `system`, `user`, and optional `output schema`.
-  - provider adapters transform canonical prompt parts to provider-specific request payloads.
-- Structured output contract is version-bound:
-  - each prompt version owns its output schema and parser expectations.
-  - parse/validation failures must fail fast and must not write partial `HEARTBEAT.md` updates.
-- Observability requirement:
-  - each LLM run must capture prompt metadata (`prompt_id`, `prompt_version`, `provider`, `model`) in run diagnostics.
+- Each prompt folder must contain:
+  - `prompt.md`
+  - `config.yaml`
+- `config.yaml` must contain at minimum:
+  - `version` (prompt version source of truth)
+  - `llm` (model/provider target for that prompt)
+- Initial prompt implemented with this layout:
+  - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/task_extraction/`
+
+## Task extraction prompt behavior (locked: 2026-02-08)
+
+- Extraction should be outcome-first and path-flexible:
+  - prefer goal + completion checks over rigid click-level replay.
+  - treat demonstrated flow as preferred, not mandatory, when equivalent paths are valid.
+- Output contract must always include `# Task` and `## Questions`.
+- Output must include explicit task-detection flags:
+  - `TaskDetected`
+  - `Status`
+  - `NoTaskReason`
+- If no actionable task is present, output a structured no-task result instead of empty or fabricated steps.
+- Validation gate before persistence:
+  - extraction output must include `# Task`, `## Questions`, `TaskDetected`, `Status`, and `NoTaskReason`.
+  - if validation fails, do not overwrite existing `HEARTBEAT.md`.
+- Persistence behavior:
+  - do not persist control metadata fields (`TaskDetected`, `Status`, `NoTaskReason`) into `HEARTBEAT.md`.
+  - if `TaskDetected: false`, do not update existing `HEARTBEAT.md`.
+
+## Gemini extraction adapter behavior (locked: 2026-02-08)
+
+- Provider call flow for task extraction uses Gemini Files API sequence:
+  1. Upload init
+  2. File upload/finalize
+  3. Poll file state until `ACTIVE`
+  4. `generateContent` with prompt + uploaded file reference
+- Prompt config `llm` remains the source of truth per prompt; runtime currently normalizes `gemini-3-pro` to `gemini-3-pro-preview` for provider compatibility.
+- Provider/network failures must surface explicit user-facing error messages in the extraction UI.
+
+## Keychain prompt minimization policy (locked: 2026-02-08)
+
+- Provider key presence checks should avoid repeated per-provider Keychain round-trips at startup.
+- `KeychainAPIKeyStore.hasKey` must use a single service-level lookup with in-process caching to reduce repeated OS keychain prompts.
+- Secure key read/write behavior is unchanged: values remain in macOS Keychain outside XCTest.

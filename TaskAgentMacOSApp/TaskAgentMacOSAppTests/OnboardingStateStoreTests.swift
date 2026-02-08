@@ -4,6 +4,7 @@ import Security
 
 private final class EmptyAPIKeyStore: APIKeyStore {
     func hasKey(for provider: ProviderIdentifier) -> Bool { false }
+    func readKey(for provider: ProviderIdentifier) throws -> String? { nil }
     func setKey(_ key: String?, for provider: ProviderIdentifier) throws {
         if key == "__fail__" {
             throw KeychainStoreError.unhandledStatus(errSecParam)

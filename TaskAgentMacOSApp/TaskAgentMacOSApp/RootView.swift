@@ -313,6 +313,10 @@ private struct ReadyStepView: View {
 
 private struct MainShellView: View {
     @State private var mainShellStateStore = MainShellStateStore()
+    @State private var openAIKeyInput = ""
+    @State private var anthropicKeyInput = ""
+    @State private var geminiKeyInput = ""
+    @State private var isAPIKeySettingsExpanded = false
     @State private var isRecordingImporterPresented = false
 
     var body: some View {
@@ -320,6 +324,75 @@ private struct MainShellView: View {
             Text("Tasks")
                 .font(.title)
                 .fontWeight(.semibold)
+
+            DisclosureGroup("Provider API Keys", isExpanded: $isAPIKeySettingsExpanded) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Update provider keys any time. Values are stored in macOS Keychain.")
+                        .foregroundStyle(.secondary)
+
+                    providerInputSection(
+                        title: "OpenAI API Key",
+                        saved: mainShellStateStore.providerSetupState.hasOpenAIKey,
+                        keyInput: $openAIKeyInput,
+                        onSave: {
+                            if mainShellStateStore.saveProviderKey(openAIKeyInput, for: .openAI) {
+                                openAIKeyInput = ""
+                            }
+                        },
+                        onRemove: {
+                            mainShellStateStore.clearProviderKey(for: .openAI)
+                        }
+                    )
+
+                    providerInputSection(
+                        title: "Anthropic API Key",
+                        saved: mainShellStateStore.providerSetupState.hasAnthropicKey,
+                        keyInput: $anthropicKeyInput,
+                        onSave: {
+                            if mainShellStateStore.saveProviderKey(anthropicKeyInput, for: .anthropic) {
+                                anthropicKeyInput = ""
+                            }
+                        },
+                        onRemove: {
+                            mainShellStateStore.clearProviderKey(for: .anthropic)
+                        }
+                    )
+
+                    providerInputSection(
+                        title: "Gemini API Key",
+                        saved: mainShellStateStore.providerSetupState.hasGeminiKey,
+                        keyInput: $geminiKeyInput,
+                        onSave: {
+                            if mainShellStateStore.saveProviderKey(geminiKeyInput, for: .gemini) {
+                                geminiKeyInput = ""
+                            }
+                        },
+                        onRemove: {
+                            mainShellStateStore.clearProviderKey(for: .gemini)
+                        }
+                    )
+
+                    HStack {
+                        Button("Refresh Saved Status") {
+                            mainShellStateStore.refreshProviderKeysState()
+                        }
+                        .buttonStyle(.bordered)
+
+                        Spacer()
+                    }
+
+                    if let apiKeyStatusMessage = mainShellStateStore.apiKeyStatusMessage {
+                        Text(apiKeyStatusMessage)
+                            .foregroundStyle(.green)
+                    }
+
+                    if let apiKeyErrorMessage = mainShellStateStore.apiKeyErrorMessage {
+                        Text(apiKeyErrorMessage)
+                            .foregroundStyle(.red)
+                    }
+                }
+                .padding(.top, 6)
+            }
 
             HStack(spacing: 10) {
                 TextField("New task title", text: $mainShellStateStore.newTaskTitle)
@@ -445,6 +518,11 @@ private struct MainShellView: View {
                                 .foregroundStyle(.green)
                         }
 
+                        if let extractionStatusMessage = mainShellStateStore.extractionStatusMessage {
+                            Text(extractionStatusMessage)
+                                .foregroundStyle(.green)
+                        }
+
                         if mainShellStateStore.recordings.isEmpty {
                             Text("No recordings imported yet.")
                                 .foregroundStyle(.secondary)
@@ -467,6 +545,17 @@ private struct MainShellView: View {
                                         mainShellStateStore.playRecording(recording)
                                     }
                                     .buttonStyle(.borderless)
+                                    Button(
+                                        mainShellStateStore.isExtractingTask && mainShellStateStore.extractingRecordingID == recording.id
+                                            ? "Extracting..."
+                                            : "Extract Task"
+                                    ) {
+                                        Task {
+                                            await mainShellStateStore.extractTask(from: recording)
+                                        }
+                                    }
+                                    .buttonStyle(.borderless)
+                                    .disabled(mainShellStateStore.isExtractingTask)
                                 }
                             }
                             .frame(minHeight: 140, maxHeight: 220)
@@ -482,6 +571,7 @@ private struct MainShellView: View {
         }
         .onAppear {
             mainShellStateStore.reloadTasks()
+            mainShellStateStore.refreshProviderKeysState()
             mainShellStateStore.refreshCaptureDisplays()
             mainShellStateStore.refreshCaptureAudioInputs()
         }
@@ -517,5 +607,35 @@ private struct MainShellView: View {
         let minutes = interval / 60
         let seconds = interval % 60
         return String(format: "%02d:%02d", minutes, seconds)
+    }
+
+    @ViewBuilder
+    private func providerInputSection(
+        title: String,
+        saved: Bool,
+        keyInput: Binding<String>,
+        onSave: @escaping () -> Void,
+        onRemove: @escaping () -> Void
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(title)
+                    .fontWeight(.medium)
+                Spacer()
+                Text(saved ? "Saved" : "Not Saved")
+                    .foregroundStyle(saved ? .green : .secondary)
+            }
+
+            SecureField("Enter key", text: keyInput)
+                .textFieldStyle(.roundedBorder)
+
+            HStack {
+                Button("Save Key", action: onSave)
+                    .buttonStyle(.borderedProminent)
+                Button("Remove Saved Key", action: onRemove)
+                    .buttonStyle(.bordered)
+                    .disabled(!saved)
+            }
+        }
     }
 }

@@ -705,16 +705,265 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-08
-- Step: Prompt management design decision lock + planning reprioritization
+- Step: Prompt rollback and extraction-priority reset
 - Changes made:
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` with locked prompt-management decisions (file-based versioned prompts, alias registry, provider-agnostic composition, schema-bound parsing, prompt metadata observability).
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` Step 3 to include prompt registry/versioning and provider-adapter boundary work.
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md` to prioritize Step 3.1 prompt foundation and Step 3.2 extraction pipeline, and explicitly defer `OI-2026-02-07-001`.
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md` next action to deferred status until Step 3 baseline is in place.
+  - Removed uncommitted prompt implementation scaffolding from app code and tests:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PromptRegistryService.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/StubLLMClient.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/TaskExtractionService.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/PromptRegistryServiceTests.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/TaskExtractionServiceTests.swift`
+  - Restored modified app files touched by prompt scaffolding to committed state:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/RootView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/Protocols.swift`
+  - Removed prompt-specific design/plan decisions from:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`
+  - Replaced `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md` to make Step 3 task extraction active without prompt-registry scope.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md` deferred-next-action wording to reference extraction baseline generically.
 - Automated tests run:
-  - `git diff -- .docs/design.md .docs/plan.md .docs/next_steps.md .docs/open_issues.md`
   - `git status --short`
-- Manual tests run: N/A (docs-only)
-- Result: Complete; design and execution queue now reflect prompt-first implementation strategy.
-- Issues/blockers: None for docs updates.
-- Notes: Next implementation step is prompt registry scaffolding in app code.
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (fails in sandbox due known `ObservationMacros`/`swift-plugin-server` environment issue).
+- Manual tests run:
+  - Manual verification by source inspection that prompt scaffolding files and prompt UI wiring are removed.
+  - Confirmed task extraction is restored as the active next milestone in docs.
+- Result: Complete; prompt-management decisions and code scaffolding are rolled back, and planning focus is reset to basic Step 3 extraction implementation.
+- Issues/blockers: Full authoritative app test signal remains environment-limited in this sandbox due macro plugin host failures.
+- Notes: Next engineering change should implement extraction with minimal single-call flow and strict output validation.
+
+## Entry
+- Date: 2026-02-08
+- Step: Prompt file-layout decision correction (`config.yaml`)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/README.md` to define prompt folder layout as `prompt.md` + `config.yaml`.
+  - Replaced `task_extraction/version.txt` and `task_extraction/llm.txt` with `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/task_extraction/config.yaml`.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` locked prompt decision to require `config.yaml` keys `version` and `llm`.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` Step 3 prompt-file wording to `prompt.md` + `config.yaml`.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md` Step 3 code task to use `prompt.md` + `config.yaml`.
+- Automated tests run:
+  - `test -f TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/task_extraction/prompt.md && test -f TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/task_extraction/config.yaml`
+  - `grep -n "^version:\|^llm:" TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/task_extraction/config.yaml`
+- Manual tests run:
+  - Reviewed prompt-layout docs and prompt files by reading:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/README.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/task_extraction/config.yaml`
+- Result: Complete; prompt metadata is now consolidated in YAML per prompt folder.
+- Issues/blockers: None.
+- Notes: Next extraction implementation should read `version`/`llm` from `config.yaml`.
+
+## Entry
+- Date: 2026-02-08
+- Step: Task extraction model target update (`gemini-3-pro`)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/task_extraction/config.yaml`:
+    - changed `llm` from `gemini-1.5-pro` to `gemini-3-pro`.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/README.md` example `llm` value to `gemini-3-pro`.
+- Automated tests run:
+  - `test -f TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/task_extraction/prompt.md && test -f TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/task_extraction/config.yaml && echo "prompt files exist"`
+  - `grep -n "^version:\\|^llm:" TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/task_extraction/config.yaml`
+  - `grep -n "gemini-3-pro" TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/README.md`
+- Manual tests run:
+  - Read `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/task_extraction/config.yaml` and verified expected values.
+- Result: Complete; task extraction prompt now targets `gemini-3-pro`.
+- Issues/blockers: None.
+- Notes: If provider SDK expects a different canonical model ID, normalize it in the extraction adapter when wiring live LLM calls.
+
+## Entry
+- Date: 2026-02-08
+- Step: Step 3 extraction pipeline scaffold (prompt loading + validation + UI trigger)
+- Changes made:
+  - Added prompt loading service:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PromptCatalogService.swift`
+      - loads per-prompt `prompt.md` + `config.yaml`
+      - validates required config keys `version` and `llm`
+  - Added extraction service:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/TaskExtractionService.swift`
+      - performs one LLM call per recording
+      - validates required output contract:
+        - `# Task`
+        - `## Questions`
+        - `TaskDetected`
+        - `Status`
+        - `NoTaskReason`
+  - Updated LLM protocol boundary:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/Protocols.swift`
+      - `LLMClient` now receives `(video URL, prompt text, model)`
+      - added `UnconfiguredLLMClient` + `LLMClientError.notConfigured`
+  - Wired extraction into state/UI:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
+      - added `extractTask(from:)` async flow
+      - writes `HEARTBEAT.md` only after validated output
+      - surfaces extraction success/error status
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/RootView.swift`
+      - added per-recording `Extract Task` action and extraction status text
+  - Added tests:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/PromptCatalogServiceTests.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/TaskExtractionServiceTests.swift`
+    - expanded `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift` with:
+      - valid extraction updates `HEARTBEAT.md`
+      - invalid extraction output does not overwrite existing `HEARTBEAT.md`
+  - Updated planning/design docs for this behavior:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test`
+    - Result in Codex sandbox: failed due known `ObservationMacros` / `swift-plugin-server` host issue.
+  - `xcrun swiftc -typecheck -module-cache-path /tmp/swift-modcache /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/Protocols.swift /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PromptCatalogService.swift /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/TaskExtractionService.swift` (pass)
+- Manual tests run:
+  - Command-line smoke run for extraction flow (temp prompt + temp recording + mock LLM):
+    - built and ran `/tmp/task-extraction-smoke`
+    - observed output:
+      - prompt version `v2`
+      - model `gemini-3-pro`
+      - `taskDetected=true`
+      - output contains `## Questions`
+- Result: In progress; extraction scaffold and validation gate are implemented and smoke-validated, with local Xcode UI/provider-backed run still pending.
+- Issues/blockers: Full in-sandbox `xcodebuild test` remains blocked by known Observation macro host limitation.
+- Notes: Next implementation action is concrete Gemini `LLMClient` wiring with onboarding key retrieval and user-side Xcode validation.
+
+## Entry
+- Date: 2026-02-08
+- Step: Post-onboarding API key settings in main shell
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`:
+    - added Keychain-backed provider key state to main shell (`providerSetupState`).
+    - added key-management actions:
+      - `refreshProviderKeysState()`
+      - `saveProviderKey(_:for:)`
+      - `clearProviderKey(for:)`
+    - added status/error fields for key operations (`apiKeyStatusMessage`, `apiKeyErrorMessage`).
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/RootView.swift`:
+    - added `Provider API Keys` disclosure section in main shell.
+    - added secure key entry + save/remove controls for OpenAI, Anthropic, and Gemini.
+    - added saved/not-saved badges and status/error messaging.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`:
+    - added `MockAPIKeyStore`.
+    - added tests for:
+      - save updates provider key state
+      - clear updates provider key state
+      - empty input is rejected
+  - Updated docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass)
+- Manual tests run:
+  - Manual source walkthrough of the new settings path:
+    - verified main-shell `Provider API Keys` UI wiring (secure fields + save/remove actions).
+    - verified status/error text hooks map to new store state fields.
+- Result: Complete; users can now rotate provider API keys after onboarding without re-running onboarding flow.
+- Issues/blockers: None.
+- Notes: Next step remains wiring real Gemini provider calls for extraction using stored key data.
+
+## Entry
+- Date: 2026-02-08
+- Step: Step 3 Gemini extraction adapter wiring + test-runtime Keychain suppression
+- Changes made:
+  - Added `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/GeminiVideoLLMClient.swift`:
+    - implemented Gemini Files API flow (`upload` -> poll until `ACTIVE` -> `generateContent`) for video task extraction.
+    - added explicit `GeminiLLMClientError` mapping for missing key, upload/poll/generate failures, and empty model output.
+    - normalized configured model alias `gemini-3-pro` to runtime provider model `gemini-3-pro-preview`.
+  - Added `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/GeminiVideoLLMClientTests.swift`:
+    - mocked network path for success and failure flows.
+    - stabilized request-body assertion to support `httpBody` and `httpBodyStream`.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OnboardingPersistence.swift`:
+    - `KeychainAPIKeyStore` now uses in-memory storage when `XCTestConfigurationFilePath` is present, preventing Keychain access prompts during test runs.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/OnboardingPersistenceTests.swift` with coverage for XCTest in-memory Keychain behavior.
+  - Updated docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/testing.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (failed in this sandbox due known `ObservationMacros` / `swift-plugin-server` host issue).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests/OnboardingPersistenceTests CODE_SIGNING_ALLOWED=NO test` (failed in this sandbox due same macro host issue).
+  - `xcrun swiftc -typecheck -module-cache-path /tmp/swift-modcache /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OnboardingPersistence.swift` (pass).
+- Manual tests run:
+  - Source-level manual verification that all `KeychainAPIKeyStore` methods (`hasKey`, `readKey`, `setKey`) route through XCTest in-memory storage before any Security framework call.
+  - Interactive confirmation of "no Keychain popup during local test run" pending user-side validation on local machine.
+- Result: In progress; implementation is complete and guarded for test runtime, with local interactive confirmation pending.
+- Issues/blockers: Sandbox macro-plugin instability prevents authoritative in-sandbox `xcodebuild test` pass signal.
+- Notes: User should re-run unit tests locally to confirm Keychain prompts are gone.
+
+## Entry
+- Date: 2026-02-08
+- Step: Keychain startup prompt minimization (incremental)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OnboardingPersistence.swift`:
+    - `KeychainAPIKeyStore.hasKey` now uses one service-level `SecItemCopyMatching` lookup (`kSecMatchLimitAll` + attributes) and in-process cache.
+    - Avoids repeated per-provider keychain lookups during startup checks.
+    - Cache is updated on save/remove so key-state UI remains consistent.
+  - Updated docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `xcrun swiftc -typecheck -module-cache-path /tmp/swift-modcache /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OnboardingPersistence.swift` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (failed in this sandbox due known `ObservationMacros`/`swift-plugin-server` environment issue).
+- Manual tests run:
+  - Manual source inspection of keychain lookup path:
+    - confirmed one service-level lookup path in `hasKey`.
+    - confirmed cache update on `setKey` add/update/delete.
+- Result: In progress; prompt-minimization logic is implemented, local interactive confirmation pending.
+- Issues/blockers: Authoritative in-sandbox full test signal remains blocked by macro host instability.
+- Notes: User should run app locally and verify startup no longer triggers repeated keychain prompts.
+
+## Entry
+- Date: 2026-02-08
+- Step: Gemini poll response parsing fix for extraction failure (incremental)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/GeminiVideoLLMClient.swift`:
+    - extraction now accepts both Gemini file response shapes for upload/poll:
+      - envelope: `{ "file": { ... } }`
+      - top-level file object: `{ "name": "...", "state": "..." }`
+    - added `decodeGeminiFile(...)` helper and applied it to upload + poll decode paths.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/GeminiVideoLLMClientTests.swift`:
+    - changed success-path poll stub to top-level file object response to cover real observed behavior.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`:
+    - added `OI-2026-02-08-002` with status `Mitigated`.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests/GeminiVideoLLMClientTests CODE_SIGNING_ALLOWED=NO test` (failed in sandbox due known `ObservationMacros` / `swift-plugin-server` environment issue).
+  - `xcrun swiftc -typecheck -module-cache-path /tmp/swift-modcache /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/Protocols.swift /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OnboardingPersistence.swift /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/GeminiVideoLLMClient.swift` (pass).
+- Manual tests run:
+  - Source-level walkthrough of `fetchFile(...)` and upload decode flow confirmed parser accepts both response formats.
+  - Local UI validation pending: user rerun `Extract Task` on a real recording.
+- Result: Mitigated in code; awaiting user-side runtime verification for closure.
+- Issues/blockers: Full in-sandbox xcodebuild signal remains blocked by macro plugin host environment.
+- Notes: If extraction still fails, capture the exact new error text and we will patch provider-specific edge case next.
+
+## Entry
+- Date: 2026-02-08
+- Step: Step 3 extraction persistence policy hardening (no-task no-overwrite + metadata stripping)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/TaskExtractionService.swift`:
+    - kept validation contract (`# Task`, `## Questions`, `TaskDetected`, `Status`, `NoTaskReason`).
+    - added sanitized heartbeat output that strips control metadata lines (`TaskDetected`, `Status`, `NoTaskReason`) before persistence.
+    - kept `taskDetected` parsing as control signal for persistence gating.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`:
+    - extraction now skips `HEARTBEAT.md` writes when `taskDetected == false`.
+    - added explicit status message that no-task extraction did not modify heartbeat.
+  - Updated tests:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/TaskExtractionServiceTests.swift`:
+      - verifies metadata stripping on task and no-task outputs.
+      - verifies no-task parse path remains valid.
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`:
+      - verifies valid extraction persists sanitized heartbeat (without control metadata).
+      - verifies no-task extraction does not overwrite existing heartbeat.
+  - Updated docs to lock behavior:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests/TaskExtractionServiceTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO test` (fails in this sandbox due known `ObservationMacros` / `swift-plugin-server` host issue).
+  - `xcrun swiftc -typecheck -module-cache-path /tmp/swift-modcache /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/Protocols.swift /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PromptCatalogService.swift /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/TaskExtractionService.swift` (pass).
+  - Extraction service smoke verification (compiled local harness using `TaskExtractionService` + mocks) prints `smoke:ok` (pass).
+- Manual tests run:
+  - Manual source walkthrough of extraction path:
+    - confirmed no-task branch in `extractTask(from:)` does not call `saveHeartbeat`.
+    - confirmed persisted heartbeat payload comes from sanitized output that strips control metadata fields.
+- Result: Complete for this increment; behavior now matches product decision.
+- Issues/blockers: Full in-sandbox `xcodebuild test` remains blocked by macro host instability.
+- Notes: Local Xcode run should verify UI end-to-end behavior with a real no-task recording and a task recording.
