@@ -106,6 +106,36 @@ private final class MockAPIKeyStore: APIKeyStore {
     }
 }
 
+private final class MockAutomationEngine: AutomationEngine {
+    var nextResult: AutomationRunResult
+    var receivedMarkdowns: [String] = []
+
+    init(nextResult: AutomationRunResult) {
+        self.nextResult = nextResult
+    }
+
+    func run(taskMarkdown: String) async -> AutomationRunResult {
+        receivedMarkdowns.append(taskMarkdown)
+        return nextResult
+    }
+}
+
+private final class AlwaysGrantedPermissionService: PermissionService {
+    private(set) var opened: [AppPermission] = []
+
+    func openSystemSettings(for permission: AppPermission) {
+        opened.append(permission)
+    }
+
+    func currentStatus(for permission: AppPermission) -> PermissionGrantStatus {
+        .granted
+    }
+
+    func requestAccessIfNeeded(for permission: AppPermission) -> PermissionGrantStatus {
+        .granted
+    }
+}
+
 struct MainShellStateStoreTests {
     @Test
     func selectTaskLoadsHeartbeatMarkdown() throws {
@@ -635,5 +665,87 @@ struct MainShellStateStoreTests {
         #expect(!store.providerSetupState.hasAnthropicKey)
         #expect(store.apiKeyStatusMessage == nil)
         #expect(store.apiKeyErrorMessage == "API key cannot be empty.")
+    }
+
+    @Test
+    func runTaskNowSuccessPersistsRunSummary() async throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let task = try taskService.createTask(title: "Runner success task")
+        let engine = MockAutomationEngine(
+            nextResult: AutomationRunResult(
+                outcome: .success,
+                executedSteps: ["Open app 'Google Chrome'"],
+                generatedQuestions: [],
+                errorMessage: nil,
+                llmSummary: "Task completed successfully."
+            )
+        )
+        let store = MainShellStateStore(
+            taskService: taskService,
+            automationEngine: engine,
+            apiKeyStore: MockAPIKeyStore(),
+            permissionService: AlwaysGrantedPermissionService(),
+            captureService: MockRecordingCaptureService(),
+            overlayService: MockRecordingOverlayService()
+        )
+
+        store.reloadTasks()
+        store.selectTask(task.id)
+        await store.runTaskNow()
+
+        #expect(store.runStatusMessage == "Run complete.")
+        #expect(store.errorMessage == nil)
+        #expect(engine.receivedMarkdowns.count == 1)
+        let runFiles = try fm.contentsOfDirectory(at: task.workspace.runsDir, includingPropertiesForKeys: nil)
+        #expect(runFiles.count == 1)
+    }
+
+    @Test
+    func runTaskNowNeedsClarificationAppendsQuestionsToHeartbeat() async throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let task = try taskService.createTask(title: "Runner clarification task")
+        let engine = MockAutomationEngine(
+            nextResult: AutomationRunResult(
+                outcome: .needsClarification,
+                executedSteps: ["Open app 'Google Chrome'"],
+                generatedQuestions: ["Which account should I use?"],
+                errorMessage: nil,
+                llmSummary: "Need account clarification."
+            )
+        )
+        let store = MainShellStateStore(
+            taskService: taskService,
+            automationEngine: engine,
+            apiKeyStore: MockAPIKeyStore(),
+            permissionService: AlwaysGrantedPermissionService(),
+            captureService: MockRecordingCaptureService(),
+            overlayService: MockRecordingOverlayService()
+        )
+
+        store.reloadTasks()
+        store.selectTask(task.id)
+        await store.runTaskNow()
+
+        let persisted = try taskService.readHeartbeat(taskId: task.id)
+        #expect(persisted.contains("- [required] Which account should I use?"))
+        #expect(store.runStatusMessage == "Run needs clarification. HEARTBEAT.md was updated with follow-up questions.")
     }
 }

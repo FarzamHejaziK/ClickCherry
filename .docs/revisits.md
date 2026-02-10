@@ -10,6 +10,26 @@ description: Provisional decisions and open product/design questions that are in
 - When an item is revised, update `Status`, `Resolution Date`, and linked docs.
 - Keep newest active revisit items first.
 
+## Revisit RV-2026-02-09-013
+- Revisit ID: RV-2026-02-09-013
+- Source: Step 4 iterative computer-use implementation (`AnthropicAutomationEngine`)
+- Status: Open
+- Current Baseline: Execution-loop screenshots are captured via `/usr/sbin/screencapture` subprocess because CoreGraphics screenshot APIs are unavailable on macOS 15+ SDK.
+- Why Revisit: Process-based capture adds runtime dependency and may be less robust than a dedicated ScreenCaptureKit implementation.
+- Trigger To Revisit: During safety/reliability hardening pass for Step 4 runtime.
+- Owner: Engineering
+- Last Updated: 2026-02-09
+
+## Revisit RV-2026-02-09-012
+- Revisit ID: RV-2026-02-09-012
+- Source: Step 4 implementation note in `.docs/worklog.md`
+- Status: Open
+- Current Baseline: Execution and extraction prompts are file-based (`prompt.md` + `config.yaml`) and loaded via `PromptCatalogService`; Xcode build excludes prompt files from auto resource copy to avoid flattened-name collisions.
+- Why Revisit: Current mitigation depends on source-path prompt discovery in debug/local builds; production-grade bundle packaging for prompts is not finalized.
+- Trigger To Revisit: When implementing production prompt asset packaging that preserves per-folder prompt structure in app bundle.
+- Owner: Engineering
+- Last Updated: 2026-02-09
+
 ## Revisit RV-2026-02-08-011
 - Revisit ID: RV-2026-02-08-011
 - Source: `.docs/open_issues.md` (`OI-2026-02-07-001`)

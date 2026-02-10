@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import UniformTypeIdentifiers
+import AppKit
 
 struct RootView: View {
     @State private var onboardingStateStore: OnboardingStateStore
@@ -319,6 +320,9 @@ private struct MainShellView: View {
     @State private var geminiKeyInput = ""
     @State private var isAPIKeySettingsExpanded = false
     @State private var isRecordingImporterPresented = false
+    @State private var isDiagnosticsExpanded = false
+    @State private var showOnlyLLMFailures = false
+    @State private var showOnlyToolUseTrace = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -409,6 +413,212 @@ private struct MainShellView: View {
                     .foregroundStyle(.red)
             }
 
+            DisclosureGroup("Diagnostics (LLM + Screenshot)", isExpanded: $isDiagnosticsExpanded) {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 10) {
+                        Button(mainShellStateStore.isCapturingDiagnosticScreenshot ? "Capturing..." : "Test Screenshot") {
+                            Task {
+                                await mainShellStateStore.captureDiagnosticScreenshot()
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(mainShellStateStore.isCapturingDiagnosticScreenshot)
+
+                        Button("Clear LLM Log") {
+                            mainShellStateStore.clearLLMCallLog()
+                        }
+                        .buttonStyle(.bordered)
+
+                        Button("Clear Trace") {
+                            mainShellStateStore.clearExecutionTrace()
+                        }
+                        .buttonStyle(.bordered)
+
+                        Button("Copy All Traces") {
+                            mainShellStateStore.copyExecutionTraceToPasteboard(onlyToolUse: showOnlyToolUseTrace)
+                        }
+                        .buttonStyle(.bordered)
+
+                        Button("Copy LLM Calls") {
+                            mainShellStateStore.copyLLMCallLogToPasteboard(onlyFailures: showOnlyLLMFailures)
+                        }
+                        .buttonStyle(.bordered)
+
+                        Button("Copy All (LLM + Trace)") {
+                            mainShellStateStore.copyAllDiagnosticsToPasteboard(
+                                onlyToolUseTrace: showOnlyToolUseTrace,
+                                onlyLLMFailures: showOnlyLLMFailures
+                            )
+                        }
+                        .buttonStyle(.bordered)
+
+                        Toggle("Only failures", isOn: $showOnlyLLMFailures)
+                            .toggleStyle(.switch)
+
+                        Toggle("Only tool_use", isOn: $showOnlyToolUseTrace)
+                            .toggleStyle(.switch)
+
+                        Spacer()
+                    }
+
+                    Text("Screenshot is captured via `screencapture` and requires Screen Recording permission.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    if let diagnosticScreenshotStatusMessage = mainShellStateStore.diagnosticScreenshotStatusMessage {
+                        Text(diagnosticScreenshotStatusMessage)
+                            .foregroundStyle(diagnosticScreenshotStatusMessage.lowercased().contains("failed") ? .red : .green)
+                            .font(.caption)
+                    }
+
+                    if let data = mainShellStateStore.lastDiagnosticScreenshotPNGData,
+                       let nsImage = NSImage(data: data) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            if let w = mainShellStateStore.lastDiagnosticScreenshotWidth,
+                               let h = mainShellStateStore.lastDiagnosticScreenshotHeight {
+                                Text("Last screenshot: \(w)x\(h) (\(data.count) bytes)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Image(nsImage: nsImage)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(maxHeight: 220)
+                                .border(.quaternary)
+                        }
+                    }
+
+                    Divider()
+                        .padding(.vertical, 4)
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Execution Trace (most recent first)")
+                            .font(.headline)
+
+                        let entries = mainShellStateStore.executionTrace
+                        let filteredEntries = showOnlyToolUseTrace ? entries.filter { $0.kind == .toolUse } : entries
+                        let recentEntries = Array(filteredEntries.suffix(60).reversed())
+
+                        if recentEntries.isEmpty {
+                            Text("No execution trace recorded yet.")
+                                .foregroundStyle(.secondary)
+                                .font(.caption)
+                        } else {
+                            ScrollView {
+                                LazyVStack(alignment: .leading, spacing: 8) {
+                                    ForEach(recentEntries) { entry in
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            HStack(spacing: 8) {
+                                                Text(entry.kind.rawValue.uppercased())
+                                                    .font(.caption2)
+                                                    .fontWeight(.semibold)
+                                                    .foregroundStyle(color(for: entry.kind))
+
+                                                Text(entry.timestamp.formatted(date: .omitted, time: .standard))
+                                                    .font(.caption2)
+                                                    .foregroundStyle(.secondary)
+
+                                                Spacer()
+                                            }
+
+                                            Text(entry.message)
+                                                .font(.caption2)
+                                                .foregroundStyle(.secondary)
+                                                .lineLimit(8)
+                                        }
+                                        .padding(.vertical, 2)
+                                    }
+                                }
+                            }
+                            .frame(maxHeight: 220)
+                            .border(.quaternary)
+                            .textSelection(.enabled)
+                        }
+
+                        if let diagnosticTraceStatusMessage = mainShellStateStore.diagnosticTraceStatusMessage {
+                            Text(diagnosticTraceStatusMessage)
+                                .foregroundStyle(diagnosticTraceStatusMessage.lowercased().contains("no trace") ? Color.secondary : Color.green)
+                                .font(.caption)
+                        }
+                    }
+
+                    Divider()
+                        .padding(.vertical, 4)
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("LLM Calls (most recent first)")
+                            .font(.headline)
+
+                        let entries = mainShellStateStore.llmCallLog
+                        let filteredEntries = showOnlyLLMFailures ? entries.filter { $0.outcome == .failure } : entries
+                        let recentEntries = Array(filteredEntries.suffix(30).reversed())
+
+                        if recentEntries.isEmpty {
+                            Text("No LLM calls recorded yet.")
+                                .foregroundStyle(.secondary)
+                                .font(.caption)
+                        } else {
+                            ScrollView {
+                                LazyVStack(alignment: .leading, spacing: 8) {
+                                    ForEach(recentEntries) { entry in
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            HStack(spacing: 8) {
+                                                Text(entry.outcome == .success ? "OK" : "FAIL")
+                                                    .font(.caption)
+                                                    .fontWeight(.semibold)
+                                                    .foregroundStyle(entry.outcome == .success ? .green : .red)
+
+                                                Text("\(entry.provider.rawValue)/\(entry.operation.rawValue) #\(entry.attempt)")
+                                                    .font(.caption)
+                                                    .foregroundStyle(.secondary)
+
+                                                if let status = entry.httpStatus {
+                                                    Text("HTTP \(status)")
+                                                        .font(.caption)
+                                                        .foregroundStyle(status >= 200 && status < 300 ? .green : .red)
+                                                }
+
+                                                Text("\(entry.durationMs)ms")
+                                                    .font(.caption)
+                                                    .foregroundStyle(.secondary)
+
+                                                Spacer()
+
+                                                Text(entry.finishedAt.formatted(date: .omitted, time: .standard))
+                                                    .font(.caption2)
+                                                    .foregroundStyle(.secondary)
+                                            }
+
+                                            Text(entry.url)
+                                                .font(.caption2)
+                                                .foregroundStyle(.secondary)
+
+                                            if let requestId = entry.requestId, !requestId.isEmpty {
+                                                Text("request-id: \(requestId)")
+                                                    .font(.caption2)
+                                                    .foregroundStyle(.secondary)
+                                            }
+
+                                            if let message = entry.message, !message.isEmpty {
+                                                Text(message)
+                                                    .font(.caption2)
+                                                    .foregroundStyle(.secondary)
+                                                    .lineLimit(6)
+                                            }
+                                        }
+                                        .padding(.vertical, 2)
+                                    }
+                                }
+                            }
+                            .frame(maxHeight: 260)
+                            .border(.quaternary)
+                            .textSelection(.enabled)
+                        }
+                    }
+                }
+                .padding(.top, 6)
+            }
+
             HStack(alignment: .top, spacing: 20) {
                 List(
                     selection: Binding(
@@ -453,10 +663,28 @@ private struct MainShellView: View {
                                 mainShellStateStore.saveSelectedTaskHeartbeat()
                             }
                             .buttonStyle(.borderedProminent)
+
+                            Button(mainShellStateStore.isRunningTask ? "Running..." : "Run Task") {
+                                mainShellStateStore.startRunTaskNow()
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .disabled(mainShellStateStore.isRunningTask || mainShellStateStore.isExtractingTask)
+
+                            Button("Stop") {
+                                mainShellStateStore.stopRunTask()
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(.red)
+                            .disabled(!mainShellStateStore.isRunningTask)
                         }
 
                         if let saveStatusMessage = mainShellStateStore.saveStatusMessage {
                             Text(saveStatusMessage)
+                                .foregroundStyle(.green)
+                        }
+
+                        if let runStatusMessage = mainShellStateStore.runStatusMessage {
+                            Text(runStatusMessage)
                                 .foregroundStyle(.green)
                         }
 
@@ -709,6 +937,25 @@ private struct MainShellView: View {
                     .buttonStyle(.bordered)
                     .disabled(!saved)
             }
+        }
+    }
+
+    private func color(for kind: ExecutionTraceKind) -> Color {
+        switch kind {
+        case .info:
+            return .secondary
+        case .llmResponse:
+            return .indigo
+        case .toolUse:
+            return .blue
+        case .localAction:
+            return .green
+        case .completion:
+            return .green
+        case .cancelled:
+            return .orange
+        case .error:
+            return .red
         }
     }
 }

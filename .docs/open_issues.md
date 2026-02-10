@@ -4,6 +4,87 @@ description: Active unresolved issues with concrete repro details, mitigation, a
 
 # Open Issues
 
+## Issue OI-2026-02-09-006
+- Issue ID: OI-2026-02-09-006
+- Title: Execution tool_use loops but desktop actions fail (key injection errors and/or coordinate translation)
+- Status: Open
+- Severity: High
+- First Seen: 2026-02-09
+- Scope:
+  - Affects Step 4 execution agent (Anthropic computer-use tool loop).
+  - Runs show many successful Anthropic calls + `tool_use` blocks, but little/no visible desktop action occurs.
+- Repro Steps:
+  1. Ensure Anthropic API key is configured.
+  2. Click `Run Task` on any task.
+  3. Observe `Diagnostics -> Execution Trace`.
+- Observed:
+  - Previously observed: `computer.key("cmd+space")` failed with a non-actionable `DesktopActionExecutorError` (AppleScript `System Events` path).
+  - Some runs included tool actions like `scroll` that were not yet implemented, causing repeated unsupported-action loops.
+  - Screenshot capture succeeds.
+- Expected:
+  - Tool uses should map cleanly to local actions (key/click/type/open) and produce visible progress.
+- Current Mitigation:
+  - Execution Trace is available in-app so failures are visible.
+  - `Stop` button can cancel runaway tool loops.
+  - Shortcut + typing injection now prefer CGEvent-based injection (reduces reliance on `System Events` automation permission); scroll action is now supported. Manual verification pending.
+- Next Action:
+  - Validate coordinate translation between Anthropic screenshot coordinates and macOS `CGEvent` coordinates (Retina logical vs capture pixels and origin/space); add scaling/translation if clicks land in the wrong place.
+  - Improve shortcut/key execution to reduce reliance on AppleScript `System Events` where possible (consider CGEvent-based key events).
+  - Add “automation permission” detection guidance when AppleScript calls fail (System Events control prompt).
+  - Add guardrails: if repeated invalid tool inputs occur N times, stop and append a blocking question to `HEARTBEAT.md` instead of looping.
+  - Keep unit tests for tool input decoding (click coordinate forms, key forms) and add coverage for coordinate scaling/translation if needed.
+- Owner: Codex
+
+## Issue OI-2026-02-09-005
+- Issue ID: OI-2026-02-09-005
+- Title: Intermittent Anthropic TLS failure (-1200 / errSSLPeerBadRecordMac -9820) during computer-use runs
+- Status: Mitigated
+- Severity: Medium
+- First Seen: 2026-02-09
+- Scope:
+  - Affects Anthropic execution-agent calls to `https://api.anthropic.com/v1/messages`.
+  - Manifests as transient TLS failures from `URLSession` with `NSURLErrorDomain code=-1200` and stream error `-9820`.
+- Repro Steps:
+  1. Run `Run Task` with Anthropic execution enabled.
+  2. Observe that some runs fail immediately with TLS error, then later succeed without code changes.
+- Observed:
+  - Error includes `_kCFStreamErrorCodeKey=-9820` (mapped in Security headers as `errSSLPeerBadRecordMac`).
+- Expected:
+  - Execution-agent calls should be reliable; transient transport errors should be retried automatically.
+- Current Mitigation:
+  - Added transport retries with exponential backoff (default 5 attempts) on transient `URLSession` failures including `secureConnectionFailed` (`-1200`) and `networkConnectionLost`.
+  - Surfaced detailed transport diagnostics (domain/code + underlying error chain) to aid debugging.
+  - Added a temporary in-app `Diagnostics (LLM + Screenshot)` panel that:
+    - shows successful + failed LLM calls (attempt number, HTTP status, request-id, duration, error snippet)
+    - provides a `Test Screenshot` button with a live screenshot preview for Screen Recording validation
+- Next Action:
+  - If this continues in user local runtime, investigate per-app proxy/VPN/TLS inspection and consider additional mitigations (fresh session on retry, larger retry budget, or payload size reduction).
+- Owner: Codex + user network environment validation
+
+## Issue OI-2026-02-09-004
+- Issue ID: OI-2026-02-09-004
+- Title: Prompt resource filename collision when adding multiple prompt folders
+- Status: Mitigated
+- Severity: Low
+- First Seen: 2026-02-09
+- Scope:
+  - Affects adding additional prompt folders that contain the required `prompt.md` and `config.yaml` filenames.
+  - Blocks straightforward file-based prompt expansion for execution-agent prompt under current Xcode target configuration.
+- Repro Steps:
+  1. Add a second folder under `TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/` with files named `prompt.md` and `config.yaml`.
+  2. Build or test target `TaskAgentMacOSApp`.
+- Observed:
+  - Build fails with duplicate resource outputs for `prompt.md` and `config.yaml` in app bundle resource path.
+- Expected:
+  - Multiple prompt folders with the same internal filenames should be packageable without resource output collisions.
+- Current Mitigation:
+  - Prompt files (`prompt.md`, `config.yaml`) are excluded from Xcode auto resource copy to avoid flattened-name collisions.
+  - Runtime prompt loading uses `PromptCatalogService`, preferring source prompt directories in debug builds.
+  - `execution_agent` and `task_extraction` both remain file-based prompt folders.
+- Next Action:
+  - Add a robust bundle-packaging strategy for production builds so prompt folders can be loaded without relying on source-tree fallback.
+- Owner: Codex
+
 ## Issue OI-2026-02-08-003
 - Issue ID: OI-2026-02-08-003
 - Title: Step 4 clarification UI local verification deferred

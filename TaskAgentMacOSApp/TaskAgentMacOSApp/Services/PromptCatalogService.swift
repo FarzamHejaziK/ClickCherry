@@ -20,38 +20,72 @@ enum PromptCatalogError: Error, Equatable {
 
 struct PromptCatalogService {
     private let fileManager: FileManager
-    private let promptsRootURL: URL?
+    private let promptsRootURLs: [URL]
 
     init(promptsRootURL: URL? = nil, fileManager: FileManager = .default) {
         self.fileManager = fileManager
-        self.promptsRootURL = promptsRootURL ?? Self.resolveDefaultPromptsRoot(fileManager: fileManager)
+        if let promptsRootURL {
+            self.promptsRootURLs = [promptsRootURL]
+        } else {
+            self.promptsRootURLs = Self.resolveDefaultPromptsRoots(fileManager: fileManager)
+        }
     }
 
     func loadPrompt(named promptName: String) throws -> PromptTemplate {
-        guard let promptsRootURL else {
+        guard !promptsRootURLs.isEmpty else {
             throw PromptCatalogError.promptsRootNotFound
         }
 
-        let promptDirectory = promptsRootURL.appendingPathComponent(promptName, isDirectory: true)
-        guard fileManager.fileExists(atPath: promptDirectory.path) else {
-            throw PromptCatalogError.promptNotFound(promptName)
+        var foundPromptDirectory = false
+        var foundPromptFile = false
+        var foundConfigFile = false
+        var firstParseError: PromptCatalogError?
+
+        for promptsRootURL in promptsRootURLs {
+            let promptDirectory = promptsRootURL.appendingPathComponent(promptName, isDirectory: true)
+            guard fileManager.fileExists(atPath: promptDirectory.path) else {
+                continue
+            }
+            foundPromptDirectory = true
+
+            let promptURL = promptDirectory.appendingPathComponent("prompt.md", isDirectory: false)
+            guard fileManager.fileExists(atPath: promptURL.path) else {
+                continue
+            }
+            foundPromptFile = true
+
+            let configURL = promptDirectory.appendingPathComponent("config.yaml", isDirectory: false)
+            guard fileManager.fileExists(atPath: configURL.path) else {
+                continue
+            }
+            foundConfigFile = true
+
+            do {
+                let prompt = try String(contentsOf: promptURL, encoding: .utf8)
+                let configRaw = try String(contentsOf: configURL, encoding: .utf8)
+                let config = try parseConfig(configRaw, promptName: promptName)
+                return PromptTemplate(name: promptName, prompt: prompt, config: config)
+            } catch let error as PromptCatalogError {
+                if firstParseError == nil {
+                    firstParseError = error
+                }
+            } catch {
+                if firstParseError == nil {
+                    firstParseError = .invalidConfig("Failed to load prompt '\(promptName)'")
+                }
+            }
         }
 
-        let promptURL = promptDirectory.appendingPathComponent("prompt.md", isDirectory: false)
-        guard fileManager.fileExists(atPath: promptURL.path) else {
+        if let firstParseError {
+            throw firstParseError
+        }
+        if !foundPromptDirectory || !foundPromptFile {
             throw PromptCatalogError.promptNotFound(promptName)
         }
-
-        let configURL = promptDirectory.appendingPathComponent("config.yaml", isDirectory: false)
-        guard fileManager.fileExists(atPath: configURL.path) else {
+        if !foundConfigFile {
             throw PromptCatalogError.configNotFound(promptName)
         }
-
-        let prompt = try String(contentsOf: promptURL, encoding: .utf8)
-        let configRaw = try String(contentsOf: configURL, encoding: .utf8)
-        let config = try parseConfig(configRaw, promptName: promptName)
-
-        return PromptTemplate(name: promptName, prompt: prompt, config: config)
+        throw PromptCatalogError.promptNotFound(promptName)
     }
 
     private func parseConfig(_ raw: String, promptName: String) throws -> PromptConfig {
@@ -90,12 +124,8 @@ struct PromptCatalogService {
         return PromptConfig(version: version, llm: llm)
     }
 
-    private static func resolveDefaultPromptsRoot(fileManager: FileManager) -> URL? {
+    private static func resolveDefaultPromptsRoots(fileManager: FileManager) -> [URL] {
         var candidates: [URL] = []
-
-        if let bundlePrompts = Bundle.main.resourceURL?.appendingPathComponent("Prompts", isDirectory: true) {
-            candidates.append(bundlePrompts)
-        }
 
         #if DEBUG
         let sourcePrompts = URL(fileURLWithPath: #filePath)
@@ -105,6 +135,16 @@ struct PromptCatalogService {
         candidates.append(sourcePrompts)
         #endif
 
-        return candidates.first(where: { fileManager.fileExists(atPath: $0.path) })
+        if let bundlePrompts = Bundle.main.resourceURL?.appendingPathComponent("Prompts", isDirectory: true) {
+            candidates.append(bundlePrompts)
+        }
+
+        var seenPaths: Set<String> = []
+        return candidates.filter { candidate in
+            guard fileManager.fileExists(atPath: candidate.path) else {
+                return false
+            }
+            return seenPaths.insert(candidate.path).inserted
+        }
     }
 }

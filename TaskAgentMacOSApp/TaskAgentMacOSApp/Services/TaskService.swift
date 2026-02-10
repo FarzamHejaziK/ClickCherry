@@ -4,6 +4,7 @@ enum TaskServiceError: Error {
     case taskNotFound
     case invalidRecordingFormat
     case recordingTooLarge
+    case runPersistenceFailed
 }
 
 struct TaskService {
@@ -175,6 +176,69 @@ struct TaskService {
         return recordingsDir.appendingPathComponent("capture-\(timestamp)-\(suffix).mov", isDirectory: false)
     }
 
+    @discardableResult
+    func saveRunSummary(taskId: String, summary: AutomationRunSummary) throws -> URL {
+        let workspace = workspaceURL(for: taskId)
+        guard fileManager.fileExists(atPath: workspace.path) else {
+            throw TaskServiceError.taskNotFound
+        }
+
+        let runsDir = workspace.appendingPathComponent("runs", isDirectory: true)
+        if !fileManager.fileExists(atPath: runsDir.path) {
+            try fileManager.createDirectory(at: runsDir, withIntermediateDirectories: true)
+        }
+
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let timestamp = formatter.string(from: summary.startedAt).replacingOccurrences(of: ":", with: "-")
+        let fileURL = runsDir.appendingPathComponent(
+            "run-\(timestamp)-\(UUID().uuidString.prefix(8).lowercased()).md",
+            isDirectory: false
+        )
+
+        var lines: [String] = []
+        lines.append("# Run Summary")
+        lines.append("")
+        lines.append("StartedAt: \(formatter.string(from: summary.startedAt))")
+        lines.append("FinishedAt: \(formatter.string(from: summary.finishedAt))")
+        lines.append("Outcome: \(outcomeDescription(summary.outcome))")
+        if let errorMessage = summary.errorMessage, !errorMessage.isEmpty {
+            lines.append("Error: \(errorMessage)")
+        }
+        if let llmSummary = summary.llmSummary, !llmSummary.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            lines.append("")
+            lines.append("## LLM Summary")
+            lines.append(llmSummary.trimmingCharacters(in: .whitespacesAndNewlines))
+        }
+        lines.append("")
+        lines.append("## Executed Steps")
+        if summary.executedSteps.isEmpty {
+            lines.append("- None.")
+        } else {
+            for step in summary.executedSteps {
+                lines.append("- \(step)")
+            }
+        }
+        lines.append("")
+        lines.append("## Generated Questions")
+        if summary.generatedQuestions.isEmpty {
+            lines.append("- None.")
+        } else {
+            for question in summary.generatedQuestions {
+                lines.append("- \(question)")
+            }
+        }
+        lines.append("")
+
+        let markdown = lines.joined(separator: "\n")
+        do {
+            try markdown.write(to: fileURL, atomically: true, encoding: .utf8)
+            return fileURL
+        } catch {
+            throw TaskServiceError.runPersistenceFailed
+        }
+    }
+
     private func readTaskTitle(from heartbeatFile: URL) throws -> String {
         let markdown = try String(contentsOf: heartbeatFile, encoding: .utf8)
         let lines = markdown.components(separatedBy: .newlines)
@@ -225,5 +289,18 @@ struct TaskService {
 
     private func workspaceURL(for taskId: String) -> URL {
         baseDir.appendingPathComponent("workspace-\(taskId)", isDirectory: true)
+    }
+
+    private func outcomeDescription(_ outcome: AutomationRunOutcome) -> String {
+        switch outcome {
+        case .success:
+            return "SUCCESS"
+        case .needsClarification:
+            return "NEEDS_CLARIFICATION"
+        case .failed:
+            return "FAILED"
+        case .cancelled:
+            return "CANCELLED"
+        }
     }
 }

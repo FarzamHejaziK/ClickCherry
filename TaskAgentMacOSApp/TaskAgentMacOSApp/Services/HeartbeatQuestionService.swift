@@ -12,6 +12,7 @@ enum HeartbeatQuestionServiceError: Error, Equatable {
     case questionsSectionMissing
     case questionNotFound
     case answerEmpty
+    case noQuestionsToAppend
 }
 
 struct HeartbeatQuestionService {
@@ -100,6 +101,61 @@ struct HeartbeatQuestionService {
             }
         } else {
             lines.append(answerLine)
+        }
+
+        let hadTrailingNewline = markdown.hasSuffix("\n")
+        var updated = lines.joined(separator: "\n")
+        if hadTrailingNewline {
+            updated.append("\n")
+        }
+        return updated
+    }
+
+    func appendOpenQuestions(_ rawQuestions: [String], in markdown: String) throws -> String {
+        let preparedQuestions = rawQuestions
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        guard !preparedQuestions.isEmpty else {
+            throw HeartbeatQuestionServiceError.noQuestionsToAppend
+        }
+
+        var lines = markdown.components(separatedBy: .newlines)
+        if questionsSectionRange(in: lines) == nil {
+            if !lines.isEmpty, !lines.last!.isEmpty {
+                lines.append("")
+            }
+            lines.append("## Questions")
+        }
+
+        guard let section = questionsSectionRange(in: lines) else {
+            throw HeartbeatQuestionServiceError.questionsSectionMissing
+        }
+
+        var existingPrompts: Set<String> = Set(parseQuestions(from: lines.joined(separator: "\n")).map {
+            $0.prompt.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        })
+
+        if let noneIndex = (section.start..<section.end).first(where: {
+            lines[$0].trimmingCharacters(in: .whitespacesAndNewlines).caseInsensitiveCompare("- None.") == .orderedSame
+        }) {
+            lines.remove(at: noneIndex)
+        }
+
+        var insertionIndex = min(section.end, lines.count)
+        var appendedCount = 0
+        for question in preparedQuestions {
+            let normalized = question.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+            if existingPrompts.contains(normalized) {
+                continue
+            }
+            lines.insert("- [required] \(question)", at: insertionIndex)
+            insertionIndex += 1
+            existingPrompts.insert(normalized)
+            appendedCount += 1
+        }
+
+        guard appendedCount > 0 else {
+            throw HeartbeatQuestionServiceError.noQuestionsToAppend
         }
 
         let hadTrailingNewline = markdown.hasSuffix("\n")

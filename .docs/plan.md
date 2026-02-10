@@ -83,13 +83,23 @@ description: Step-by-step implementation plan with code scope, automated tests, 
 ## Step 4: Execution agent + clarification loop
 
 ### Code
-- Build first concrete execution runner implementing `AutomationEngine`.
-- Add execution-plan parser from `HEARTBEAT.md` goal/plan fields into actionable intents.
-- Integrate Anthropic computer-use execution loop for desktop actions (`claude-opus-4-6` + computer-use tool).
-- Execute app-agnostic desktop actions (open apps, click/type/shortcuts, scroll/drag/wait) through local action executor.
-- On ambiguity/runtime failure, append unresolved blocking questions into `HEARTBEAT.md` `## Questions`.
+- Build first concrete execution runner implementing `AutomationEngine`. (Implemented)
+- Add `Run Task` trigger in task detail and wire state-store run orchestration. (Implemented)
+- Add Anthropic computer-use runner call path using `claude-opus-4-6`. (Implemented)
+- Execute baseline app-agnostic actions from model output (open app/url, click, type, shortcuts). (Implemented)
+- On ambiguity/runtime failure, append unresolved blocking questions into `HEARTBEAT.md` `## Questions`. (Implemented)
+- Persist per-run summary artifacts under `runs/` including LLM-authored summary text. (Implemented)
+- Integrate full iterative Anthropic computer-use tool loop (`computer_20251124`) for turn-based screenshot/tool execution. (Implemented)
+  - In the tool-loop request format, use:
+    - `tools[].type = computer_20251124`
+    - `anthropic-beta: computer-use-2025-11-24`
+  - Keep model identity separate from tool identity (`claude-opus-4-6` is model; `computer_20251124` is tool version).
+- Remove legacy planner/fallback execution path; keep tool-loop as the only action authority path. (Implemented)
+- Load execution-agent prompt from file-based prompt folder (`Prompts/execution_agent/prompt.md` + `config.yaml`) via `PromptCatalogService`. (Implemented)
+- Expand tool/action coverage to scroll/drag/right-click/move in tool-loop path. (Pending)
 - Baseline policy for this implementation increment:
   - allow run with unresolved open questions and request clarifications in run report.
+  - no deterministic local action-plan synthesis; model tool calls are the only action authority.
   - no per-step confirmations.
   - no app allowlist/blocklist.
   - zero retries before raising clarification questions.
@@ -99,11 +109,12 @@ description: Step-by-step implementation plan with code scope, automated tests, 
 - Keep clarification UI/state parser wired so newly appended runtime questions are immediately actionable.
 
 ### Automated tests
-- Unit tests for execution-plan parsing from `HEARTBEAT.md`.
-- Unit tests for automation-engine outcome mapping (`success`, `needs clarification`, `failed`).
+- Unit tests for automation-engine outcome mapping (`success`, `needs clarification`, `failed`) in tool-loop-only path.
 - Unit tests for runtime question append/dedup in markdown.
 - State-store tests for run-trigger flow and persistence of updated heartbeat + run summary state.
-- Integration tests for run -> runtime question creation -> answer -> rerun.
+- Unit tests for Anthropic tool-loop API-key gating and request formatting.
+- Unit tests for iterative tool-loop request formatting and response-to-result mapping.
+- Integration tests for richer tool-action coverage (scroll/drag/right-click/move) are pending.
 
 ### Manual test
 - Run at least one extracted task using `Run Task` and confirm real desktop actions execute.

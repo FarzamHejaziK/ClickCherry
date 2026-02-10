@@ -7,9 +7,14 @@ final class MainShellStateStore {
     private let taskService: TaskService
     private let taskExtractionService: TaskExtractionService
     private let heartbeatQuestionService: HeartbeatQuestionService
+    private let automationEngine: any AutomationEngine
     private let apiKeyStore: any APIKeyStore
+    private let permissionService: any PermissionService
     private let captureService: any RecordingCaptureService
     private let overlayService: any RecordingOverlayService
+    private let llmCallRecorder: LLMCallRecorder
+    private let executionTraceRecorder: ExecutionTraceRecorder
+    private var runTaskHandle: Task<Void, Never>?
 
     var tasks: [TaskRecord]
     var selectedTaskID: String?
@@ -28,30 +33,59 @@ final class MainShellStateStore {
     var captureStartedAt: Date?
     var isExtractingTask: Bool
     var extractingRecordingID: String?
+    var isRunningTask: Bool
     var saveStatusMessage: String?
     var recordingStatusMessage: String?
     var extractionStatusMessage: String?
+    var runStatusMessage: String?
     var clarificationStatusMessage: String?
     var apiKeyStatusMessage: String?
     var apiKeyErrorMessage: String?
     var errorMessage: String?
+    var llmCallLog: [LLMCallLogEntry]
+    var executionTrace: [ExecutionTraceEntry]
+    var isCapturingDiagnosticScreenshot: Bool
+    var diagnosticScreenshotStatusMessage: String?
+    var diagnosticTraceStatusMessage: String?
+    var lastDiagnosticScreenshotPNGData: Data?
+    var lastDiagnosticScreenshotWidth: Int?
+    var lastDiagnosticScreenshotHeight: Int?
 
     init(
         taskService: TaskService = TaskService(),
         taskExtractionService: TaskExtractionService? = nil,
         heartbeatQuestionService: HeartbeatQuestionService = HeartbeatQuestionService(),
+        automationEngine: (any AutomationEngine)? = nil,
         apiKeyStore: any APIKeyStore = KeychainAPIKeyStore(),
+        permissionService: any PermissionService = MacPermissionService(),
         captureService: any RecordingCaptureService = ShellRecordingCaptureService(),
         overlayService: any RecordingOverlayService = ScreenRecordingOverlayService()
     ) {
+        let callRecorder = LLMCallRecorder(maxEntries: 200)
+        let traceRecorder = ExecutionTraceRecorder(maxEntries: 400)
         self.taskService = taskService
         self.apiKeyStore = apiKeyStore
+        self.permissionService = permissionService
         self.taskExtractionService = taskExtractionService ?? TaskExtractionService(
             llmClient: GeminiVideoLLMClient(apiKeyStore: apiKeyStore)
         )
         self.heartbeatQuestionService = heartbeatQuestionService
+        self.automationEngine = automationEngine ?? AnthropicAutomationEngine(
+            runner: AnthropicComputerUseRunner(
+                apiKeyStore: apiKeyStore,
+                callLogSink: { entry in
+                    callRecorder.record(entry)
+                },
+                traceSink: { entry in
+                    traceRecorder.record(entry)
+                }
+            )
+        )
         self.captureService = captureService
         self.overlayService = overlayService
+        self.llmCallRecorder = callRecorder
+        self.executionTraceRecorder = traceRecorder
+        self.runTaskHandle = nil
         self.tasks = []
         self.selectedTaskID = nil
         self.providerSetupState = ProviderSetupState(
@@ -73,13 +107,35 @@ final class MainShellStateStore {
         self.captureStartedAt = nil
         self.isExtractingTask = false
         self.extractingRecordingID = nil
+        self.isRunningTask = false
         self.saveStatusMessage = nil
         self.recordingStatusMessage = nil
         self.extractionStatusMessage = nil
+        self.runStatusMessage = nil
         self.clarificationStatusMessage = nil
         self.apiKeyStatusMessage = nil
         self.apiKeyErrorMessage = nil
         self.errorMessage = nil
+        self.llmCallLog = []
+        self.executionTrace = []
+        self.isCapturingDiagnosticScreenshot = false
+        self.diagnosticScreenshotStatusMessage = nil
+        self.diagnosticTraceStatusMessage = nil
+        self.lastDiagnosticScreenshotPNGData = nil
+        self.lastDiagnosticScreenshotWidth = nil
+        self.lastDiagnosticScreenshotHeight = nil
+
+        callRecorder.onRecord = { [weak self] _ in
+            DispatchQueue.main.async {
+                self?.llmCallLog = callRecorder.snapshot()
+            }
+        }
+
+        traceRecorder.onRecord = { [weak self] _ in
+            DispatchQueue.main.async {
+                self?.executionTrace = traceRecorder.snapshot()
+            }
+        }
     }
 
     deinit {
@@ -182,10 +238,164 @@ final class MainShellStateStore {
         }
     }
 
+    func clearLLMCallLog() {
+        llmCallRecorder.clear()
+        llmCallLog = []
+    }
+
+    func clearExecutionTrace() {
+        executionTraceRecorder.clear()
+        executionTrace = []
+    }
+
+    @MainActor
+    func copyExecutionTraceToPasteboard(onlyToolUse: Bool) {
+        let entries = onlyToolUse ? executionTrace.filter { $0.kind == .toolUse } : executionTrace
+        guard !entries.isEmpty else {
+            diagnosticTraceStatusMessage = "No trace entries to copy."
+            return
+        }
+
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let lines = entries.map { entry in
+            "\(formatter.string(from: entry.timestamp)) \(entry.kind.rawValue.uppercased()): \(entry.message)"
+        }
+        let output = lines.joined(separator: "\n")
+
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(output, forType: .string)
+        diagnosticTraceStatusMessage = "Copied \(entries.count) trace line(s) to clipboard."
+    }
+
+    @MainActor
+    func copyLLMCallLogToPasteboard(onlyFailures: Bool) {
+        let entries = onlyFailures ? llmCallLog.filter { $0.outcome == .failure } : llmCallLog
+        guard !entries.isEmpty else {
+            diagnosticTraceStatusMessage = "No LLM call entries to copy."
+            return
+        }
+
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+        var lines: [String] = []
+        for entry in entries {
+            var header = "\(formatter.string(from: entry.finishedAt)) \(entry.outcome == .success ? "OK" : "FAIL") \(entry.provider.rawValue)/\(entry.operation.rawValue) #\(entry.attempt)"
+            if let status = entry.httpStatus {
+                header += " HTTP \(status)"
+            }
+            header += " \(entry.durationMs)ms"
+
+            lines.append(header)
+            lines.append("  url: \(entry.url)")
+            if let requestId = entry.requestId, !requestId.isEmpty {
+                lines.append("  request-id: \(requestId)")
+            }
+            if let bytesSent = entry.bytesSent {
+                lines.append("  bytes-sent: \(bytesSent)")
+            }
+            if let bytesReceived = entry.bytesReceived {
+                lines.append("  bytes-received: \(bytesReceived)")
+            }
+            if let message = entry.message, !message.isEmpty {
+                lines.append("  message: \(message)")
+            }
+            lines.append("")
+        }
+
+        let output = lines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(output, forType: .string)
+        diagnosticTraceStatusMessage = "Copied \(entries.count) LLM call(s) to clipboard."
+    }
+
+    @MainActor
+    func copyAllDiagnosticsToPasteboard(onlyToolUseTrace: Bool, onlyLLMFailures: Bool) {
+        let traceEntries = onlyToolUseTrace ? executionTrace.filter { $0.kind == .toolUse } : executionTrace
+        let llmEntries = onlyLLMFailures ? llmCallLog.filter { $0.outcome == .failure } : llmCallLog
+
+        guard !traceEntries.isEmpty || !llmEntries.isEmpty else {
+            diagnosticTraceStatusMessage = "No diagnostics to copy."
+            return
+        }
+
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+        var lines: [String] = []
+
+        if !traceEntries.isEmpty {
+            lines.append("=== EXECUTION TRACE ===")
+            lines.append(contentsOf: traceEntries.map { entry in
+                "\(formatter.string(from: entry.timestamp)) \(entry.kind.rawValue.uppercased()): \(entry.message)"
+            })
+            lines.append("")
+        }
+
+        if !llmEntries.isEmpty {
+            lines.append("=== LLM CALLS ===")
+            for entry in llmEntries {
+                var header = "\(formatter.string(from: entry.finishedAt)) \(entry.outcome == .success ? "OK" : "FAIL") \(entry.provider.rawValue)/\(entry.operation.rawValue) #\(entry.attempt)"
+                if let status = entry.httpStatus {
+                    header += " HTTP \(status)"
+                }
+                header += " \(entry.durationMs)ms"
+                lines.append(header)
+                lines.append("  url: \(entry.url)")
+                if let requestId = entry.requestId, !requestId.isEmpty {
+                    lines.append("  request-id: \(requestId)")
+                }
+                if let message = entry.message, !message.isEmpty {
+                    lines.append("  message: \(message)")
+                }
+                lines.append("")
+            }
+        }
+
+        let output = lines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(output, forType: .string)
+        diagnosticTraceStatusMessage = "Copied diagnostics to clipboard."
+    }
+
+    @MainActor
+    func captureDiagnosticScreenshot() async {
+        guard !isCapturingDiagnosticScreenshot else {
+            return
+        }
+
+        isCapturingDiagnosticScreenshot = true
+        diagnosticScreenshotStatusMessage = "Capturing screenshot..."
+
+        do {
+            let capture = try await Task.detached {
+                try DesktopScreenshotService.captureMainDisplayPNG()
+            }.value
+
+            lastDiagnosticScreenshotPNGData = capture.pngData
+            lastDiagnosticScreenshotWidth = capture.width
+            lastDiagnosticScreenshotHeight = capture.height
+            diagnosticScreenshotStatusMessage = "Captured \(capture.width)x\(capture.height) (\(capture.pngData.count) bytes)."
+        } catch DesktopScreenshotServiceError.captureFailed {
+            diagnosticScreenshotStatusMessage = "Screenshot capture failed. Ensure Screen Recording permission is granted."
+        } catch DesktopScreenshotServiceError.decodeFailed {
+            diagnosticScreenshotStatusMessage = "Screenshot captured but failed to decode image."
+        } catch {
+            diagnosticScreenshotStatusMessage = "Screenshot capture failed: \(error.localizedDescription)"
+        }
+
+        isCapturingDiagnosticScreenshot = false
+    }
+
     func selectTask(_ taskID: String?) {
         selectedTaskID = taskID
         clarificationAnswerDraft = ""
         clarificationStatusMessage = nil
+        runStatusMessage = nil
         loadSelectedTaskHeartbeat()
         loadSelectedTaskRecordings()
     }
@@ -380,6 +590,147 @@ final class MainShellStateStore {
         extractingRecordingID = nil
     }
 
+    func startRunTaskNow() {
+        guard let selectedTaskID else {
+            return
+        }
+        guard !isRunningTask else {
+            return
+        }
+
+        guard ensureExecutionPermissions() else {
+            return
+        }
+
+        isRunningTask = true
+        runStatusMessage = "Running task..."
+        errorMessage = nil
+        let startedAt = Date()
+
+        executionTraceRecorder.record(ExecutionTraceEntry(kind: .info, message: "Run requested for task \(selectedTaskID)."))
+
+        // Run off the main actor to avoid blocking UI; cancellation is supported via `runTaskHandle.cancel()`.
+        let taskMarkdown = heartbeatMarkdown
+        runTaskHandle?.cancel()
+        runTaskHandle = Task.detached(priority: .userInitiated) { [weak self] in
+            guard let self else { return }
+            let result = await self.automationEngine.run(taskMarkdown: taskMarkdown)
+            await MainActor.run {
+                self.finishRunTaskNow(taskId: selectedTaskID, startedAt: startedAt, result: result)
+            }
+        }
+    }
+
+    func runTaskNow() async {
+        guard let selectedTaskID else {
+            return
+        }
+        guard !isRunningTask else {
+            return
+        }
+
+        guard ensureExecutionPermissions() else {
+            return
+        }
+
+        isRunningTask = true
+        runStatusMessage = "Running task..."
+        errorMessage = nil
+        let startedAt = Date()
+
+        executionTraceRecorder.record(ExecutionTraceEntry(kind: .info, message: "Run requested for task \(selectedTaskID)."))
+
+        let result = await automationEngine.run(taskMarkdown: heartbeatMarkdown)
+        finishRunTaskNow(taskId: selectedTaskID, startedAt: startedAt, result: result)
+    }
+
+    func stopRunTask() {
+        guard isRunningTask else {
+            return
+        }
+        runStatusMessage = "Cancelling..."
+        executionTraceRecorder.record(ExecutionTraceEntry(kind: .cancelled, message: "Cancel requested by user."))
+        runTaskHandle?.cancel()
+    }
+
+    private func finishRunTaskNow(taskId: String, startedAt: Date, result: AutomationRunResult) {
+        defer {
+            isRunningTask = false
+            runTaskHandle = nil
+        }
+
+        var heartbeatChanged = false
+        if result.outcome != .cancelled, !result.generatedQuestions.isEmpty {
+            do {
+                let updated = try heartbeatQuestionService.appendOpenQuestions(result.generatedQuestions, in: heartbeatMarkdown)
+                try taskService.saveHeartbeat(taskId: taskId, markdown: updated)
+                heartbeatMarkdown = updated
+                saveStatusMessage = "Saved."
+                heartbeatChanged = true
+            } catch HeartbeatQuestionServiceError.noQuestionsToAppend {
+                // Questions already exist in markdown.
+            } catch {
+                errorMessage = "Task run generated clarification questions but failed to update HEARTBEAT.md."
+            }
+        }
+
+        let summary = AutomationRunSummary(
+            startedAt: startedAt,
+            finishedAt: Date(),
+            outcome: result.outcome,
+            executedSteps: result.executedSteps,
+            generatedQuestions: result.generatedQuestions,
+            errorMessage: result.errorMessage,
+            llmSummary: result.llmSummary
+        )
+        do {
+            _ = try taskService.saveRunSummary(taskId: taskId, summary: summary)
+        } catch {
+            errorMessage = "Task run finished but failed to persist run summary."
+        }
+
+        refreshClarificationQuestions()
+
+        switch result.outcome {
+        case .success:
+            runStatusMessage = "Run complete."
+        case .needsClarification:
+            runStatusMessage = heartbeatChanged
+                ? "Run needs clarification. HEARTBEAT.md was updated with follow-up questions."
+                : "Run needs clarification."
+        case .failed:
+            runStatusMessage = "Run failed."
+        case .cancelled:
+            runStatusMessage = "Run cancelled."
+        }
+
+        if result.outcome != .cancelled, let resultError = result.errorMessage, !resultError.isEmpty {
+            errorMessage = resultError
+        }
+    }
+
+    private func ensureExecutionPermissions() -> Bool {
+        let screenRecording = permissionService.requestAccessIfNeeded(for: .screenRecording)
+        if screenRecording != .granted {
+            runStatusMessage = nil
+            errorMessage = "Screen Recording permission is required to capture screenshots for the execution agent. Enable TaskAgentMacOSApp in System Settings > Privacy & Security > Screen Recording."
+            executionTraceRecorder.record(ExecutionTraceEntry(kind: .error, message: "Missing Screen Recording permission."))
+            permissionService.openSystemSettings(for: .screenRecording)
+            return false
+        }
+
+        let accessibility = permissionService.requestAccessIfNeeded(for: .accessibility)
+        if accessibility != .granted {
+            runStatusMessage = nil
+            errorMessage = "Accessibility permission is required to perform clicks and typing. Enable TaskAgentMacOSApp in System Settings > Privacy & Security > Accessibility."
+            executionTraceRecorder.record(ExecutionTraceEntry(kind: .error, message: "Missing Accessibility permission."))
+            permissionService.openSystemSettings(for: .accessibility)
+            return false
+        }
+
+        return true
+    }
+
     func importRecording(from sourceURL: URL) {
         guard let selectedTaskID else {
             return
@@ -516,5 +867,77 @@ final class MainShellStateStore {
         case .gemini:
             return "Gemini"
         }
+    }
+}
+
+private final class LLMCallRecorder {
+    private let lock = NSLock()
+    private var entries: [LLMCallLogEntry] = []
+    private let maxEntries: Int
+
+    var onRecord: ((LLMCallLogEntry) -> Void)?
+
+    init(maxEntries: Int) {
+        self.maxEntries = max(1, maxEntries)
+    }
+
+    func record(_ entry: LLMCallLogEntry) {
+        lock.lock()
+        entries.append(entry)
+        if entries.count > maxEntries {
+            entries.removeFirst(entries.count - maxEntries)
+        }
+        lock.unlock()
+
+        onRecord?(entry)
+    }
+
+    func snapshot() -> [LLMCallLogEntry] {
+        lock.lock()
+        let copy = entries
+        lock.unlock()
+        return copy
+    }
+
+    func clear() {
+        lock.lock()
+        entries.removeAll()
+        lock.unlock()
+    }
+}
+
+private final class ExecutionTraceRecorder {
+    private let lock = NSLock()
+    private var entries: [ExecutionTraceEntry] = []
+    private let maxEntries: Int
+
+    var onRecord: ((ExecutionTraceEntry) -> Void)?
+
+    init(maxEntries: Int) {
+        self.maxEntries = max(1, maxEntries)
+    }
+
+    func record(_ entry: ExecutionTraceEntry) {
+        lock.lock()
+        entries.append(entry)
+        if entries.count > maxEntries {
+            entries.removeFirst(entries.count - maxEntries)
+        }
+        lock.unlock()
+
+        onRecord?(entry)
+    }
+
+    func snapshot() -> [ExecutionTraceEntry] {
+        lock.lock()
+        let copy = entries
+        lock.unlock()
+        return copy
+    }
+
+    func clear() {
+        lock.lock()
+        entries.removeAll()
+        lock.unlock()
     }
 }

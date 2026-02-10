@@ -7,25 +7,58 @@ description: Short, continuously updated plan of the immediate next implementati
 1. Step: Step 4 execution agent (active, highest priority).
 2. Why now: User explicitly prioritized execution-agent delivery as the most important milestone.
 3. Code tasks:
-   - Build first concrete runner implementing `AutomationEngine`.
-   - Add `HEARTBEAT.md` execution-plan parser and map to desktop action intents.
-   - Integrate Anthropic computer-use path with `claude-opus-4-6`.
-   - Execute app-agnostic desktop actions (open app, click, type, shortcuts, scroll/drag/wait).
-   - Append unresolved runtime questions into `HEARTBEAT.md` `## Questions` on ambiguity/failure.
+   - Keep implemented baseline stable:
+     - `Run Task` is wired to Anthropic-backed `AutomationEngine`.
+     - runtime clarifications append into `## Questions`.
+     - run summaries persist under `runs/`.
+     - execution-agent prompt is loaded from `Prompts/execution_agent/prompt.md` + `config.yaml` (single template prompt).
+   - Keep iterative Anthropic computer-use loop (`computer_20251124`) stable for turn-based screenshot/tool execution.
+     - Request-format guardrail: `claude-opus-4-6` is model id; `computer_20251124` is tool type; use beta header `computer-use-2025-11-24` on tool-loop calls.
+     - keep execution path tool-loop only (no planner fallback path).
+   - Ensure screenshots sent to Anthropic stay under the 5 MB per-image limit (JPEG re-encode fallback for retina screenshots). (Implemented)
+   - Expand action coverage through tool-loop path (scroll/right-click/move implemented; drag and richer UI control still pending).
+   - Fix tool schema parsing for `computer_20251124` tool inputs:
+     - accept click coordinates in the model-returned schema (top-level `x`/`y` and `coordinate: [x,y]` / nested position fields). (Implemented)
+     - add coordinate scaling/translation layer if screenshot coordinates don’t match CGEvent coordinate space. (Partially implemented: Retina logical-vs-capture pixel mismatch fixed via CGDisplayBounds mapping; multi-display/origin validation still pending)
+   - Fix keyboard shortcut injection reliability:
+     - handle special keys like `space`.
+     - improve text typing reliability for system UI targets (Spotlight, etc.) by using clipboard-paste typing with clipboard restore (cmd+v).
+     - reduce dependence on AppleScript `System Events` where possible. (Implemented for shortcuts and typing via CGEvent; AppleScript fallback remains for unknown keys)
+   - Add loop guardrails to avoid “stuck tool_use spam”:
+     - after N repeated invalid tool inputs, stop and append a blocking question into `## Questions` in `HEARTBEAT.md`.
+   - Keep unresolved runtime-question generation on ambiguity/failure and persist to `HEARTBEAT.md`.
    - Implement current baseline policies:
      - allow run with unresolved questions and ask clarifications from run report.
-     - zero retries before generating clarification questions.
+     - no deterministic local action-plan synthesis; model tool calls are the only action authority.
+     - desktop actions: zero retries before generating clarification questions (transport/network retries are allowed).
      - no per-step confirmation gates and no app allowlist/blocklist.
      - failure-only screenshot artifacts and no max step/runtime limits.
    - Keep provisional choices tracked in `.docs/revisits.md`.
-   - Persist run artifacts under `runs/` and surface run status in task detail.
+   - Keep run status surfaced in task detail.
 4. Automated tests:
-   - Execution-plan parser tests.
-   - Automation-engine outcome tests (`success`/`needs clarification`/`failed`).
+   - Keep passing:
+     - Anthropic tool-loop API-key gating/request-format tests.
+     - automation-engine outcome tests (`success`/`needs clarification`/`failed`).
+     - run-trigger persistence tests (heartbeat question writeback + run-summary writes).
+     - iterative tool-loop parser/execution smoke checks.
    - Markdown runtime-question append/dedup tests.
-   - State-store tests for run-trigger and heartbeat update persistence.
+   - Add richer tool-action integration tests (drag and multi-display coordinate/origin cases; scroll/right-click/move are covered).
+   - Add tool-input parsing tests for:
+     - click coordinate schema variants (array/nested/top-level)
+     - key schema variants (`key` vs `text`) and special keys like space
+   - Add tests for loop guardrails (stop after repeated invalid tool inputs).
 5. Manual tests:
    - Run at least one real task and verify desktop actions occur.
+   - While the run is executing:
+     - confirm `Diagnostics (LLM + Screenshot) -> Execution Trace` shows `tool_use` entries and local action entries (click/type/open/wait).
+     - if no `tool_use` entries appear, the model is returning text-only completion; adjust the execution-agent prompt accordingly.
+   - In `Diagnostics`, click `Copy Trace` and paste into Notes/Terminal to confirm clipboard formatting is readable.
+   - Click `Stop` during an active run and confirm:
+     - status becomes `Run cancelled.`
+     - no new questions are appended into `HEARTBEAT.md` for the cancelled run.
+   - Temporarily revoke Screen Recording or Accessibility permission and confirm clicking `Run Task`:
+     - triggers a permission prompt (or opens System Settings)
+     - does not start a run until permissions are granted
    - Validate ambiguity/failure writes blocking questions to `HEARTBEAT.md`.
    - Answer generated question and rerun to confirm progression.
 6. Exit criteria: First execution-agent baseline can run a task, generate blocking questions when needed, and persist outcomes.
@@ -50,6 +83,17 @@ description: Short, continuously updated plan of the immediate next implementati
 4. Automated tests: N/A (deferred backlog item).
 5. Manual tests: N/A (deferred backlog item).
 6. Exit criteria: Issue remains tracked in `.docs/open_issues.md` with mitigation and clear next action.
+
+1. Step: Track `OI-2026-02-09-004` prompt resource-collision issue (deferred).
+2. Why now: Anthropic execution runner is unblocked via embedded prompt; prompt file-packaging fix is a secondary concern after core computer-use loop.
+3. Code tasks:
+   - Keep execution-agent prompt embedded while current Xcode resource collision persists.
+   - Design and implement prompt resource namespacing for multiple prompt folders.
+4. Automated tests:
+   - Build/test validation after namespacing fix to confirm no duplicate resource outputs.
+5. Manual tests:
+   - Add a second prompt folder with `prompt.md` and `config.yaml`, then verify project builds without collisions.
+6. Exit criteria: Multiple prompt folders can coexist with required filenames and build cleanly.
 
 1. Step: Step 5 scheduling while app is open (next, after Step 4 baseline).
 2. Why now: Scheduling depends on a reliable execution-agent run path.

@@ -185,4 +185,38 @@ struct TaskServiceTests {
         #expect(recordings.count == 1)
         #expect(recordings[0].fileName.hasSuffix(".mov"))
     }
+
+    @Test
+    func saveRunSummaryWritesRunArtifact() throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let task = try taskService.createTask(title: "Run artifact task")
+        let now = Date()
+        let summary = AutomationRunSummary(
+            startedAt: now,
+            finishedAt: now.addingTimeInterval(1),
+            outcome: .needsClarification,
+            executedSteps: ["Open app 'Google Chrome'"],
+            generatedQuestions: ["Which profile should I use?"],
+            errorMessage: "Execution paused.",
+            llmSummary: "Paused for clarification."
+        )
+
+        let fileURL = try taskService.saveRunSummary(taskId: task.id, summary: summary)
+        let markdown = try String(contentsOf: fileURL, encoding: .utf8)
+
+        #expect(fm.fileExists(atPath: fileURL.path))
+        #expect(markdown.contains("# Run Summary"))
+        #expect(markdown.contains("Outcome: NEEDS_CLARIFICATION"))
+        #expect(markdown.contains("## LLM Summary"))
+        #expect(markdown.contains("## Generated Questions"))
+    }
 }

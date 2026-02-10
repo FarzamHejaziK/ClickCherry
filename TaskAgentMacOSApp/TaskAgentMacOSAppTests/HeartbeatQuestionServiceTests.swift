@@ -101,4 +101,44 @@ struct HeartbeatQuestionServiceTests {
             #expect(error as? HeartbeatQuestionServiceError == .answerEmpty)
         }
     }
+
+    @Test
+    func appendOpenQuestionsAddsRequiredQuestionsAndReplacesNoneMarker() throws {
+        let markdown = """
+        # Task
+        Example task
+
+        ## Questions
+        - None.
+        """
+
+        let service = HeartbeatQuestionService()
+        let updated = try service.appendOpenQuestions(
+            ["Which account should be used?", "Should archived items be included?"],
+            in: markdown
+        )
+
+        #expect(!updated.contains("- None."))
+        #expect(updated.contains("- [required] Which account should be used?"))
+        #expect(updated.contains("- [required] Should archived items be included?"))
+    }
+
+    @Test
+    func appendOpenQuestionsThrowsWhenAllQuestionsAlreadyExist() throws {
+        let markdown = """
+        # Task
+        Example task
+
+        ## Questions
+        - [required] Which account should be used?
+        """
+
+        let service = HeartbeatQuestionService()
+        do {
+            _ = try service.appendOpenQuestions(["Which account should be used?"], in: markdown)
+            #expect(Bool(false))
+        } catch {
+            #expect(error as? HeartbeatQuestionServiceError == .noQuestionsToAppend)
+        }
+    }
 }

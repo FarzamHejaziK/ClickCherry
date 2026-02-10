@@ -4,8 +4,37 @@ protocol LLMClient {
     func analyzeVideo(at url: URL, prompt: String, model: String) async throws -> String
 }
 
+enum AutomationRunOutcome: Equatable {
+    case success
+    case needsClarification
+    case failed
+    case cancelled
+}
+
+struct AutomationRunResult: Equatable {
+    var outcome: AutomationRunOutcome
+    var executedSteps: [String]
+    var generatedQuestions: [String]
+    var errorMessage: String?
+    var llmSummary: String?
+}
+
+struct AutomationRunSummary: Equatable {
+    var startedAt: Date
+    var finishedAt: Date
+    var outcome: AutomationRunOutcome
+    var executedSteps: [String]
+    var generatedQuestions: [String]
+    var errorMessage: String?
+    var llmSummary: String?
+}
+
 protocol AutomationEngine {
-    func run(taskMarkdown: String) async throws
+    func run(taskMarkdown: String) async -> AutomationRunResult
+}
+
+protocol LLMExecutionToolLoopRunner {
+    func runToolLoop(taskMarkdown: String, executor: any DesktopActionExecutor) async throws -> AutomationRunResult
 }
 
 protocol Scheduler {
@@ -33,5 +62,100 @@ struct ProviderSetupState: Equatable {
 
     var isReadyForOnboardingCompletion: Bool {
         hasCoreProvider && hasGeminiKey
+    }
+}
+
+enum LLMProvider: String, Equatable, Sendable {
+    case openAI
+    case anthropic
+    case gemini
+}
+
+enum LLMOperation: String, Equatable, Sendable {
+    case taskExtraction
+    case execution
+}
+
+enum LLMCallOutcome: String, Equatable, Sendable {
+    case success
+    case failure
+}
+
+enum ExecutionTraceKind: String, Equatable, Sendable {
+    case info
+    case llmResponse
+    case toolUse
+    case localAction
+    case completion
+    case cancelled
+    case error
+}
+
+struct ExecutionTraceEntry: Identifiable, Equatable, Sendable {
+    var id: UUID
+    var timestamp: Date
+    var kind: ExecutionTraceKind
+    var message: String
+
+    init(
+        id: UUID = UUID(),
+        timestamp: Date = Date(),
+        kind: ExecutionTraceKind,
+        message: String
+    ) {
+        self.id = id
+        self.timestamp = timestamp
+        self.kind = kind
+        self.message = message
+    }
+}
+
+struct LLMCallLogEntry: Identifiable, Equatable, Sendable {
+    var id: UUID
+    var startedAt: Date
+    var finishedAt: Date
+    var provider: LLMProvider
+    var operation: LLMOperation
+    var attempt: Int
+    var url: String
+    var httpStatus: Int?
+    var requestId: String?
+    var bytesSent: Int?
+    var bytesReceived: Int?
+    var outcome: LLMCallOutcome
+    var message: String?
+
+    init(
+        id: UUID = UUID(),
+        startedAt: Date,
+        finishedAt: Date,
+        provider: LLMProvider,
+        operation: LLMOperation,
+        attempt: Int,
+        url: String,
+        httpStatus: Int? = nil,
+        requestId: String? = nil,
+        bytesSent: Int? = nil,
+        bytesReceived: Int? = nil,
+        outcome: LLMCallOutcome,
+        message: String? = nil
+    ) {
+        self.id = id
+        self.startedAt = startedAt
+        self.finishedAt = finishedAt
+        self.provider = provider
+        self.operation = operation
+        self.attempt = attempt
+        self.url = url
+        self.httpStatus = httpStatus
+        self.requestId = requestId
+        self.bytesSent = bytesSent
+        self.bytesReceived = bytesReceived
+        self.outcome = outcome
+        self.message = message
+    }
+
+    var durationMs: Int {
+        Int(finishedAt.timeIntervalSince(startedAt) * 1000.0)
     }
 }

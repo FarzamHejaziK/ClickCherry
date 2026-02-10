@@ -177,6 +177,13 @@ This means: if the agent still has unresolved questions, should execution stop o
 - Task execution agent provider for Step 4 is Anthropic computer-use with:
   - model: `claude-opus-4-6`
   - tool type: `computer_20251124`
+- Anthropic computer-use identifiers must be treated as:
+  - `claude-opus-4-6`: the model.
+  - `computer_20251124`: the computer-use tool schema/version identifier (not a model).
+  - `anthropic-beta: computer-use-2025-11-24`: required beta header paired with `computer_20251124`.
+- Usage boundary:
+  - These values are required on Anthropic `messages` requests that include the computer-use tool loop (`tools` entry with type `computer_20251124`).
+  - Execution now uses tool-loop only; there is no planner-only execution path.
 - Execution loop is tool-driven:
   1. app captures current desktop screenshot/state
   2. model returns tool actions
@@ -188,6 +195,45 @@ This means: if the agent still has unresolved questions, should execution stop o
   - scrolling/dragging/waiting
 - If execution is blocked by ambiguity or runtime failure, the app must append unresolved blocking questions to `## Questions` in `HEARTBEAT.md` instead of silently guessing.
 
+## Execution action-authority policy (locked: 2026-02-09)
+
+- During task execution, every desktop action must come from an LLM computer-use tool call.
+- `HEARTBEAT.md` is execution context and persistent task memory; it is not a deterministic local action script.
+- The app may parse/validate `HEARTBEAT.md` sections to build context and derive clarification state.
+- The app must not synthesize local click/type/shortcut/scroll action plans outside model-issued tool calls.
+- If tool output is invalid, missing, or ambiguous, the run must stop and append clarification question(s) to `HEARTBEAT.md` instead of guessing.
+
+## Step 4 implementation status (update: 2026-02-09)
+
+- Implemented in this increment:
+  - `Run Task` UI action and state-store run pipeline.
+  - Anthropic computer-use runner using `claude-opus-4-6` request path.
+  - Iterative Anthropic computer-use tool loop (`computer_20251124`) with turn-by-turn `tool_use` -> local execution -> `tool_result`.
+  - Legacy planner fallback path removed; execution path is tool-loop only.
+  - Tool-loop request guards:
+    - request header `anthropic-beta: computer-use-2025-11-24`
+    - request tool type `computer_20251124`
+  - Screenshot exchange for tool loop:
+    - initial desktop screenshot attached in first run turn.
+    - post-action screenshots attached in tool results when capture succeeds.
+    - implementation currently uses `/usr/sbin/screencapture` for screenshot capture in execution runtime.
+  - Tool-loop action execution for baseline action types:
+    - open app
+    - open URL
+    - click
+    - type text
+    - keyboard shortcut
+    - wait
+    - screenshot action response
+    - double click
+  - Runtime clarification persistence:
+    - generated blocking questions are appended into `## Questions` in `HEARTBEAT.md`.
+  - Run artifact persistence:
+    - each run writes a markdown summary under `runs/` including LLM summary text.
+- Still pending for full locked computer-use design:
+  - broader action surface (scroll/drag/right-click/move) through tool protocol path.
+  - local Xcode runtime validation across multi-app tasks and ambiguous failure paths.
+
 ## Execution-agent baseline behavior (locked, revisit-candidate: 2026-02-08)
 
 - Risk confirmation policy:
@@ -195,7 +241,8 @@ This means: if the agent still has unresolved questions, should execution stop o
 - App boundary policy:
   - no allowlist/blocklist in current baseline; run across apps the user asks for.
 - Failure retry policy:
-  - zero retries (`0`) before generating runtime clarification questions.
+  - Desktop-action retries: zero retries (`0`) before generating runtime clarification questions.
+  - LLM transport retries: allow a small retry budget with backoff for transient network/TLS failures (so we don't spam `## Questions` on a flaky connection).
 - Artifact policy:
   - capture screenshots for failure cases only.
 - Execution limits policy:
@@ -235,6 +282,10 @@ This means: if the agent still has unresolved questions, should execution stop o
   - `llm` (model/provider target for that prompt)
 - Initial prompt implemented with this layout:
   - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/task_extraction/`
+  - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/execution_agent/`
+- Execution-agent prompt shape decision:
+  - use a single prompt template (`prompt.md`) with `{{TASK_MARKDOWN}}` placeholder.
+  - do not split execution-agent behavior between hardcoded system/user prompt literals in code.
 
 ## Task extraction prompt behavior (locked: 2026-02-08)
 

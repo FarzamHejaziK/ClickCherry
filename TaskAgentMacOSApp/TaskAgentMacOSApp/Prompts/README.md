@@ -13,3 +13,7 @@ Required keys in `config.yaml`:
 Example:
 - `Prompts/task_extraction/prompt.md`
 - `Prompts/task_extraction/config.yaml`
+
+Current note:
+- `task_extraction` uses the file-based prompt layout above.
+- `execution_agent` now also uses file-based prompt layout and is loaded through `PromptCatalogService`.

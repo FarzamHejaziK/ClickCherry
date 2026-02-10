@@ -1,8 +1,16 @@
 # Agent Instructions
 
-- At the beginning of any task, read all the docs in `.docs/` first.
+- At the beginning of any task, read all the docs in `.docs/` first, except `.docs/legacy_worklog.md` unless historical context is required.
 - Testing strategy: at each incremental implementation step, verify with both automated code-based tests and manual tests before marking the step complete.
 - Follow the `.docs/` update contract below for file ownership and maintenance rules.
+
+## Prompt Rules
+
+- All LLM prompts must live under `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/`.
+- Each prompt must be in its own folder and include:
+  - `prompt.md`
+  - `config.yaml` with at least `version` and `llm`.
+- Do not keep production prompt text inline in service code; load prompts via `PromptCatalogService`.
 
 ## `.docs/` Update Contract
 
@@ -21,6 +29,11 @@
 - `.docs/worklog.md`:
   - Append an entry for each incremental implementation step and major docs/process change.
   - Include: what changed, automated tests run, manual tests run, result, blockers, notes.
+  - Keep only the 10 most recent `## Entry` sections in this file.
+  - Move older entries to `.docs/legacy_worklog.md` using `scripts/rotate_worklog.sh`.
+- `.docs/legacy_worklog.md`:
+  - Archive for older `worklog.md` entries.
+  - Do not review by default; consult only when historical context is needed.
 - `.docs/testing.md`:
   - Update when test commands, environment limitations, or source-of-truth testing guidance changes.
 - `.docs/xcode_signing_setup.md`:
