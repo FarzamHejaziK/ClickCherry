@@ -39,6 +39,7 @@ struct OnboardingStateStoreTests {
         currentStep: OnboardingStep = .welcome,
         hasScreenRecordingPermission: Bool = false,
         hasAccessibilityPermission: Bool = false,
+        hasInputMonitoringPermission: Bool = false,
         hasAutomationPermission: Bool = false,
         hasCompletedOnboarding: Bool = false,
         permissionService: PermissionService = StatusOnlyPermissionService()
@@ -50,6 +51,7 @@ struct OnboardingStateStoreTests {
             currentStep: currentStep,
             hasScreenRecordingPermission: hasScreenRecordingPermission,
             hasAccessibilityPermission: hasAccessibilityPermission,
+            hasInputMonitoringPermission: hasInputMonitoringPermission,
             hasAutomationPermission: hasAutomationPermission,
             hasCompletedOnboarding: hasCompletedOnboarding
         )
@@ -92,6 +94,7 @@ struct OnboardingStateStoreTests {
             currentStep: .permissionsPreflight,
             hasScreenRecordingPermission: true,
             hasAccessibilityPermission: false,
+            hasInputMonitoringPermission: true,
             hasAutomationPermission: true
         )
         #expect(!store.canContinueCurrentStep)
@@ -111,7 +114,8 @@ struct OnboardingStateStoreTests {
         let permissionService = StatusOnlyPermissionService(
             statuses: [
                 .screenRecording: .granted,
-                .accessibility: .granted
+                .accessibility: .granted,
+                .inputMonitoring: .granted
             ]
         )
 
@@ -122,6 +126,7 @@ struct OnboardingStateStoreTests {
 
         store.refreshPermissionStatus(for: .screenRecording)
         store.refreshPermissionStatus(for: .accessibility)
+        store.refreshPermissionStatus(for: .inputMonitoring)
 
         #expect(store.screenRecordingStatus == .granted)
         #expect(store.accessibilityStatus == .granted)
@@ -145,6 +150,7 @@ struct OnboardingStateStoreTests {
         let store = makeStore(
             hasScreenRecordingPermission: false,
             hasAccessibilityPermission: false,
+            hasInputMonitoringPermission: false,
             hasAutomationPermission: false
         )
         #expect(!store.areRequiredPermissionsGranted)
@@ -153,6 +159,7 @@ struct OnboardingStateStoreTests {
 
         #expect(store.screenRecordingStatus == .granted)
         #expect(store.accessibilityStatus == .granted)
+        #expect(store.inputMonitoringStatus == .granted)
         #expect(store.automationStatus == .granted)
         #expect(store.areRequiredPermissionsGranted)
     }

@@ -56,7 +56,10 @@ description: Short, continuously updated plan of the immediate next implementati
    - Click `Stop` during an active run and confirm:
      - status becomes `Run cancelled.`
      - no new questions are appended into `HEARTBEAT.md` for the cancelled run.
-   - Temporarily revoke Screen Recording or Accessibility permission and confirm clicking `Run Task`:
+   - While the run is executing, confirm:
+     - a centered "Agent is running" overlay is visible.
+     - using the mouse/keyboard cancels the run and the overlay disappears.
+   - Temporarily revoke Screen Recording, Accessibility, or Input Monitoring permission and confirm clicking `Run Task`:
      - triggers a permission prompt (or opens System Settings)
      - does not start a run until permissions are granted
    - Validate ambiguity/failure writes blocking questions to `HEARTBEAT.md`.

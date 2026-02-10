@@ -8,6 +8,33 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-10
+- Step: Add “agent running” overlay + stop-on-user-input (incremental)
+- Changes made:
+  - Added a centered HUD overlay shown during active runs:
+    - new `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AgentControlOverlayService.swift`.
+  - Added global user-interruption monitoring (mouse/keyboard/scroll) to cancel a run as soon as the user takes over:
+    - new `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/UserInterruptionMonitor.swift`.
+  - Tagged synthetic CGEvents emitted by the executor so the interruption monitor ignores agent-injected input (prevents self-cancel):
+    - new `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/DesktopEventSignature.swift`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AnthropicAutomationEngine.swift`.
+  - Wired overlay + interruption monitoring into the run lifecycle (`start`, `finish`, `stop`):
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`.
+  - Added Input Monitoring permission to onboarding + execution preflight so this behavior is reliable:
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/OnboardingStateStore.swift`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/RootView.swift`.
+  - Added tests for “start run shows overlay and cancels on user interruption”:
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - N/A (requires running the app and confirming overlay visibility + cancellation on real user input).
+- Result: The app visibly indicates when the agent is in control, and immediately cancels if the user touches mouse/keyboard.
+- Issues/blockers:
+  - First-time setup requires granting Input Monitoring in System Settings; runs are blocked until granted.
+
+## Entry
+- Date: 2026-02-10
 - Step: Improve OS-level typing reliability (incremental)
 - Changes made:
   - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AnthropicAutomationEngine.swift`:
@@ -197,22 +224,3 @@ description: Running implementation log of completed work, test evidence, blocke
 - Issues/blockers:
   - Local UI validation still required to confirm tool_use traces match observed on-screen actions during real runs.
 
-## Entry
-- Date: 2026-02-09
-- Step: Diagnostics trace copy + execution permission preflight (incremental)
-- Changes made:
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`:
-    - added execution preflight for Screen Recording + Accessibility before starting `Run Task`.
-    - added `copyExecutionTraceToPasteboard(...)` to copy recent trace lines to clipboard.
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/RootView.swift`:
-    - added `Copy Trace` button in Diagnostics trace section.
-    - added a status line confirming clipboard copy succeeded.
-- Automated tests run:
-  - `find TaskAgentMacOSApp/TaskAgentMacOSApp -name '*.swift' -print0 | xargs -0 xcrun swiftc -typecheck -module-cache-path /tmp/swift-modcache` (pass).
-- Manual tests run:
-  - Manual source walkthrough confirming:
-    - permission preflight blocks run start and opens System Settings when not granted.
-    - trace copy formats lines and writes to `NSPasteboard.general`.
-- Result: Complete; runs now prompt for required permissions up front, and trace logs can be copied for debugging.
-- Issues/blockers:
-  - Accessibility/Screen Recording prompts depend on stable app identity (bundle id + signing); if permissions are denied, rerun after granting in System Settings.

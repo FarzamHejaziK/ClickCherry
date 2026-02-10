@@ -118,6 +118,9 @@ description: Step-by-step implementation plan with code scope, automated tests, 
 
 ### Manual test
 - Run at least one extracted task using `Run Task` and confirm real desktop actions execute.
+- While the run is executing, confirm:
+  - a centered "agent running" overlay appears.
+  - using the mouse/keyboard cancels the run and hides the overlay.
 - Validate a multi-app flow where the runner opens an app and performs click/type steps.
 - Trigger an ambiguity/failure case and confirm `HEARTBEAT.md` receives unresolved blocking question(s).
 - Answer the generated question in-app, rerun, and confirm progression.

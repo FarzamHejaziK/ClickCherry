@@ -136,6 +136,89 @@ private final class AlwaysGrantedPermissionService: PermissionService {
     }
 }
 
+private final class MockAgentControlOverlayService: AgentControlOverlayService {
+    private(set) var showCount = 0
+    private(set) var hideCount = 0
+
+    func showAgentInControl() {
+        showCount += 1
+    }
+
+    func hideAgentInControl() {
+        hideCount += 1
+    }
+}
+
+private final class MockUserInterruptionMonitor: UserInterruptionMonitor {
+    private(set) var startCount = 0
+    private(set) var stopCount = 0
+    var shouldStartSucceed = true
+    private var handler: (() -> Void)?
+
+    func start(onUserInterruption: @escaping () -> Void) -> Bool {
+        startCount += 1
+        handler = onUserInterruption
+        return shouldStartSucceed
+    }
+
+    func stop() {
+        stopCount += 1
+    }
+
+    func triggerUserInterruption() {
+        handler?()
+    }
+}
+
+private final class BlockingAutomationEngine: AutomationEngine {
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<AutomationRunResult, Never>?
+    private var didStartRun = false
+    private var pendingResult: AutomationRunResult?
+
+    func run(taskMarkdown: String) async -> AutomationRunResult {
+        lock.lock()
+        didStartRun = true
+        if let pendingResult {
+            self.pendingResult = nil
+            lock.unlock()
+            return pendingResult
+        }
+        lock.unlock()
+
+        return await withCheckedContinuation { continuation in
+            self.lock.lock()
+            if let pendingResult {
+                self.pendingResult = nil
+                self.lock.unlock()
+                continuation.resume(returning: pendingResult)
+                return
+            }
+            self.continuation = continuation
+            self.lock.unlock()
+        }
+    }
+
+    func finish(with result: AutomationRunResult) {
+        lock.lock()
+        let continuation = continuation
+        self.continuation = nil
+        if continuation == nil {
+            pendingResult = result
+        }
+        lock.unlock()
+
+        continuation?.resume(returning: result)
+    }
+
+    func hasStarted() -> Bool {
+        lock.lock()
+        let value = didStartRun
+        lock.unlock()
+        return value
+    }
+}
+
 struct MainShellStateStoreTests {
     @Test
     func selectTaskLoadsHeartbeatMarkdown() throws {
@@ -747,5 +830,67 @@ struct MainShellStateStoreTests {
         let persisted = try taskService.readHeartbeat(taskId: task.id)
         #expect(persisted.contains("- [required] Which account should I use?"))
         #expect(store.runStatusMessage == "Run needs clarification. HEARTBEAT.md was updated with follow-up questions.")
+    }
+
+    @Test
+    func startRunTaskNowShowsOverlayAndCancelsOnUserInterruption() async throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let task = try taskService.createTask(title: "Agent control cancel task")
+
+        let engine = BlockingAutomationEngine()
+        let overlay = MockAgentControlOverlayService()
+        let monitor = MockUserInterruptionMonitor()
+
+        let store = MainShellStateStore(
+            taskService: taskService,
+            automationEngine: engine,
+            apiKeyStore: MockAPIKeyStore(),
+            permissionService: AlwaysGrantedPermissionService(),
+            captureService: MockRecordingCaptureService(),
+            overlayService: MockRecordingOverlayService(),
+            agentControlOverlayService: overlay,
+            userInterruptionMonitor: monitor
+        )
+
+        store.reloadTasks()
+        store.selectTask(task.id)
+
+        store.startRunTaskNow()
+        #expect(store.isRunningTask == true)
+        #expect(overlay.showCount == 1)
+        #expect(monitor.startCount == 1)
+
+        monitor.triggerUserInterruption()
+        await Task.yield()
+
+        #expect(store.runStatusMessage == "Cancelling (user input detected)...")
+        #expect(overlay.hideCount >= 1)
+        #expect(monitor.stopCount >= 1)
+
+        engine.finish(
+            with: AutomationRunResult(
+                outcome: .cancelled,
+                executedSteps: [],
+                generatedQuestions: [],
+                errorMessage: nil,
+                llmSummary: nil
+            )
+        )
+
+        for _ in 0..<50 {
+            if store.isRunningTask == false { break }
+            await Task.yield()
+        }
+        #expect(store.isRunningTask == false)
+        #expect(store.runStatusMessage == "Run cancelled.")
     }
 }

@@ -219,6 +219,21 @@ private struct PermissionsStepView: View {
             )
             VStack(alignment: .leading, spacing: 8) {
                 permissionRow(
+                    title: "Input Monitoring",
+                    status: onboardingStateStore.inputMonitoringStatus,
+                    onOpenSettings: {
+                        onboardingStateStore.openPermissionSettings(for: .inputMonitoring)
+                    },
+                    onCheckStatus: {
+                        onboardingStateStore.refreshPermissionStatus(for: .inputMonitoring)
+                    }
+                )
+                Text("Needed so the app can stop an agent run when you use your mouse/keyboard.")
+                    .foregroundStyle(.secondary)
+                    .font(.footnote)
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                permissionRow(
                     title: "Automation",
                     status: onboardingStateStore.automationStatus,
                     onOpenSettings: {

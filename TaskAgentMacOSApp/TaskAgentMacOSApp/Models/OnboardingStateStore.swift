@@ -36,6 +36,7 @@ final class OnboardingStateStore {
     var providerSetupState: ProviderSetupState
     var screenRecordingStatus: PermissionGrantStatus
     var accessibilityStatus: PermissionGrantStatus
+    var inputMonitoringStatus: PermissionGrantStatus
     var automationStatus: PermissionGrantStatus
     var hasCompletedOnboarding: Bool
     var persistenceErrorMessage: String?
@@ -48,6 +49,7 @@ final class OnboardingStateStore {
         providerSetupState: ProviderSetupState? = nil,
         hasScreenRecordingPermission: Bool = false,
         hasAccessibilityPermission: Bool = false,
+        hasInputMonitoringPermission: Bool = false,
         hasAutomationPermission: Bool = false,
         hasCompletedOnboarding: Bool? = nil
     ) {
@@ -58,6 +60,7 @@ final class OnboardingStateStore {
         self.providerSetupState = providerSetupState ?? Self.loadProviderSetupState(from: keyStore)
         self.screenRecordingStatus = hasScreenRecordingPermission ? .granted : .notGranted
         self.accessibilityStatus = hasAccessibilityPermission ? .granted : .notGranted
+        self.inputMonitoringStatus = hasInputMonitoringPermission ? .granted : .notGranted
         self.automationStatus = hasAutomationPermission ? .granted : .notGranted
         self.hasCompletedOnboarding = hasCompletedOnboarding ?? completionStore.hasCompletedOnboarding
         self.persistenceErrorMessage = nil
@@ -74,6 +77,7 @@ final class OnboardingStateStore {
     var areRequiredPermissionsGranted: Bool {
         screenRecordingStatus == .granted
             && accessibilityStatus == .granted
+            && inputMonitoringStatus == .granted
             && automationStatus == .granted
     }
 
@@ -165,6 +169,8 @@ final class OnboardingStateStore {
             screenRecordingStatus = status
         case .accessibility:
             accessibilityStatus = status
+        case .inputMonitoring:
+            inputMonitoringStatus = status
         case .automation:
             if status != .unknown {
                 automationStatus = status
@@ -179,6 +185,7 @@ final class OnboardingStateStore {
     func enablePermissionTestingBypass() {
         screenRecordingStatus = .granted
         accessibilityStatus = .granted
+        inputMonitoringStatus = .granted
         automationStatus = .granted
     }
 

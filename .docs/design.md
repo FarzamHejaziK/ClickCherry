@@ -203,6 +203,18 @@ This means: if the agent still has unresolved questions, should execution stop o
 - The app must not synthesize local click/type/shortcut/scroll action plans outside model-issued tool calls.
 - If tool output is invalid, missing, or ambiguous, the run must stop and append clarification question(s) to `HEARTBEAT.md` instead of guessing.
 
+## Execution takeover UX (locked: 2026-02-10)
+
+- While a run is executing, the app must show a centered on-screen HUD overlay indicating the agent is running and in control.
+- If the user provides any mouse/keyboard input (including scroll), the app must cancel the run immediately and hide the HUD overlay.
+- Implementation details:
+  - A global `CGEventTap` monitors user input events.
+  - The desktop action executor tags injected CGEvents with a sentinel `eventSourceUserData` value so the interruption monitor ignores synthetic events (avoid self-cancel).
+- Permission requirements for this UX:
+  - Screen Recording: screenshots for the tool loop.
+  - Accessibility: inject clicks/keys.
+  - Input Monitoring: detect user takeover to cancel.
+
 ## Step 4 implementation status (update: 2026-02-09)
 
 - Implemented in this increment:

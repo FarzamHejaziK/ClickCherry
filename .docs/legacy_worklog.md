@@ -1476,3 +1476,23 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
 - Result: Complete; trace entries can be selected and copied without relying on the `Copy Trace` button.
 - Issues/blockers:
   - None.
+
+## Entry
+- Date: 2026-02-09
+- Step: Diagnostics trace copy + execution permission preflight (incremental)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`:
+    - added execution preflight for Screen Recording + Accessibility before starting `Run Task`.
+    - added `copyExecutionTraceToPasteboard(...)` to copy recent trace lines to clipboard.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/RootView.swift`:
+    - added `Copy Trace` button in Diagnostics trace section.
+    - added a status line confirming clipboard copy succeeded.
+- Automated tests run:
+  - `find TaskAgentMacOSApp/TaskAgentMacOSApp -name '*.swift' -print0 | xargs -0 xcrun swiftc -typecheck -module-cache-path /tmp/swift-modcache` (pass).
+- Manual tests run:
+  - Manual source walkthrough confirming:
+    - permission preflight blocks run start and opens System Settings when not granted.
+    - trace copy formats lines and writes to `NSPasteboard.general`.
+- Result: Complete; runs now prompt for required permissions up front, and trace logs can be copied for debugging.
+- Issues/blockers:
+  - Accessibility/Screen Recording prompts depend on stable app identity (bundle id + signing); if permissions are denied, rerun after granting in System Settings.

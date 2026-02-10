@@ -125,6 +125,9 @@ struct SystemDesktopActionExecutor: DesktopActionExecutor {
         else {
             throw DesktopActionExecutorError.clickInjectionFailed
         }
+        markSynthetic(move)
+        markSynthetic(down)
+        markSynthetic(up)
         move.post(tap: .cghidEventTap)
         down.post(tap: .cghidEventTap)
         up.post(tap: .cghidEventTap)
@@ -135,6 +138,7 @@ struct SystemDesktopActionExecutor: DesktopActionExecutor {
         guard let move = CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: point, mouseButton: .left) else {
             throw DesktopActionExecutorError.mouseMoveInjectionFailed
         }
+        markSynthetic(move)
         move.post(tap: .cghidEventTap)
     }
 
@@ -147,6 +151,9 @@ struct SystemDesktopActionExecutor: DesktopActionExecutor {
         else {
             throw DesktopActionExecutorError.rightClickInjectionFailed
         }
+        markSynthetic(move)
+        markSynthetic(down)
+        markSynthetic(up)
         move.post(tap: .cghidEventTap)
         down.post(tap: .cghidEventTap)
         up.post(tap: .cghidEventTap)
@@ -165,6 +172,7 @@ struct SystemDesktopActionExecutor: DesktopActionExecutor {
         ) else {
             throw DesktopActionExecutorError.scrollInjectionFailed
         }
+        markSynthetic(event)
         event.post(tap: .cghidEventTap)
     }
 
@@ -184,6 +192,8 @@ struct SystemDesktopActionExecutor: DesktopActionExecutor {
         else {
             throw DesktopActionExecutorError.keyInjectionFailed
         }
+        markSynthetic(down)
+        markSynthetic(up)
         down.flags = flags
         up.flags = flags
         down.post(tap: .cghidEventTap)
@@ -202,6 +212,8 @@ struct SystemDesktopActionExecutor: DesktopActionExecutor {
             else {
                 throw DesktopActionExecutorError.typeInjectionFailed
             }
+            markSynthetic(down)
+            markSynthetic(up)
 
             utf16.withUnsafeBufferPointer { buffer in
                 guard let base = buffer.baseAddress else { return }
@@ -213,6 +225,10 @@ struct SystemDesktopActionExecutor: DesktopActionExecutor {
             down.post(tap: .cghidEventTap)
             up.post(tap: .cghidEventTap)
         }
+    }
+
+    private func markSynthetic(_ event: CGEvent) {
+        event.setIntegerValueField(.eventSourceUserData, value: DesktopEventSignature.syntheticEventUserData)
     }
 
     private struct PasteboardSnapshot {

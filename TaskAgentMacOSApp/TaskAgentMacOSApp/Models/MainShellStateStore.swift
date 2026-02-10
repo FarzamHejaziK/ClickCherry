@@ -12,6 +12,8 @@ final class MainShellStateStore {
     private let permissionService: any PermissionService
     private let captureService: any RecordingCaptureService
     private let overlayService: any RecordingOverlayService
+    private let agentControlOverlayService: any AgentControlOverlayService
+    private let userInterruptionMonitor: any UserInterruptionMonitor
     private let llmCallRecorder: LLMCallRecorder
     private let executionTraceRecorder: ExecutionTraceRecorder
     private var runTaskHandle: Task<Void, Never>?
@@ -59,7 +61,9 @@ final class MainShellStateStore {
         apiKeyStore: any APIKeyStore = KeychainAPIKeyStore(),
         permissionService: any PermissionService = MacPermissionService(),
         captureService: any RecordingCaptureService = ShellRecordingCaptureService(),
-        overlayService: any RecordingOverlayService = ScreenRecordingOverlayService()
+        overlayService: any RecordingOverlayService = ScreenRecordingOverlayService(),
+        agentControlOverlayService: any AgentControlOverlayService = HUDWindowAgentControlOverlayService(),
+        userInterruptionMonitor: any UserInterruptionMonitor = QuartzUserInterruptionMonitor()
     ) {
         let callRecorder = LLMCallRecorder(maxEntries: 200)
         let traceRecorder = ExecutionTraceRecorder(maxEntries: 400)
@@ -83,6 +87,8 @@ final class MainShellStateStore {
         )
         self.captureService = captureService
         self.overlayService = overlayService
+        self.agentControlOverlayService = agentControlOverlayService
+        self.userInterruptionMonitor = userInterruptionMonitor
         self.llmCallRecorder = callRecorder
         self.executionTraceRecorder = traceRecorder
         self.runTaskHandle = nil
@@ -608,6 +614,20 @@ final class MainShellStateStore {
         let startedAt = Date()
 
         executionTraceRecorder.record(ExecutionTraceEntry(kind: .info, message: "Run requested for task \(selectedTaskID)."))
+        agentControlOverlayService.showAgentInControl()
+
+        let didStartMonitor = userInterruptionMonitor.start { [weak self] in
+            self?.handleUserInterruptionDuringRun()
+        }
+        if !didStartMonitor {
+            agentControlOverlayService.hideAgentInControl()
+            isRunningTask = false
+            runStatusMessage = nil
+            errorMessage =
+                "Failed to start user-interruption monitoring. To ensure the agent stops when you take over, enable TaskAgentMacOSApp in System Settings > Privacy & Security > Input Monitoring (and Accessibility)."
+            executionTraceRecorder.record(ExecutionTraceEntry(kind: .error, message: "Failed to start user-interruption monitor."))
+            return
+        }
 
         // Run off the main actor to avoid blocking UI; cancellation is supported via `runTaskHandle.cancel()`.
         let taskMarkdown = heartbeatMarkdown
@@ -648,6 +668,8 @@ final class MainShellStateStore {
         guard isRunningTask else {
             return
         }
+        agentControlOverlayService.hideAgentInControl()
+        userInterruptionMonitor.stop()
         runStatusMessage = "Cancelling..."
         executionTraceRecorder.record(ExecutionTraceEntry(kind: .cancelled, message: "Cancel requested by user."))
         runTaskHandle?.cancel()
@@ -658,6 +680,9 @@ final class MainShellStateStore {
             isRunningTask = false
             runTaskHandle = nil
         }
+
+        agentControlOverlayService.hideAgentInControl()
+        userInterruptionMonitor.stop()
 
         var heartbeatChanged = false
         if result.outcome != .cancelled, !result.generatedQuestions.isEmpty {
@@ -709,6 +734,18 @@ final class MainShellStateStore {
         }
     }
 
+    private func handleUserInterruptionDuringRun() {
+        guard isRunningTask else {
+            return
+        }
+
+        agentControlOverlayService.hideAgentInControl()
+        userInterruptionMonitor.stop()
+        runStatusMessage = "Cancelling (user input detected)..."
+        executionTraceRecorder.record(ExecutionTraceEntry(kind: .cancelled, message: "User input detected; cancelling run."))
+        runTaskHandle?.cancel()
+    }
+
     private func ensureExecutionPermissions() -> Bool {
         let screenRecording = permissionService.requestAccessIfNeeded(for: .screenRecording)
         if screenRecording != .granted {
@@ -725,6 +762,15 @@ final class MainShellStateStore {
             errorMessage = "Accessibility permission is required to perform clicks and typing. Enable TaskAgentMacOSApp in System Settings > Privacy & Security > Accessibility."
             executionTraceRecorder.record(ExecutionTraceEntry(kind: .error, message: "Missing Accessibility permission."))
             permissionService.openSystemSettings(for: .accessibility)
+            return false
+        }
+
+        let inputMonitoring = permissionService.requestAccessIfNeeded(for: .inputMonitoring)
+        if inputMonitoring != .granted {
+            runStatusMessage = nil
+            errorMessage = "Input Monitoring permission is required to stop the agent when you take over. Enable TaskAgentMacOSApp in System Settings > Privacy & Security > Input Monitoring."
+            executionTraceRecorder.record(ExecutionTraceEntry(kind: .error, message: "Missing Input Monitoring permission."))
+            permissionService.openSystemSettings(for: .inputMonitoring)
             return false
         }
 

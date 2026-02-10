@@ -6,6 +6,7 @@ import Foundation
 enum AppPermission: Equatable {
     case screenRecording
     case accessibility
+    case inputMonitoring
     case automation
 }
 
@@ -59,6 +60,8 @@ final class MacPermissionService: PermissionService {
             return CGPreflightScreenCaptureAccess() ? .granted : .notGranted
         case .accessibility:
             return AXIsProcessTrusted() ? .granted : .notGranted
+        case .inputMonitoring:
+            return CGPreflightListenEventAccess() ? .granted : .notGranted
         case .automation:
             // Generic automation status cannot be reliably preflighted without a target app.
             return .unknown
@@ -81,6 +84,12 @@ final class MacPermissionService: PermissionService {
             let options = [promptKey: true] as CFDictionary
             _ = AXIsProcessTrustedWithOptions(options)
             return AXIsProcessTrusted() ? .granted : .notGranted
+        case .inputMonitoring:
+            if CGPreflightListenEventAccess() {
+                return .granted
+            }
+            _ = CGRequestListenEventAccess()
+            return CGPreflightListenEventAccess() ? .granted : .notGranted
         case .automation:
             // Generic automation status cannot be reliably preflighted without a target app.
             return .unknown
@@ -98,6 +107,11 @@ final class MacPermissionService: PermissionService {
         case .accessibility:
             return [
                 "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+                "x-apple.systempreferences:com.apple.preference.security?Privacy"
+            ]
+        case .inputMonitoring:
+            return [
+                "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent",
                 "x-apple.systempreferences:com.apple.preference.security?Privacy"
             ]
         case .automation:
