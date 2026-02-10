@@ -121,6 +121,8 @@ description: Step-by-step implementation plan with code scope, automated tests, 
 - While the run is executing, confirm:
   - a centered "agent running" overlay appears.
   - pressing `Escape` cancels the run and hides the overlay.
+- Confirm clicking `Run Task` minimizes the app window immediately (agent overlay remains visible).
+- Confirm the agent overlay is not present in the screenshots sent to the LLM (no overlay visible in agent behavior / screenshots used for navigation).
 - Validate a multi-app flow where the runner opens an app and performs click/type steps.
 - Trigger an ambiguity/failure case and confirm `HEARTBEAT.md` receives unresolved blocking question(s).
 - Answer the generated question in-app, rerun, and confirm progression.

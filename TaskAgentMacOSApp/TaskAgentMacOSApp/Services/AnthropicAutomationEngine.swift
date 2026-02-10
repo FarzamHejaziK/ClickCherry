@@ -562,6 +562,8 @@ final class AnthropicComputerUseRunner: LLMExecutionToolLoopRunner {
         sleepNanoseconds: @escaping @Sendable (UInt64) async -> Void = { nanos in
             try? await Task.sleep(nanoseconds: nanos)
         },
+        beforeScreenshotCapture: (@Sendable () -> Void)? = nil,
+        afterScreenshotCapture: (@Sendable () -> Void)? = nil,
         screenshotProvider: @escaping () throws -> AnthropicCapturedScreenshot = AnthropicComputerUseRunner.captureMainDisplayScreenshot
     ) {
         self.apiKeyStore = apiKeyStore
@@ -572,7 +574,11 @@ final class AnthropicComputerUseRunner: LLMExecutionToolLoopRunner {
         self.session = session
         self.transportRetryPolicy = transportRetryPolicy
         self.sleepNanoseconds = sleepNanoseconds
-        self.screenshotProvider = screenshotProvider
+        self.screenshotProvider = {
+            beforeScreenshotCapture?()
+            defer { afterScreenshotCapture?() }
+            return try screenshotProvider()
+        }
     }
 
     func runToolLoop(taskMarkdown: String, executor: any DesktopActionExecutor) async throws -> AutomationRunResult {

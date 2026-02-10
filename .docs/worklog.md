@@ -8,6 +8,27 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-10
+- Step: Minimize app on run + hide agent overlay during screenshots + increase overlay transparency (incremental)
+- Changes made:
+  - Minimize the main app window immediately after clicking `Run Task` so the agent can operate unobstructed:
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/RootView.swift`.
+  - Made the “Agent is running” HUD overlay more transparent and reduced flicker by reusing the same window across hide/show:
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AgentControlOverlayService.swift`.
+  - Temporarily hide the HUD overlay during screenshot capture so it is not present in images sent to the LLM tool loop:
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AnthropicAutomationEngine.swift`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift` to wire screenshot capture hooks.
+  - Updated docs to reflect minimized-window and overlay-not-in-screenshot behavior:
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - N/A (requires running the app and observing window minimization + overlay visibility).
+- Result: Run start minimizes the app, overlay is less intrusive, and the LLM no longer sees the overlay in screenshots.
+
+## Entry
+- Date: 2026-02-10
 - Step: Make “agent running” overlay more transparent + cancel only on Escape (incremental)
 - Changes made:
   - Updated “Agent is running” HUD overlay to be more transparent and updated messaging to “Press Escape to stop”:
@@ -200,21 +221,4 @@ description: Running implementation log of completed work, test evidence, blocke
 - Result: Expanded supported desktop actions and improved real-run compatibility with model-returned coordinate schemas; unit test coverage now explicitly exercises all supported actions.
 - Issues/blockers:
   - Key injection reliability and coordinate translation may still block real desktop progress; tracked in `OI-2026-02-09-006`.
-
-## Entry
-- Date: 2026-02-09
-- Step: Diagnose “LLM calls but no actions” execution blockage (incremental)
-- Changes made:
-  - Documentation-only checkpoint capturing current runtime blocker from live Execution Trace logs:
-    - tool loop produces `tool_use` blocks and screenshots, but local action execution fails to progress.
-    - `computer.key("cmd+space")` fails with `DesktopActionExecutorError` (likely shortcut mapping and/or System Events automation permission path).
-    - repeated `computer.left_click(...)` fails due to missing top-level `x`/`y` fields (tool input schema mismatch).
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md` with `OI-2026-02-09-006` describing repro + next actions.
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md` with concrete fixes/tests to unblock execution.
-- Automated tests run: N/A (docs-only)
-- Manual tests run:
-  - Observed live run Execution Trace showing tool_use -> local execution errors and repeated invalid click inputs.
-- Result: Captured; next implementation work should focus on tool input decoding + reliable key/click execution.
-- Issues/blockers:
-  - Execution remains blocked until tool schema and local executor issues are resolved.
 

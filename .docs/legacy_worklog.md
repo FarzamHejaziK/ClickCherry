@@ -1522,3 +1522,20 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
 - Result: Complete; execution runs can now be cancelled, and the app surfaces tool-loop responses and executed actions in-app for debugging.
 - Issues/blockers:
   - Local UI validation still required to confirm tool_use traces match observed on-screen actions during real runs.
+
+## Entry
+- Date: 2026-02-09
+- Step: Diagnose “LLM calls but no actions” execution blockage (incremental)
+- Changes made:
+  - Documentation-only checkpoint capturing current runtime blocker from live Execution Trace logs:
+    - tool loop produces `tool_use` blocks and screenshots, but local action execution fails to progress.
+    - `computer.key("cmd+space")` fails with `DesktopActionExecutorError` (likely shortcut mapping and/or System Events automation permission path).
+    - repeated `computer.left_click(...)` fails due to missing top-level `x`/`y` fields (tool input schema mismatch).
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md` with `OI-2026-02-09-006` describing repro + next actions.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md` with concrete fixes/tests to unblock execution.
+- Automated tests run: N/A (docs-only)
+- Manual tests run:
+  - Observed live run Execution Trace showing tool_use -> local execution errors and repeated invalid click inputs.
+- Result: Captured; next implementation work should focus on tool input decoding + reliable key/click execution.
+- Issues/blockers:
+  - Execution remains blocked until tool schema and local executor issues are resolved.

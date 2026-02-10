@@ -59,6 +59,7 @@ description: Short, continuously updated plan of the immediate next implementati
    - While the run is executing, confirm:
      - a centered "Agent is running" overlay is visible.
      - pressing `Escape` cancels the run and the overlay disappears.
+   - Confirm clicking `Run Task` minimizes the app window immediately (agent overlay remains visible).
    - Temporarily revoke Screen Recording, Accessibility, or Input Monitoring permission and confirm clicking `Run Task`:
      - triggers a permission prompt (or opens System Settings)
      - does not start a run until permissions are granted

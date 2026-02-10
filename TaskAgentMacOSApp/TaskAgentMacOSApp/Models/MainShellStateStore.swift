@@ -74,17 +74,34 @@ final class MainShellStateStore {
             llmClient: GeminiVideoLLMClient(apiKeyStore: apiKeyStore)
         )
         self.heartbeatQuestionService = heartbeatQuestionService
-        self.automationEngine = automationEngine ?? AnthropicAutomationEngine(
-            runner: AnthropicComputerUseRunner(
-                apiKeyStore: apiKeyStore,
-                callLogSink: { entry in
-                    callRecorder.record(entry)
-                },
-                traceSink: { entry in
-                    traceRecorder.record(entry)
+        let runner = AnthropicComputerUseRunner(
+            apiKeyStore: apiKeyStore,
+            callLogSink: { entry in
+                callRecorder.record(entry)
+            },
+            traceSink: { entry in
+                traceRecorder.record(entry)
+            },
+            beforeScreenshotCapture: {
+                if Thread.isMainThread {
+                    agentControlOverlayService.hideAgentInControl()
+                } else {
+                    DispatchQueue.main.sync {
+                        agentControlOverlayService.hideAgentInControl()
+                    }
                 }
-            )
+            },
+            afterScreenshotCapture: {
+                if Thread.isMainThread {
+                    agentControlOverlayService.showAgentInControl()
+                } else {
+                    DispatchQueue.main.sync {
+                        agentControlOverlayService.showAgentInControl()
+                    }
+                }
+            }
         )
+        self.automationEngine = automationEngine ?? AnthropicAutomationEngine(runner: runner)
         self.captureService = captureService
         self.overlayService = overlayService
         self.agentControlOverlayService = agentControlOverlayService

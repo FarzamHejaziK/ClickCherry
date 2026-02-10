@@ -681,6 +681,9 @@ private struct MainShellView: View {
 
                             Button(mainShellStateStore.isRunningTask ? "Running..." : "Run Task") {
                                 mainShellStateStore.startRunTaskNow()
+                                if mainShellStateStore.isRunningTask {
+                                    minimizeAppWindowsForRun()
+                                }
                             }
                             .buttonStyle(.borderedProminent)
                             .disabled(mainShellStateStore.isRunningTask || mainShellStateStore.isExtractingTask)
@@ -952,6 +955,16 @@ private struct MainShellView: View {
                     .buttonStyle(.bordered)
                     .disabled(!saved)
             }
+        }
+    }
+
+    private func minimizeAppWindowsForRun() {
+        // Minimize the main UI windows so the agent can operate without the app covering the desktop.
+        // Keep overlay windows (borderless/HUD) visible.
+        for window in NSApplication.shared.windows {
+            guard window.isVisible else { continue }
+            guard window.styleMask.contains(.titled) else { continue }
+            window.miniaturize(nil)
         }
     }
 

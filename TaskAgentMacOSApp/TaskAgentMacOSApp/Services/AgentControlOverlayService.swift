@@ -16,27 +16,20 @@ final class HUDWindowAgentControlOverlayService: AgentControlOverlayService {
             return
         }
 
-        hideAgentInControl()
+        let targetScreen = preferredScreen()
+        let size = NSSize(width: 360, height: 84)
+        let frame = centeredFrame(size: size, on: targetScreen.visibleFrame)
 
-        let mouseLocation = NSEvent.mouseLocation
-        let screen = NSScreen.screens.first(where: { $0.frame.contains(mouseLocation) })
-            ?? NSScreen.main
-            ?? NSScreen.screens.first
-        guard let screen else { return }
+        if let window = overlayWindow {
+            window.setFrame(frame, display: true)
+            window.orderFrontRegardless()
+            return
+        }
 
-        let size = NSSize(width: 420, height: 92)
-        let frame = centeredFrame(size: size, on: screen.visibleFrame)
-
-        let window = NSWindow(
-            contentRect: frame,
-            styleMask: .borderless,
-            backing: .buffered,
-            defer: false,
-            screen: screen
-        )
+        let window = NSWindow(contentRect: frame, styleMask: .borderless, backing: .buffered, defer: false, screen: targetScreen)
         window.isOpaque = false
         window.backgroundColor = .clear
-        window.alphaValue = 0.92
+        window.alphaValue = 0.70
         window.hasShadow = true
         window.ignoresMouseEvents = true
         window.level = .statusBar
@@ -57,7 +50,6 @@ final class HUDWindowAgentControlOverlayService: AgentControlOverlayService {
         }
 
         overlayWindow?.orderOut(nil)
-        overlayWindow = nil
     }
 
     private func centeredFrame(size: NSSize, on container: NSRect) -> NSRect {
@@ -72,9 +64,9 @@ final class HUDWindowAgentControlOverlayService: AgentControlOverlayService {
     private func makeContentView(size: NSSize) -> NSView {
         let root = NSVisualEffectView(frame: NSRect(origin: .zero, size: size))
         root.material = .hudWindow
-        root.blendingMode = .behindWindow
+        root.blendingMode = .withinWindow
         root.state = .active
-        root.alphaValue = 0.78
+        root.alphaValue = 0.55
         root.wantsLayer = true
         root.layer?.cornerRadius = 14
         root.layer?.masksToBounds = true
@@ -110,5 +102,18 @@ final class HUDWindowAgentControlOverlayService: AgentControlOverlayService {
         ])
 
         return root
+    }
+
+    private func preferredScreen() -> NSScreen {
+        let screens = NSScreen.screens
+        let mouseLocation = NSEvent.mouseLocation
+        if let screen = screens.first(where: { $0.frame.contains(mouseLocation) }) {
+            return screen
+        }
+        if let screen = NSScreen.main {
+            return screen
+        }
+        // There is always at least one screen.
+        return screens[0]
     }
 }
