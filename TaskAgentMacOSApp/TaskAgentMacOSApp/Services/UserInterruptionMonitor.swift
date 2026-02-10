@@ -13,6 +13,7 @@ final class QuartzUserInterruptionMonitor: UserInterruptionMonitor {
     private var didTrigger: Bool = false
     private var onUserInterruption: (() -> Void)?
     private let lock = NSLock()
+    private let escapeKeyCode: Int64 = 53 // kVK_Escape
 
     func start(onUserInterruption: @escaping () -> Void) -> Bool {
         guard Thread.isMainThread else {
@@ -30,16 +31,8 @@ final class QuartzUserInterruptionMonitor: UserInterruptionMonitor {
         self.onUserInterruption = onUserInterruption
         lock.unlock()
 
-        let types: [CGEventType] = [
-            .leftMouseDown, .leftMouseUp,
-            .rightMouseDown, .rightMouseUp,
-            .otherMouseDown, .otherMouseUp,
-            .mouseMoved,
-            .leftMouseDragged, .rightMouseDragged, .otherMouseDragged,
-            .scrollWheel,
-            .keyDown, .keyUp,
-            .flagsChanged
-        ]
+        // Only cancel when user presses Escape (explicit takeover).
+        let types: [CGEventType] = [.keyDown]
         let mask = Self.mask(for: types)
         let refcon = UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque())
         guard let tap = CGEvent.tapCreate(
@@ -108,6 +101,17 @@ final class QuartzUserInterruptionMonitor: UserInterruptionMonitor {
             if let tap = eventTap {
                 CGEvent.tapEnable(tap: tap, enable: true)
             }
+            return Unmanaged.passUnretained(event)
+        }
+
+        if type == .keyDown {
+            // Only Escape should stop the run.
+            let keycode = event.getIntegerValueField(.keyboardEventKeycode)
+            if keycode != escapeKeyCode {
+                return Unmanaged.passUnretained(event)
+            }
+        } else {
+            // Should not happen (we only listen to `.keyDown`), but keep safe behavior.
             return Unmanaged.passUnretained(event)
         }
 

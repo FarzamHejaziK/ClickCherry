@@ -624,7 +624,7 @@ final class MainShellStateStore {
             isRunningTask = false
             runStatusMessage = nil
             errorMessage =
-                "Failed to start user-interruption monitoring. To ensure the agent stops when you take over, enable TaskAgentMacOSApp in System Settings > Privacy & Security > Input Monitoring (and Accessibility)."
+                "Failed to start escape-key monitoring. To ensure the agent can be stopped via Escape, enable TaskAgentMacOSApp in System Settings > Privacy & Security > Input Monitoring (and Accessibility)."
             executionTraceRecorder.record(ExecutionTraceEntry(kind: .error, message: "Failed to start user-interruption monitor."))
             return
         }
@@ -741,8 +741,8 @@ final class MainShellStateStore {
 
         agentControlOverlayService.hideAgentInControl()
         userInterruptionMonitor.stop()
-        runStatusMessage = "Cancelling (user input detected)..."
-        executionTraceRecorder.record(ExecutionTraceEntry(kind: .cancelled, message: "User input detected; cancelling run."))
+        runStatusMessage = "Cancelling (Escape pressed)..."
+        executionTraceRecorder.record(ExecutionTraceEntry(kind: .cancelled, message: "Escape pressed; cancelling run."))
         runTaskHandle?.cancel()
     }
 

@@ -206,9 +206,9 @@ This means: if the agent still has unresolved questions, should execution stop o
 ## Execution takeover UX (locked: 2026-02-10)
 
 - While a run is executing, the app must show a centered on-screen HUD overlay indicating the agent is running and in control.
-- If the user provides any mouse/keyboard input (including scroll), the app must cancel the run immediately and hide the HUD overlay.
+- The run is cancelled when the user presses `Escape` (explicit takeover), and the HUD overlay is hidden.
 - Implementation details:
-  - A global `CGEventTap` monitors user input events.
+  - A global `CGEventTap` monitors `keyDown` and triggers only on `Escape`.
   - The desktop action executor tags injected CGEvents with a sentinel `eventSourceUserData` value so the interruption monitor ignores synthetic events (avoid self-cancel).
 - Permission requirements for this UX:
   - Screen Recording: screenshots for the tool loop.

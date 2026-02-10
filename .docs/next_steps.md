@@ -58,7 +58,7 @@ description: Short, continuously updated plan of the immediate next implementati
      - no new questions are appended into `HEARTBEAT.md` for the cancelled run.
    - While the run is executing, confirm:
      - a centered "Agent is running" overlay is visible.
-     - using the mouse/keyboard cancels the run and the overlay disappears.
+     - pressing `Escape` cancels the run and the overlay disappears.
    - Temporarily revoke Screen Recording, Accessibility, or Input Monitoring permission and confirm clicking `Run Task`:
      - triggers a permission prompt (or opens System Settings)
      - does not start a run until permissions are granted

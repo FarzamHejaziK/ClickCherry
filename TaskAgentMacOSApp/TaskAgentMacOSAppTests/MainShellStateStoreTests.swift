@@ -833,7 +833,7 @@ struct MainShellStateStoreTests {
     }
 
     @Test
-    func startRunTaskNowShowsOverlayAndCancelsOnUserInterruption() async throws {
+    func startRunTaskNowShowsOverlayAndCancelsOnEscapeKey() async throws {
         let fm = FileManager.default
         let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
@@ -872,7 +872,7 @@ struct MainShellStateStoreTests {
         monitor.triggerUserInterruption()
         await Task.yield()
 
-        #expect(store.runStatusMessage == "Cancelling (user input detected)...")
+        #expect(store.runStatusMessage == "Cancelling (Escape pressed)...")
         #expect(overlay.hideCount >= 1)
         #expect(monitor.stopCount >= 1)
 

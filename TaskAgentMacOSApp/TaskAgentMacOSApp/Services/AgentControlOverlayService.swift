@@ -36,6 +36,7 @@ final class HUDWindowAgentControlOverlayService: AgentControlOverlayService {
         )
         window.isOpaque = false
         window.backgroundColor = .clear
+        window.alphaValue = 0.92
         window.hasShadow = true
         window.ignoresMouseEvents = true
         window.level = .statusBar
@@ -73,6 +74,7 @@ final class HUDWindowAgentControlOverlayService: AgentControlOverlayService {
         root.material = .hudWindow
         root.blendingMode = .behindWindow
         root.state = .active
+        root.alphaValue = 0.78
         root.wantsLayer = true
         root.layer?.cornerRadius = 14
         root.layer?.masksToBounds = true
@@ -86,7 +88,7 @@ final class HUDWindowAgentControlOverlayService: AgentControlOverlayService {
         title.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
         title.textColor = .labelColor
 
-        let subtitle = NSTextField(labelWithString: "Any mouse/keyboard input will stop it")
+        let subtitle = NSTextField(labelWithString: "Press Escape to stop")
         subtitle.font = NSFont.systemFont(ofSize: 12, weight: .regular)
         subtitle.textColor = .secondaryLabelColor
 

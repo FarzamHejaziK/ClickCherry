@@ -1496,3 +1496,29 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
 - Result: Complete; runs now prompt for required permissions up front, and trace logs can be copied for debugging.
 - Issues/blockers:
   - Accessibility/Screen Recording prompts depend on stable app identity (bundle id + signing); if permissions are denied, rerun after granting in System Settings.
+
+## Entry
+- Date: 2026-02-09
+- Step: Execution run stop button + execution trace logging (incremental)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/Protocols.swift`:
+    - added `AutomationRunOutcome.cancelled`.
+    - added `ExecutionTraceEntry` + `ExecutionTraceKind` for tool-loop observability.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/TaskService.swift`:
+    - run artifact writer now renders `Outcome: CANCELLED` when a run is cancelled.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AnthropicAutomationEngine.swift`:
+    - added cancellation checks and `Task.sleep`-based waits so cancels can interrupt `wait` actions.
+    - added execution trace events for: assistant responses, tool_use blocks, executed local actions, completion, cancellation.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`:
+    - added cancellable detached run task handle.
+    - added `startRunTaskNow()` + `stopRunTask()` and execution trace recorder state for UI.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/RootView.swift`:
+    - added `Stop` button next to `Run Task`.
+    - expanded `Diagnostics` panel to show `Execution Trace` (tool_use + local actions) and added `Clear Trace`.
+- Automated tests run:
+  - `find TaskAgentMacOSApp/TaskAgentMacOSApp -name '*.swift' -print0 | xargs -0 xcrun swiftc -typecheck -module-cache-path /tmp/swift-modcache` (pass).
+- Manual tests run:
+  - Manual source walkthrough of cancellation and trace wiring paths (stop button -> `Task.cancel()` -> runner cancellation checks -> `Run cancelled.` UI status).
+- Result: Complete; execution runs can now be cancelled, and the app surfaces tool-loop responses and executed actions in-app for debugging.
+- Issues/blockers:
+  - Local UI validation still required to confirm tool_use traces match observed on-screen actions during real runs.

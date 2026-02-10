@@ -8,6 +8,26 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-10
+- Step: Make “agent running” overlay more transparent + cancel only on Escape (incremental)
+- Changes made:
+  - Updated “Agent is running” HUD overlay to be more transparent and updated messaging to “Press Escape to stop”:
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AgentControlOverlayService.swift`.
+  - Changed run-cancel trigger from “any user input” to Escape-only (explicit takeover):
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/UserInterruptionMonitor.swift`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`.
+  - Updated docs and tests to match the new Escape-only cancel behavior:
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - N/A (requires running the app and confirming overlay transparency and Escape cancels).
+- Result: Overlay is less intrusive, and runs only cancel on Escape (not on incidental mouse movement/typing).
+
+## Entry
+- Date: 2026-02-10
 - Step: Add “agent running” overlay + stop-on-user-input (incremental)
 - Changes made:
   - Added a centered HUD overlay shown during active runs:
@@ -197,30 +217,4 @@ description: Running implementation log of completed work, test evidence, blocke
 - Result: Captured; next implementation work should focus on tool input decoding + reliable key/click execution.
 - Issues/blockers:
   - Execution remains blocked until tool schema and local executor issues are resolved.
-
-## Entry
-- Date: 2026-02-09
-- Step: Execution run stop button + execution trace logging (incremental)
-- Changes made:
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/Protocols.swift`:
-    - added `AutomationRunOutcome.cancelled`.
-    - added `ExecutionTraceEntry` + `ExecutionTraceKind` for tool-loop observability.
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/TaskService.swift`:
-    - run artifact writer now renders `Outcome: CANCELLED` when a run is cancelled.
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AnthropicAutomationEngine.swift`:
-    - added cancellation checks and `Task.sleep`-based waits so cancels can interrupt `wait` actions.
-    - added execution trace events for: assistant responses, tool_use blocks, executed local actions, completion, cancellation.
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`:
-    - added cancellable detached run task handle.
-    - added `startRunTaskNow()` + `stopRunTask()` and execution trace recorder state for UI.
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/RootView.swift`:
-    - added `Stop` button next to `Run Task`.
-    - expanded `Diagnostics` panel to show `Execution Trace` (tool_use + local actions) and added `Clear Trace`.
-- Automated tests run:
-  - `find TaskAgentMacOSApp/TaskAgentMacOSApp -name '*.swift' -print0 | xargs -0 xcrun swiftc -typecheck -module-cache-path /tmp/swift-modcache` (pass).
-- Manual tests run:
-  - Manual source walkthrough of cancellation and trace wiring paths (stop button -> `Task.cancel()` -> runner cancellation checks -> `Run cancelled.` UI status).
-- Result: Complete; execution runs can now be cancelled, and the app surfaces tool-loop responses and executed actions in-app for debugging.
-- Issues/blockers:
-  - Local UI validation still required to confirm tool_use traces match observed on-screen actions during real runs.
 
