@@ -7,218 +7,253 @@ description: Running implementation log of completed work, test evidence, blocke
 > Previous archived entries are in `/Users/farzamh/code-git-local/task-agent-macos/.docs/legacy_worklog.md`.
 
 ## Entry
-- Date: 2026-02-10
-- Step: Minimize app on run + hide agent overlay during screenshots + increase overlay transparency (incremental)
+- Date: 2026-02-11
+- Step: Add explicit execution-provider toggle (`OpenAI`/`Anthropic`) and selected-provider routing (incremental)
 - Changes made:
-  - Minimize the main app window immediately after clicking `Run Task` so the agent can operate unobstructed:
-    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/RootView.swift`.
-  - Made the “Agent is running” HUD overlay more transparent and reduced flicker by reusing the same window across hide/show:
-    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AgentControlOverlayService.swift`.
-  - Temporarily hide the HUD overlay during screenshot capture so it is not present in images sent to the LLM tool loop:
-    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AnthropicAutomationEngine.swift`.
-    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift` to wire screenshot capture hooks.
-  - Updated docs to reflect minimized-window and overlay-not-in-screenshot behavior:
-    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`
-    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`
-    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
-- Manual tests run:
-  - N/A (requires running the app and observing window minimization + overlay visibility).
-- Result: Run start minimizes the app, overlay is less intrusive, and the LLM no longer sees the overlay in screenshots.
-
-## Entry
-- Date: 2026-02-10
-- Step: Make “agent running” overlay more transparent + cancel only on Escape (incremental)
-- Changes made:
-  - Updated “Agent is running” HUD overlay to be more transparent and updated messaging to “Press Escape to stop”:
-    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AgentControlOverlayService.swift`.
-  - Changed run-cancel trigger from “any user input” to Escape-only (explicit takeover):
-    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/UserInterruptionMonitor.swift`.
-    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`.
-  - Updated docs and tests to match the new Escape-only cancel behavior:
+  - Added explicit execution-provider model + persistence:
+    - new `ExecutionProvider` enum in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/Protocols.swift`.
+    - new `ExecutionProviderSelectionStore` + `UserDefaultsExecutionProviderSelectionStore` in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OnboardingPersistence.swift`.
+  - Updated routing behavior in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/ProviderRoutingAutomationEngine.swift`:
+    - routing now uses selected provider directly.
+    - missing selected-provider key now returns explicit switch/save guidance.
+  - Wired provider selection state into `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`:
+    - added persisted selection load/save.
+    - added selection sync for routing and UI status messaging.
+  - Added main-shell UI toggle in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/RootView.swift`:
+    - segmented control for `OpenAI` vs `Anthropic`.
+    - inline selected-provider key status indicator.
+  - Added/updated tests:
+    - updated routing tests in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests.swift`.
+    - added selection persistence state-store test in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`.
+  - Updated docs:
     - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`.
-    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`.
     - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`.
-    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`.
 - Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests CODE_SIGNING_ALLOWED=NO test` (pass).
   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
 - Manual tests run:
-  - N/A (requires running the app and confirming overlay transparency and Escape cancels).
-- Result: Overlay is less intrusive, and runs only cancel on Escape (not on incidental mouse movement/typing).
+  - N/A (requires local interactive UI run to validate provider-toggle persistence and end-to-end execution-provider switching behavior).
+- Result:
+  - In progress; explicit provider toggle and selected-provider routing are implemented with targeted automated test coverage.
+- Issues/blockers:
+  - None.
 
 ## Entry
-- Date: 2026-02-10
-- Step: Add “agent running” overlay + stop-on-user-input (incremental)
+- Date: 2026-02-11
+- Step: Execution prompt clarification for takeover cursor visualization (incremental)
 - Changes made:
-  - Added a centered HUD overlay shown during active runs:
-    - new `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AgentControlOverlayService.swift`.
-  - Added global user-interruption monitoring (mouse/keyboard/scroll) to cancel a run as soon as the user takes over:
-    - new `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/UserInterruptionMonitor.swift`.
-  - Tagged synthetic CGEvents emitted by the executor so the interruption monitor ignores agent-injected input (prevents self-cancel):
-    - new `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/DesktopEventSignature.swift`.
-    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AnthropicAutomationEngine.swift`.
-  - Wired overlay + interruption monitoring into the run lifecycle (`start`, `finish`, `stop`):
+  - Updated execution-agent prompt guidance in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/execution_agent/prompt.md`:
+    - added explicit instruction that cursor visibility may be enhanced during takeover (larger cursor and/or cursor-following halo).
+    - instructed the model to treat that as pointer visualization, not actionable UI content.
+  - Updated docs for prompt-behavior alignment:
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`.
+- Automated tests run:
+  - `xcrun swiftc -typecheck /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PromptCatalogService.swift` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests/PromptCatalogServiceTests CODE_SIGNING_ALLOWED=NO test` (failed due pre-existing compile error in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomationEngine.swift`: `value of type 'Int' has no member 'map'`).
+- Manual tests run:
+  - N/A (prompt-text update; runtime behavior validation requires local execution run).
+- Result:
+  - In progress; prompt now explicitly informs the LLM how cursor presentation may appear during agent takeover.
+- Issues/blockers:
+  - Existing unrelated compile issue in `OpenAIAutomationEngine.swift` blocks full `xcodebuild test` execution for this increment.
+
+## Entry
+- Date: 2026-02-11
+- Step: Fix takeover cursor visibility when macOS blocks cursor-size writes (incremental)
+- Changes made:
+  - Diagnosed that direct writes to `com.apple.universalaccess` cursor-size preference can fail at runtime (`CFPreferencesAppSynchronize` failure), leaving cursor size unchanged.
+  - Added robust fallback cursor visibility path in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AgentCursorPresentationService.swift`:
+    - keep preferred behavior: temporary system cursor-size increase (target `4.0`) with restore.
+    - new fallback: show a large cursor-following halo overlay during takeover when system preference write is blocked.
+    - remove overlay on run completion/cancel/teardown.
+  - Kept run lifecycle wiring unchanged in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift` (activation/restoration already invoked at takeover boundaries).
+  - Updated docs:
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - N/A (requires local interactive run to visually confirm the halo appears during takeover and disappears after run completion/cancel).
+- Result:
+  - In progress; takeover cursor visibility is now resilient to protected-system-setting write failures.
+
+## Entry
+- Date: 2026-02-11
+- Step: Increase cursor size during agent takeover and restore afterward (incremental)
+- Changes made:
+  - Added takeover cursor presentation service:
+    - new protocol + implementation in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AgentCursorPresentationService.swift`.
+    - implementation snapshots current `mouseDriverCursorSize`, increases cursor size to a takeover target (`4.0`), and restores the prior value on deactivate.
+  - Integrated cursor boost/restore into run lifecycle:
+    - `MainShellStateStore` now injects `agentCursorPresentationService` and activates cursor boost when takeover begins.
+    - cursor restore is now attempted on run completion, user cancel, `Escape` takeover, and monitor-start failure.
     - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`.
-  - Added Input Monitoring permission to onboarding + execution preflight so this behavior is reliable:
-    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`.
-    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/OnboardingStateStore.swift`.
-    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/RootView.swift`.
-  - Added tests for “start run shows overlay and cancels on user interruption”:
+  - Added regression tests for takeover cursor lifecycle:
+    - extended takeover cancel test to assert activation/restoration calls.
+    - added monitor-start-failure test to assert cursor restoration still happens.
     - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
-- Manual tests run:
-  - N/A (requires running the app and confirming overlay visibility + cancellation on real user input).
-- Result: The app visibly indicates when the agent is in control, and immediately cancels if the user touches mouse/keyboard.
-- Issues/blockers:
-  - First-time setup requires granting Input Monitoring in System Settings; runs are blocked until granted.
-
-## Entry
-- Date: 2026-02-10
-- Step: Improve OS-level typing reliability (incremental)
-- Changes made:
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AnthropicAutomationEngine.swift`:
-    - switched typing injection to clipboard-paste (`cmd+v`) with clipboard snapshot/restore, because Spotlight/system UI can ignore CGEvent unicode typing.
-    - clipboard snapshot is best-effort and bounded (up to 4 MB) to avoid large clipboard stalls; plain text is always prioritized.
-    - added an Execution Trace info line before typing to make the clipboard-paste behavior explicit in live runs.
-    - goal: make `computer.type(...)` reliable in Spotlight after `cmd+space` while keeping execution local-first and avoiding AppleScript `System Events`.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
-- Manual tests run:
-  - N/A (requires running the app and verifying Spotlight receives typed text after `cmd+space`).
-- Result: Typing injection is more compatible with system text targets; manual verification pending.
-- Issues/blockers:
-  - Clipboard typing can still be blocked by secure input fields, and it can briefly perturb the clipboard (we restore it, but restoration is best-effort for non-text data).
-
-## Entry
-- Date: 2026-02-10
-- Step: Add `scroll` action + CGEvent keyboard injection + stabilize tool coordinate space (incremental)
-- Changes made:
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AnthropicAutomationEngine.swift`:
-    - implemented `computer.scroll` tool action (delta parsing + CGEvent scroll injection).
-    - switched shortcut injection and text typing to prefer CGEvent-based injection (reducing reliance on AppleScript `System Events` automation permission).
-    - stabilized screenshot payload sizing to prefer downscaling to the system’s CGEvent coordinate space (`CGDisplayBounds`) to avoid Retina capture-pixel mismatches and keep tool coordinates predictable.
-    - improved parsing for `super+space` by treating `super/meta/win` as `cmd`.
-  - Updated unit tests:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/AnthropicComputerUseRunnerTests.swift` to cover scroll dispatch and updated executor mocks for new protocol method.
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/AnthropicAutomationEngineTests.swift` updated mock executor protocol conformance.
   - Updated docs:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md` to mark scroll/shortcut improvements implemented and clarify remaining multi-display/origin validation.
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md` updated `OI-2026-02-09-006` notes to reflect scroll/key improvements (manual verification pending).
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`.
 - Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO test` (pass).
 - Manual tests run:
-  - N/A (requires running the app and confirming `cmd+space` works and `scroll` executes without unsupported-action loops).
-- Result: Tool-loop now supports `scroll`; keyboard shortcuts and typing should be more reliable without requiring `System Events` automation permission.
-- Issues/blockers:
-  - Multi-display coordinate mapping and origin conventions are still not fully validated; tracked in `OI-2026-02-09-006`.
+  - N/A (requires local interactive app run to visually confirm cursor-size increase during takeover and restoration after run end/cancel).
+- Result:
+  - In progress; cursor takeover behavior is implemented and test-covered, pending local visual confirmation.
 
 ## Entry
-- Date: 2026-02-10
-- Step: Fix Retina coordinate mapping for CGEvent injection + keep Anthropic transport retry improvements (incremental)
+- Date: 2026-02-11
+- Step: Add Diagnostics view of exact model-visible screenshots (incremental)
 - Changes made:
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AnthropicAutomationEngine.swift`:
-    - increased transport retry budget (default 5 attempts) and added exponential backoff for transient `URLSession` failures (including `secureConnectionFailed` / `-1200`).
-    - expanded retryable transport errors (`timedOut`, `cannotConnectToHost`, `dnsLookupFailed`, etc.).
-    - added a configurable `TransportRetryPolicy` and injectable sleep hook for deterministic unit testing.
-    - fixed Swift 6 default-isolation warnings by marking screenshot capture/encode helpers `nonisolated`.
-    - fixed coordinate mapping to use the system’s `CGDisplayBounds` coordinate space (logical pixels/points) instead of screenshot capture pixels (Retina captures can be 2x), preventing injected clicks/moves from jumping off-screen.
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/AnthropicComputerUseRunnerTests.swift`:
-    - updated TLS retry tests to match the new retry policy and avoid real delays.
-    - updated screenshot fixtures and coordinate-scaling expectations for the new coordinate-space mapping.
+  - Added LLM screenshot log model and source typing:
+    - new `LLMScreenshotLogEntry` + `LLMScreenshotSource` in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/Protocols.swift`.
+  - Added screenshot logging in Anthropic tool loop:
+    - runner now emits screenshot log entries for initial prompt image and tool-result screenshots.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AnthropicAutomationEngine.swift`.
+  - Wired screenshot log storage into app state:
+    - added `llmScreenshotLog` state, recorder, and clear action in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`.
+  - Updated Diagnostics UI to render model-visible screenshots:
+    - new `LLM Screenshots (exact images sent to model)` section with metadata and previews.
+    - new `Clear LLM Screenshots` button.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/RootView.swift`.
+  - Added regression test:
+    - new test `runToolLoopRecordsLLMScreenshotsThatAreSentToModel`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/AnthropicComputerUseRunnerTests.swift`.
   - Updated docs:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` and `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md` to clarify: desktop-action retries remain `0`, but LLM transport retries are allowed.
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md` updated mitigation notes for `OI-2026-02-09-005`.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests/AnthropicComputerUseRunnerTests CODE_SIGNING_ALLOWED=NO test` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
-- Manual tests run: N/A (requires local runtime with Anthropic connectivity)
-- Result: The app should be more resilient to transient Anthropic TLS handshake failures without immediately failing a run.
-- Issues/blockers:
-  - Persistent `NSURLErrorDomain -1200` across all retry attempts is likely environmental (proxy/VPN/cert inspection/system clock); still tracked in `OI-2026-02-09-005`.
-  - Key injection is still failing via AppleScript `System Events` in some setups; tracked in `OI-2026-02-09-006`.
-
-## Entry
-- Date: 2026-02-10
-- Step: Fix Anthropic 5 MB limit reliably (downscale + JPEG) + coordinate scaling (incremental)
-- Changes made:
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AnthropicAutomationEngine.swift`:
-    - screenshot encoding now deterministically downscales large retina captures (max side 2560) and encodes as JPEG under 5 MB.
-    - runner now scales tool coordinates back up to physical display pixels when screenshots are downscaled (click/move/right-click/double-click).
-    - trace log now includes screenshot media type + byte count and source vs sent dimensions.
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/AnthropicComputerUseRunnerTests.swift`:
-    - updated screenshot test fixtures for new screenshot fields.
-    - added `runToolLoopScalesCoordinatesWhenScreenshotDownscaled()` to lock coordinate scaling behavior.
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md` to mark coordinate scaling as partially implemented.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests/AnthropicComputerUseRunnerTests CODE_SIGNING_ALLOWED=NO test` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
-- Manual tests run:
-  - N/A (requires running the app and confirming the Anthropic 400 “image exceeds 5 MB” error no longer occurs).
-- Result: Execution requests should no longer fail on high-resolution displays due to screenshot size; when downscaled, tool coordinates are scaled back to physical pixels for event injection.
-- Issues/blockers:
-  - TLS `-1200` can still occur intermittently (retry already implemented); coordinate origin/space validation against `CGEvent` remains pending under `OI-2026-02-09-006`.
-
-## Entry
-- Date: 2026-02-10
-- Step: Make `xcodebuild test` pass and validate execution action coverage via unit tests (incremental)
-- Changes made:
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/AnthropicComputerUseRunnerTests.swift`:
-    - fixed a local variable redeclaration in the request-format test.
-    - replaced tuple arrays with an `XY` value type so action call assertions compile and compare cleanly.
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`:
-    - injected an `AlwaysGrantedPermissionService` for `runTaskNow` tests so the execution permission preflight doesn’t block the mocked engine path.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`.
 - Automated tests run:
   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
 - Manual tests run:
-  - Verified `AnthropicComputerUseRunnerTests/runToolLoopExecutesAllSupportedActions()` is executed and passes in the test run output.
-- Result: Tests now validate that tool-loop decoding calls the executor for click/type/key/open/wait/screenshot and the new `mouse_move`/`right_click` actions.
-- Issues/blockers:
-  - Unit tests validate decoding and dispatch, but do not prove OS-level input injection works under real TCC permissions; continue tracking runtime behavior under `OI-2026-02-09-006`.
+  - N/A (requires local app run to visually confirm Diagnostics previews match model-visible screenshots per turn).
+- Result:
+  - Diagnostics now shows the exact screenshot images sent to the LLM during execution.
 
 ## Entry
-- Date: 2026-02-10
-- Step: Fix Anthropic 5 MB screenshot limit + add copy buttons for LLM log (incremental)
+- Date: 2026-02-11
+- Step: Fix Anthropic screenshot size validation to use base64 payload limit (incremental)
 - Changes made:
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AnthropicAutomationEngine.swift`:
-    - screenshot capture now re-encodes oversized retina PNG screenshots as JPEG (decreasing quality) to stay under Anthropic’s 5 MB per-image limit.
-    - image blocks now send correct `media_type` (`image/png` or `image/jpeg`) instead of always `image/png`.
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/AnthropicComputerUseRunnerTests.swift` to match the new screenshot struct.
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`:
-    - added `copyLLMCallLogToPasteboard(...)` and `copyAllDiagnosticsToPasteboard(...)`.
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/RootView.swift`:
-    - added `Copy LLM Calls` and `Copy All (LLM + Trace)` buttons in Diagnostics.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
-- Manual tests run:
-  - N/A (requires running the app and observing an actual Anthropic call to confirm the 5 MB error is gone).
-- Result: Execution requests should no longer fail on high-resolution displays due to screenshot size; diagnostics can now be copied as either trace-only, LLM-only, or combined.
-- Issues/blockers:
-  - Real-run verification still needed to confirm Anthropic accepts the JPEG screenshots and that tool coordinates remain stable.
-
-## Entry
-- Date: 2026-02-10
-- Step: Expand tool-loop action decoding (mouse_move/right_click) + coordinate parsing + tests (incremental)
-- Changes made:
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AnthropicAutomationEngine.swift`:
-    - added computer actions: `mouse_move` and `right_click`.
-    - added coordinate extraction supporting `x`/`y` and `coordinate: [x, y]` (plus nested object variants) for click/move/right-click actions.
-    - improved shortcut parsing to map `cmd+space` to a literal space key.
-  - Updated unit tests:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/AnthropicComputerUseRunnerTests.swift`:
-      - added integration-style test covering all supported actions in a single tool-loop turn.
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/AnthropicAutomationEngineTests.swift`:
-      - updated mock executor for new protocol methods.
+  - Fixed screenshot-size validation for Anthropic image blocks:
+    - enforce the 5 MB cap against base64-encoded payload size, not raw image bytes.
+    - apply base64-safe raw-byte budget before selecting PNG/JPEG output.
+    - updated trace logging to include both raw and base64 screenshot byte counts for diagnostics.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AnthropicAutomationEngine.swift`.
+  - Added regression tests for base64 image-size budget math:
+    - new tests: `base64BudgetComputesAnthropicFiveMBRawCeiling`, `base64BudgetMatchesObservedOversizeFailureMath`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/AnthropicComputerUseRunnerTests.swift`.
   - Updated docs:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md` (marked click coordinate schema acceptance as implemented; kept translation pending).
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md` (updated `OI-2026-02-09-006` scope/next actions after coordinate parsing fix).
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`.
 - Automated tests run:
-  - `xcrun swiftc -typecheck -module-cache-path /tmp/swift-modcache TaskAgentMacOSApp/TaskAgentMacOSApp/Services/Protocols.swift TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OnboardingPersistence.swift TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PromptCatalogService.swift TaskAgentMacOSApp/TaskAgentMacOSApp/Services/DesktopScreenshotService.swift TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AnthropicAutomationEngine.swift` (pass).
-  - `xcodebuild ... -only-testing:TaskAgentMacOSAppTests test` (fails in Codex sandbox due to Observation macro plugin-server limitations; see `.docs/testing.md`).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
 - Manual tests run:
-  - Manual source walkthrough of tool-action decoding paths for coordinate extraction + new action cases.
-- Result: Expanded supported desktop actions and improved real-run compatibility with model-returned coordinate schemas; unit test coverage now explicitly exercises all supported actions.
-- Issues/blockers:
-  - Key injection reliability and coordinate translation may still block real desktop progress; tracked in `OI-2026-02-09-006`.
+  - N/A (requires live local run to confirm previous 400 payload error no longer reproduces).
+- Result:
+  - Anthropic screenshot requests now respect the real base64 payload limit and avoid false pass/fail mismatch from raw-byte-only checks.
 
+## Entry
+- Date: 2026-02-11
+- Step: Reduce LLM payload growth + enforce tool policy + clear screen before run (incremental)
+- Changes made:
+  - Reduced tool-loop request payload growth:
+    - request formatting now keeps full text/tool history but compacts image history to only the latest screenshot image block per request turn.
+    - older image blocks are removed from prior messages/tool results; text context is retained.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AnthropicAutomationEngine.swift`.
+  - Added runtime terminal/computer boundary enforcement:
+    - visual/UI-oriented terminal commands (for example AppleScript/UI element automation patterns) are rejected with explicit guidance to use `computer`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AnthropicAutomationEngine.swift`.
+  - Added pre-run desktop preparation:
+    - before each run, the app hides other regular apps to provide a cleaner visual workspace for the agent.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`.
+  - Updated execution-agent prompt guidance with clearer tool selection boundaries for visual vs non-visual tasks:
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/execution_agent/prompt.md`.
+  - Added/updated tests:
+    - new test: `runToolLoopKeepsOnlyLatestScreenshotImageInRequestHistory`.
+    - new test: `runToolLoopRejectsVisualTerminalCommandAndRequestsComputerTool`.
+    - new test: `runTaskNowPreparesDesktopBeforeExecution`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/AnthropicComputerUseRunnerTests.swift`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`.
+  - Updated docs to reflect these implementation decisions:
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - N/A (requires live local validation of run behavior and payload trend in Diagnostics).
+- Result:
+  - Execution runner now sends only the latest screenshot image per turn, enforces terminal-vs-computer boundaries for visual commands, and clears other apps before each run.
+
+## Entry
+- Date: 2026-02-11
+- Step: Enforce HUD exclusion for LLM screenshots (incremental)
+- Changes made:
+  - Tightened screenshot fallback behavior for LLM capture path:
+    - when an exclusion window number is provided (agent HUD), do not fall back to `/usr/sbin/screencapture` because it cannot exclude windows.
+    - instead fail closed so the model never receives screenshots containing the “Agent is running” HUD.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/DesktopScreenshotService.swift`.
+  - Updated docs for the fail-closed exclusion rule:
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - N/A (requires live run with visible HUD to verify LLM screenshots never include overlay).
+- Result:
+  - LLM screenshot capture now fails closed for exclusion-required paths, guaranteeing the HUD overlay is not sent to the model.
+
+## Entry
+- Date: 2026-02-11
+- Step: Include mouse cursor in execution screenshots (incremental)
+- Changes made:
+  - Updated ScreenCaptureKit screenshot capture to include the cursor:
+    - set `SCStreamConfiguration.showsCursor = true`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/DesktopScreenshotService.swift`.
+  - Updated fallback `/usr/sbin/screencapture` invocation to include cursor:
+    - added `-C` argument.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/DesktopScreenshotService.swift`.
+  - Updated docs to reflect cursor-visible screenshot behavior:
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - N/A (requires live run verification that LLM screenshots visibly include cursor and hover tasks improve).
+- Result:
+  - LLM screenshots now include the cursor, improving model grounding for hover/mouse-move tasks.
+
+## Entry
+- Date: 2026-02-11
+- Step: Add `cursor_position` computer action support in Anthropic tool loop (incremental)
+- Changes made:
+  - Added support for cursor-position actions in the computer tool path:
+    - accepted action aliases: `cursor_position`, `get_cursor_position`, `mouse_position`.
+    - reads local cursor position and returns JSON payload text (`{"x":...,"y":...}`) as the `tool_result` content.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AnthropicAutomationEngine.swift`.
+  - Added cursor coordinate mapping from local coordinate space back to tool display space so payload coordinates are consistent with the model-visible screenshot dimensions.
+  - Added a dedicated regression test:
+    - new test: `runToolLoopReturnsCursorPositionForCursorPositionAction`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/AnthropicComputerUseRunnerTests.swift`.
+  - Updated docs to reflect implemented cursor-position support:
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - N/A (requires running a live Anthropic task where the model emits `computer.cursor_position` and confirming it no longer returns unsupported-action errors).
+- Result:
+  - `cursor_position`-style actions are now executable in the local runner and covered by unit tests.

@@ -1,6 +1,7 @@
 import Foundation
 import AppKit
 import ApplicationServices
+import Darwin
 import ImageIO
 import UniformTypeIdentifiers
 
@@ -485,7 +486,7 @@ enum AnthropicExecutionPlannerError: Error, LocalizedError, Equatable {
         case .screenshotCaptureFailed:
             return "Failed to capture current desktop screenshot."
         case .screenshotTooLarge(let maxBytes):
-            return "Captured desktop screenshot is too large for Anthropic (must be <= \(maxBytes) bytes)."
+            return "Captured desktop screenshot is too large for Anthropic (base64 image payload must be <= \(maxBytes) bytes)."
         case .invalidToolLoopResponse:
             return "Anthropic tool-loop response format was invalid."
         }
@@ -542,12 +543,16 @@ final class AnthropicComputerUseRunner: LLMExecutionToolLoopRunner {
     private let transportRetryPolicy: TransportRetryPolicy
     private let sleepNanoseconds: @Sendable (UInt64) async -> Void
     private let screenshotProvider: () throws -> AnthropicCapturedScreenshot
+    private let cursorPositionProvider: () -> (x: Int, y: Int)?
+    private let screenshotLogSink: ((LLMScreenshotLogEntry) -> Void)?
     private let callLogSink: ((LLMCallLogEntry) -> Void)?
     private let traceSink: ((ExecutionTraceEntry) -> Void)?
     private let jsonDecoder = JSONDecoder()
     private let jsonEncoder = JSONEncoder()
     private var coordinateScaleX: Double = 1.0
     private var coordinateScaleY: Double = 1.0
+    private var toolDisplayWidthPx: Int = 0
+    private var toolDisplayHeightPx: Int = 0
     private var coordinateSpaceWidthPx: Int = 0
     private var coordinateSpaceHeightPx: Int = 0
 
@@ -556,6 +561,7 @@ final class AnthropicComputerUseRunner: LLMExecutionToolLoopRunner {
         promptCatalog: PromptCatalogService = PromptCatalogService(),
         promptName: String = "execution_agent",
         callLogSink: ((LLMCallLogEntry) -> Void)? = nil,
+        screenshotLogSink: ((LLMScreenshotLogEntry) -> Void)? = nil,
         traceSink: ((ExecutionTraceEntry) -> Void)? = nil,
         session: URLSession = .shared,
         transportRetryPolicy: TransportRetryPolicy = .default,
@@ -564,7 +570,8 @@ final class AnthropicComputerUseRunner: LLMExecutionToolLoopRunner {
         },
         beforeScreenshotCapture: (@Sendable () -> Void)? = nil,
         afterScreenshotCapture: (@Sendable () -> Void)? = nil,
-        screenshotProvider: @escaping () throws -> AnthropicCapturedScreenshot = AnthropicComputerUseRunner.captureMainDisplayScreenshot
+        screenshotProvider: @escaping () throws -> AnthropicCapturedScreenshot = AnthropicComputerUseRunner.captureMainDisplayScreenshot,
+        cursorPositionProvider: @escaping () -> (x: Int, y: Int)? = AnthropicComputerUseRunner.currentCursorPosition
     ) {
         self.apiKeyStore = apiKeyStore
         self.promptCatalog = promptCatalog
@@ -574,11 +581,13 @@ final class AnthropicComputerUseRunner: LLMExecutionToolLoopRunner {
         self.session = session
         self.transportRetryPolicy = transportRetryPolicy
         self.sleepNanoseconds = sleepNanoseconds
+        self.screenshotLogSink = screenshotLogSink
         self.screenshotProvider = {
             beforeScreenshotCapture?()
             defer { afterScreenshotCapture?() }
             return try screenshotProvider()
         }
+        self.cursorPositionProvider = cursorPositionProvider
     }
 
     func runToolLoop(taskMarkdown: String, executor: any DesktopActionExecutor) async throws -> AutomationRunResult {
@@ -589,12 +598,14 @@ final class AnthropicComputerUseRunner: LLMExecutionToolLoopRunner {
 
         let initialScreenshot: AnthropicCapturedScreenshot
         do {
-            initialScreenshot = try screenshotProvider()
+            initialScreenshot = try captureScreenshotForLLM(source: .initialPromptImage)
         } catch {
             throw AnthropicExecutionPlannerError.screenshotCaptureFailed
         }
 
         // If we downscale screenshots to fit the Anthropic 5 MB limit, map tool coordinates back to physical pixels.
+        toolDisplayWidthPx = initialScreenshot.width
+        toolDisplayHeightPx = initialScreenshot.height
         coordinateSpaceWidthPx = initialScreenshot.coordinateSpaceWidthPx
         coordinateSpaceHeightPx = initialScreenshot.coordinateSpaceHeightPx
         if initialScreenshot.width > 0, initialScreenshot.height > 0 {
@@ -607,16 +618,35 @@ final class AnthropicComputerUseRunner: LLMExecutionToolLoopRunner {
 
         recordTrace(
             kind: .info,
-            "Captured initial screenshot (\(initialScreenshot.width)x\(initialScreenshot.height), \(initialScreenshot.mediaType), \(initialScreenshot.byteCount) bytes; capture=\(initialScreenshot.captureWidthPx)x\(initialScreenshot.captureHeightPx) coordSpace=\(initialScreenshot.coordinateSpaceWidthPx)x\(initialScreenshot.coordinateSpaceHeightPx))."
+            "Captured initial screenshot (\(initialScreenshot.width)x\(initialScreenshot.height), \(initialScreenshot.mediaType), raw=\(initialScreenshot.byteCount) bytes, base64=\(initialScreenshot.base64Data.utf8.count) bytes; capture=\(initialScreenshot.captureWidthPx)x\(initialScreenshot.captureHeightPx) coordSpace=\(initialScreenshot.coordinateSpaceWidthPx)x\(initialScreenshot.coordinateSpaceHeightPx))."
         )
 
-        let toolSpec = AnthropicToolDefinition(
-            type: "computer_20251124",
-            name: "computer",
-            displayWidthPx: initialScreenshot.width,
-            displayHeightPx: initialScreenshot.height,
-            displayNumber: 1
-        )
+        let tools: [AnthropicToolSpec] = [
+            .computer(
+                AnthropicComputerToolDefinition(
+                    type: "computer_20251124",
+                    name: "computer",
+                    displayWidthPx: initialScreenshot.width,
+                    displayHeightPx: initialScreenshot.height,
+                    displayNumber: 1
+                )
+            ),
+            .function(
+                AnthropicFunctionToolDefinition(
+                    name: "terminal_exec",
+                    description: "Execute a terminal command and return stdout/stderr/exit_code. Use this for command-line tasks and reliable app launching.",
+                    inputSchema: .object(
+                        properties: [
+                            "executable": .string(description: "Executable name (resolved from PATH) or absolute path."),
+                            "args": .array(items: .string(description: "Argument string."), description: "Argument list."),
+                            "timeout_seconds": .number(description: "Optional timeout in seconds (default 30).")
+                        ],
+                        required: ["executable"],
+                        additionalProperties: false
+                    )
+                )
+            )
+        ]
 
         var messages: [AnthropicConversationMessage] = [
             .init(
@@ -635,13 +665,21 @@ final class AnthropicComputerUseRunner: LLMExecutionToolLoopRunner {
             for turn in 1...200 {
                 try Task.checkCancellation()
 
+                let compacted = compactMessagesKeepingLatestImage(messages)
+                if compacted.removedImageCount > 0 {
+                    recordTrace(
+                        kind: .info,
+                        "Compacted message history by removing \(compacted.removedImageCount) old screenshot image block(s); keeping only the latest image."
+                    )
+                }
+
                 let payload = try await sendMessagesRequest(
                     AnthropicMessagesRequest(
                         model: promptTemplate.config.llm,
                         maxTokens: 2048,
                         system: "",
-                        messages: messages,
-                        tools: [toolSpec]
+                        messages: compacted.messages,
+                        tools: tools
                     ),
                     apiKey: apiKey,
                     includeComputerUseBetaHeader: true
@@ -1018,7 +1056,15 @@ final class AnthropicComputerUseRunner: LLMExecutionToolLoopRunner {
         input: JSONValue?,
         executor: any DesktopActionExecutor
     ) async throws -> ToolExecutionResult {
-        guard (toolName ?? "computer") == "computer" else {
+        let resolvedToolName = (toolName ?? "computer")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+
+        if resolvedToolName == "terminal_exec" {
+            return await executeTerminalExecToolUse(toolUseId: toolUseId, input: input)
+        }
+
+        guard resolvedToolName == "computer" else {
             return ToolExecutionResult(
                 toolUseId: toolUseId,
                 contentBlocks: [.text("Unsupported tool '\(toolName ?? "unknown")'.")],
@@ -1052,12 +1098,33 @@ final class AnthropicComputerUseRunner: LLMExecutionToolLoopRunner {
         do {
             switch action {
             case "screenshot":
-                let screenshot = try screenshotProvider()
+                let screenshot = try captureScreenshotForLLM(source: .actionScreenshot)
                 return ToolExecutionResult(
                     toolUseId: toolUseId,
                     contentBlocks: [.image(screenshot)],
                     isError: false,
                     stepDescription: "Capture screenshot",
+                    generatedQuestions: []
+                )
+            case "cursor_position", "get_cursor_position", "mouse_position":
+                guard let cursor = cursorPositionProvider() else {
+                    return ToolExecutionResult(
+                        toolUseId: toolUseId,
+                        contentBlocks: [.text("Failed to read current cursor position.")],
+                        isError: true,
+                        stepDescription: nil,
+                        generatedQuestions: ["Action '\(action)' failed because cursor position could not be read. What should I do instead?"]
+                    )
+                }
+
+                let mapped = mapToToolCoordinates(x: cursor.x, y: cursor.y)
+                let payload = CursorPositionToolResultPayload(x: mapped.x, y: mapped.y)
+                let payloadText = (try? String(data: jsonEncoder.encode(payload), encoding: .utf8)) ?? "{\"x\":\(mapped.x),\"y\":\(mapped.y)}"
+                return ToolExecutionResult(
+                    toolUseId: toolUseId,
+                    contentBlocks: [.text(payloadText)],
+                    isError: false,
+                    stepDescription: "Read cursor position (\(mapped.x), \(mapped.y))",
                     generatedQuestions: []
                 )
             case "mouse_move", "move_mouse", "move":
@@ -1167,6 +1234,351 @@ final class AnthropicComputerUseRunner: LLMExecutionToolLoopRunner {
         }
     }
 
+    private struct CursorPositionToolResultPayload: Encodable {
+        var x: Int
+        var y: Int
+    }
+
+    private struct TerminalExecToolResultPayload: Encodable {
+        var ok: Bool
+        var exitCode: Int
+        var timedOut: Bool
+        var stdout: String
+        var stderr: String
+        var truncated: Bool
+
+        enum CodingKeys: String, CodingKey {
+            case ok
+            case exitCode = "exit_code"
+            case timedOut = "timed_out"
+            case stdout
+            case stderr
+            case truncated
+        }
+    }
+
+    private struct TerminalCommandExecutionResult {
+        var exitCode: Int32
+        var timedOut: Bool
+        var stdout: Data
+        var stderr: Data
+        var truncated: Bool
+    }
+
+    private final class PipeCollector {
+        private let lock = NSLock()
+        private let maxBytes: Int
+        private(set) var truncated: Bool = false
+        private var buffer = Data()
+
+        init(maxBytes: Int) {
+            self.maxBytes = max(0, maxBytes)
+        }
+
+        func append(_ chunk: Data) {
+            lock.lock()
+            defer { lock.unlock() }
+
+            guard maxBytes > 0 else {
+                truncated = true
+                return
+            }
+
+            if buffer.count >= maxBytes {
+                truncated = true
+                return
+            }
+
+            let remaining = maxBytes - buffer.count
+            if chunk.count <= remaining {
+                buffer.append(chunk)
+            } else {
+                buffer.append(chunk.prefix(remaining))
+                truncated = true
+            }
+        }
+
+        func snapshot() -> Data {
+            lock.lock()
+            defer { lock.unlock() }
+            return buffer
+        }
+    }
+
+    private static let terminalExecMaxCapturedOutputBytes = 64 * 1024
+    private static let terminalExecDefaultTimeoutSeconds = 30.0
+    private static let terminalExecMaxTimeoutSeconds = 120.0
+    private static let terminalExecAlwaysVisualExecutables: Set<String> = [
+        "osascript",
+        "cliclick"
+    ]
+    private static let terminalExecVisualCommandKeywords: [String] = [
+        "system events",
+        "ui element",
+        "click",
+        "keystroke",
+        "key code",
+        "dock",
+        "window",
+        "menu bar",
+        "mouse",
+        "cursor",
+        "screenshot",
+        "screen shot",
+        "screencapture"
+    ]
+
+    private func executeTerminalExecToolUse(toolUseId: String, input: JSONValue?) async -> ToolExecutionResult {
+        guard let object = input?.objectValue else {
+            return ToolExecutionResult(
+                toolUseId: toolUseId,
+                contentBlocks: [.text("Terminal tool input was invalid.")],
+                isError: true,
+                stepDescription: nil,
+                generatedQuestions: ["Terminal tool input from model was invalid. What should I do?"]
+            )
+        }
+
+        guard let executableRaw = object["executable"]?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !executableRaw.isEmpty else {
+            return ToolExecutionResult(
+                toolUseId: toolUseId,
+                contentBlocks: [.text("Terminal tool input missing 'executable'.")],
+                isError: true,
+                stepDescription: nil,
+                generatedQuestions: ["Model omitted the terminal executable to run. What should I do?"]
+            )
+        }
+
+        var args: [String] = []
+        if let argsValue = object["args"] {
+            guard let array = argsValue.arrayValue else {
+                return ToolExecutionResult(
+                    toolUseId: toolUseId,
+                    contentBlocks: [.text("Terminal tool input field 'args' must be an array of strings.")],
+                    isError: true,
+                    stepDescription: nil,
+                    generatedQuestions: ["Terminal tool input field 'args' was invalid. What should I do?"]
+                )
+            }
+            for value in array {
+                guard let s = value.stringValue else {
+                    return ToolExecutionResult(
+                        toolUseId: toolUseId,
+                        contentBlocks: [.text("Terminal tool input field 'args' must contain only strings.")],
+                        isError: true,
+                        stepDescription: nil,
+                        generatedQuestions: ["Terminal tool input field 'args' was invalid. What should I do?"]
+                    )
+                }
+                args.append(s)
+            }
+        }
+
+        let timeoutRaw = object["timeout_seconds"]?.doubleValue ?? Self.terminalExecDefaultTimeoutSeconds
+        let timeoutSeconds = min(Self.terminalExecMaxTimeoutSeconds, max(0.1, timeoutRaw))
+
+        if let policyViolationMessage = validateTerminalExecPolicy(executable: executableRaw, args: args) {
+            return ToolExecutionResult(
+                toolUseId: toolUseId,
+                contentBlocks: [.text(policyViolationMessage)],
+                isError: true,
+                stepDescription: nil,
+                generatedQuestions: []
+            )
+        }
+
+        guard let resolvedExecutable = resolveTerminalExecutable(executableRaw) else {
+            return ToolExecutionResult(
+                toolUseId: toolUseId,
+                contentBlocks: [.text("Executable '\(executableRaw)' was not found or is not executable.")],
+                isError: true,
+                stepDescription: nil,
+                generatedQuestions: ["Terminal command executable was not found ('\(executableRaw)'). What should I do instead?"]
+            )
+        }
+
+        let commandSummary = summarizeTerminalCommand(executablePath: resolvedExecutable, args: args)
+        recordTrace(kind: .info, "Terminal exec requested: \(commandSummary)")
+
+        do {
+            let exec = try await runTerminalCommand(executablePath: resolvedExecutable, args: args, timeoutSeconds: timeoutSeconds)
+            let stdout = String(decoding: exec.stdout, as: UTF8.self)
+            let stderr = String(decoding: exec.stderr, as: UTF8.self)
+
+            let payload = TerminalExecToolResultPayload(
+                ok: (exec.exitCode == 0) && !exec.timedOut,
+                exitCode: Int(exec.exitCode),
+                timedOut: exec.timedOut,
+                stdout: stdout,
+                stderr: stderr,
+                truncated: exec.truncated
+            )
+
+            let payloadText: String
+            if let json = try? String(data: jsonEncoder.encode(payload), encoding: .utf8) {
+                payloadText = json
+            } else {
+                payloadText = "{\"ok\":false,\"exit_code\":-1,\"timed_out\":false,\"stdout\":\"\",\"stderr\":\"Failed to encode terminal tool result.\",\"truncated\":false}"
+            }
+
+            return ToolExecutionResult(
+                toolUseId: toolUseId,
+                contentBlocks: [.text(payloadText)],
+                isError: !payload.ok,
+                stepDescription: "Terminal exec: \(commandSummary)",
+                generatedQuestions: payload.ok ? [] : ["Terminal command failed (\(commandSummary)). What should I do instead?"]
+            )
+        } catch {
+            return ToolExecutionResult(
+                toolUseId: toolUseId,
+                contentBlocks: [.text("Terminal exec failed: \(error.localizedDescription)")],
+                isError: true,
+                stepDescription: nil,
+                generatedQuestions: ["Terminal exec failed for (\(commandSummary)). What should I do instead?"]
+            )
+        }
+    }
+
+    private func resolveTerminalExecutable(_ raw: String) -> String? {
+        let cleaned = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty else { return nil }
+
+        if cleaned.hasPrefix("/") {
+            return FileManager.default.isExecutableFile(atPath: cleaned) ? cleaned : nil
+        }
+
+        let pathEnv = ProcessInfo.processInfo.environment["PATH"] ?? "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+        for directory in pathEnv.split(separator: ":").map(String.init) {
+            let candidate = URL(fileURLWithPath: directory, isDirectory: true)
+                .appendingPathComponent(cleaned, isDirectory: false)
+                .path
+            if FileManager.default.isExecutableFile(atPath: candidate) {
+                return candidate
+            }
+        }
+
+        return nil
+    }
+
+    private func validateTerminalExecPolicy(executable: String, args: [String]) -> String? {
+        let executableName = URL(fileURLWithPath: executable).lastPathComponent.lowercased()
+        let commandLineLower = ([executableName] + args).joined(separator: " ").lowercased()
+
+        if Self.terminalExecAlwaysVisualExecutables.contains(executableName) {
+            return "Terminal command '\(executableName)' is blocked for UI/visual automation. Use tool 'computer' for on-screen actions (find/hover/click/scroll/type based on screenshots)."
+        }
+
+        if Self.terminalExecVisualCommandKeywords.contains(where: { commandLineLower.contains($0) }) {
+            return "Terminal command appears to target visual UI state. Use tool 'computer' for on-screen actions and coordinates."
+        }
+
+        return nil
+    }
+
+    private func summarizeTerminalCommand(executablePath: String, args: [String]) -> String {
+        let cmd = ([URL(fileURLWithPath: executablePath).lastPathComponent] + args).joined(separator: " ")
+        return truncate(cmd, limit: 220)
+    }
+
+    private func runTerminalCommand(executablePath: String, args: [String], timeoutSeconds: Double) async throws -> TerminalCommandExecutionResult {
+        try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .utility).async {
+                do {
+                    let result = try self.runTerminalCommandSync(executablePath: executablePath, args: args, timeoutSeconds: timeoutSeconds)
+                    continuation.resume(returning: result)
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
+    private func runTerminalCommandSync(executablePath: String, args: [String], timeoutSeconds: Double) throws -> TerminalCommandExecutionResult {
+        let exeURL = URL(fileURLWithPath: executablePath)
+
+        let process = Process()
+        process.executableURL = exeURL
+        process.arguments = args
+
+        let stdoutPipe = Pipe()
+        let stderrPipe = Pipe()
+        process.standardOutput = stdoutPipe
+        process.standardError = stderrPipe
+
+        let stdoutCollector = PipeCollector(maxBytes: Self.terminalExecMaxCapturedOutputBytes)
+        let stderrCollector = PipeCollector(maxBytes: Self.terminalExecMaxCapturedOutputBytes)
+
+        let terminationSemaphore = DispatchSemaphore(value: 0)
+        process.terminationHandler = { _ in
+            terminationSemaphore.signal()
+        }
+
+        try process.run()
+
+        let group = DispatchGroup()
+        group.enter()
+        DispatchQueue.global(qos: .utility).async {
+            let handle = stdoutPipe.fileHandleForReading
+            while true {
+                let chunk = handle.availableData
+                if chunk.isEmpty { break }
+                stdoutCollector.append(chunk)
+            }
+            group.leave()
+        }
+        group.enter()
+        DispatchQueue.global(qos: .utility).async {
+            let handle = stderrPipe.fileHandleForReading
+            while true {
+                let chunk = handle.availableData
+                if chunk.isEmpty { break }
+                stderrCollector.append(chunk)
+            }
+            group.leave()
+        }
+
+        var timedOut = false
+        if terminationSemaphore.wait(timeout: .now() + max(0.1, timeoutSeconds)) != .success {
+            timedOut = true
+            if process.isRunning {
+                process.terminate()
+            }
+            _ = terminationSemaphore.wait(timeout: .now() + 2.0)
+            if process.isRunning {
+                kill(process.processIdentifier, SIGKILL)
+                _ = terminationSemaphore.wait(timeout: .now() + 1.0)
+            }
+        }
+
+        group.wait()
+
+        let truncated = stdoutCollector.truncated || stderrCollector.truncated
+        return TerminalCommandExecutionResult(
+            exitCode: process.terminationStatus,
+            timedOut: timedOut,
+            stdout: stdoutCollector.snapshot(),
+            stderr: stderrCollector.snapshot(),
+            truncated: truncated
+        )
+    }
+
+    private func mapToToolCoordinates(x: Int, y: Int) -> (x: Int, y: Int) {
+        let invScaleX = coordinateScaleX == 0 ? 1.0 : coordinateScaleX
+        let invScaleY = coordinateScaleY == 0 ? 1.0 : coordinateScaleY
+        let scaledX = Int((Double(x) / invScaleX).rounded())
+        let scaledY = Int((Double(y) / invScaleY).rounded())
+
+        if toolDisplayWidthPx > 0, toolDisplayHeightPx > 0 {
+            return (
+                max(0, min(toolDisplayWidthPx - 1, scaledX)),
+                max(0, min(toolDisplayHeightPx - 1, scaledY))
+            )
+        }
+
+        return (scaledX, scaledY)
+    }
+
     private func mapToScreenCoordinates(x: Int, y: Int) -> (x: Int, y: Int) {
         // Anthropic computer-use coordinates are expressed in the tool display size we send. If we downscale screenshots
         // to fit payload limits, scale coordinates back up to the system's CGEvent injection coordinate space.
@@ -1200,7 +1612,7 @@ final class AnthropicComputerUseRunner: LLMExecutionToolLoopRunner {
 
     private func successWithOptionalScreenshot(toolUseId: String, stepDescription: String) -> ToolExecutionResult {
         var content: [AnthropicToolResultContent] = [.text("Done")]
-        if let screenshot = try? screenshotProvider() {
+        if let screenshot = try? captureScreenshotForLLM(source: .postActionSnapshot) {
             content.append(.image(screenshot))
         }
         return ToolExecutionResult(
@@ -1210,6 +1622,88 @@ final class AnthropicComputerUseRunner: LLMExecutionToolLoopRunner {
             stepDescription: stepDescription,
             generatedQuestions: []
         )
+    }
+
+    private func captureScreenshotForLLM(source: LLMScreenshotSource) throws -> AnthropicCapturedScreenshot {
+        let screenshot = try screenshotProvider()
+        if let encodedData = Data(base64Encoded: screenshot.base64Data) {
+            screenshotLogSink?(
+                LLMScreenshotLogEntry(
+                    source: source,
+                    mediaType: screenshot.mediaType,
+                    width: screenshot.width,
+                    height: screenshot.height,
+                    captureWidthPx: screenshot.captureWidthPx,
+                    captureHeightPx: screenshot.captureHeightPx,
+                    coordinateSpaceWidthPx: screenshot.coordinateSpaceWidthPx,
+                    coordinateSpaceHeightPx: screenshot.coordinateSpaceHeightPx,
+                    rawByteCount: screenshot.byteCount,
+                    base64ByteCount: screenshot.base64Data.utf8.count,
+                    imageData: encodedData
+                )
+            )
+        }
+        return screenshot
+    }
+
+    private struct CompactedConversationMessages {
+        var messages: [AnthropicConversationMessage]
+        var removedImageCount: Int
+    }
+
+    private func compactMessagesKeepingLatestImage(_ messages: [AnthropicConversationMessage]) -> CompactedConversationMessages {
+        var compacted = messages
+        var shouldKeepLatestImage = true
+        var removedImageCount = 0
+
+        for messageIndex in compacted.indices.reversed() {
+            var message = compacted[messageIndex]
+            var content = message.content
+
+            for contentIndex in content.indices.reversed() {
+                var block = content[contentIndex]
+
+                if block.type == "image" {
+                    if shouldKeepLatestImage {
+                        shouldKeepLatestImage = false
+                    } else {
+                        content.remove(at: contentIndex)
+                        removedImageCount += 1
+                    }
+                    continue
+                }
+
+                guard block.type == "tool_result", var toolContent = block.content else {
+                    continue
+                }
+
+                var removedInBlock = 0
+                for toolContentIndex in toolContent.indices.reversed() {
+                    if toolContent[toolContentIndex].type == "image" {
+                        if shouldKeepLatestImage {
+                            shouldKeepLatestImage = false
+                        } else {
+                            toolContent.remove(at: toolContentIndex)
+                            removedInBlock += 1
+                        }
+                    }
+                }
+
+                guard removedInBlock > 0 else { continue }
+
+                removedImageCount += removedInBlock
+                if toolContent.isEmpty {
+                    toolContent = [.text("Previous screenshot omitted to reduce payload; latest screenshot retained.")]
+                }
+                block.content = toolContent
+                content[contentIndex] = block
+            }
+
+            message.content = content
+            compacted[messageIndex] = message
+        }
+
+        return CompactedConversationMessages(messages: compacted, removedImageCount: removedImageCount)
     }
 
     private func parseCompletion(from text: String) -> CompletionResult {
@@ -1268,7 +1762,9 @@ final class AnthropicComputerUseRunner: LLMExecutionToolLoopRunner {
     }
 
     private func renderPrompt(_ template: String, taskMarkdown: String) -> String {
-        template.replacingOccurrences(of: "{{TASK_MARKDOWN}}", with: taskMarkdown)
+        template
+            .replacingOccurrences(of: "{{OS_VERSION}}", with: ProcessInfo.processInfo.operatingSystemVersionString)
+            .replacingOccurrences(of: "{{TASK_MARKDOWN}}", with: taskMarkdown)
     }
 
     private func mapStatus(_ raw: String) -> AutomationRunOutcome {
@@ -1313,28 +1809,41 @@ final class AnthropicComputerUseRunner: LLMExecutionToolLoopRunner {
         return "HTTP \(statusCode)"
     }
 
+    nonisolated private static func currentCursorPosition() -> (x: Int, y: Int)? {
+        if let event = CGEvent(source: nil) {
+            let point = event.location
+            return (Int(point.x.rounded()), Int(point.y.rounded()))
+        }
+        let point = NSEvent.mouseLocation
+        return (Int(point.x.rounded()), Int(point.y.rounded()))
+    }
+
     nonisolated private static func captureMainDisplayScreenshot() throws -> AnthropicCapturedScreenshot {
+        try captureMainDisplayScreenshot(excludingWindowNumber: nil)
+    }
+
+    nonisolated static func captureMainDisplayScreenshot(excludingWindowNumber: Int?) throws -> AnthropicCapturedScreenshot {
         let mainDisplayBounds = CGDisplayBounds(CGMainDisplayID())
         let coordSpaceW = max(1, Int(mainDisplayBounds.width.rounded()))
         let coordSpaceH = max(1, Int(mainDisplayBounds.height.rounded()))
 
         let capture: DesktopScreenshotCapture
         do {
-            capture = try DesktopScreenshotService.captureMainDisplayPNG()
+            capture = try DesktopScreenshotService.captureMainDisplayPNG(excludingWindowNumber: excludingWindowNumber)
         } catch {
             throw AnthropicExecutionPlannerError.screenshotCaptureFailed
         }
 
-        // Anthropic computer-use images are capped at 5 MB. Retina PNGs commonly exceed this.
+        // Anthropic computer-use images are capped at 5 MB for the base64 payload, not raw bytes.
         // Prefer a deterministic downscale (if needed) + JPEG encode so the tool coordinate system is stable.
-        let maxBytes = 5 * 1024 * 1024
+        let maxEncodedBytes = 5 * 1024 * 1024
         let (data, mediaType, width, height) = try encodeScreenshotForAnthropic(
             pngData: capture.pngData,
             captureWidthPx: capture.width,
             captureHeightPx: capture.height,
             preferredMaxWidthPx: coordSpaceW,
             preferredMaxHeightPx: coordSpaceH,
-            maxBytes: maxBytes
+            maxEncodedBytes: maxEncodedBytes
         )
 
         return AnthropicCapturedScreenshot(
@@ -1356,13 +1865,18 @@ final class AnthropicComputerUseRunner: LLMExecutionToolLoopRunner {
         captureHeightPx: Int,
         preferredMaxWidthPx: Int,
         preferredMaxHeightPx: Int,
-        maxBytes: Int
+        maxEncodedBytes: Int
     ) throws -> (Data, String, Int, Int) {
         guard
             let source = CGImageSourceCreateWithData(pngData as CFData, nil),
             let cgImage = CGImageSourceCreateImageAtIndex(source, 0, nil)
         else {
             throw AnthropicExecutionPlannerError.screenshotCaptureFailed
+        }
+
+        let maxRawBytes = maxRawByteCountForBase64Limit(maxEncodedBytes)
+        guard maxRawBytes > 0 else {
+            throw AnthropicExecutionPlannerError.screenshotTooLarge(maxEncodedBytes)
         }
 
         // Deterministic downscale: constrain to (a) the CGEvent injection coordinate space
@@ -1380,7 +1894,8 @@ final class AnthropicComputerUseRunner: LLMExecutionToolLoopRunner {
         let toEncode: CGImage
         if targetW == captureWidthPx, targetH == captureHeightPx {
             // If the raw PNG already fits and we don't need resizing, keep PNG.
-            if pngData.count <= maxBytes {
+            if pngData.count <= maxRawBytes,
+               base64EncodedByteCount(forRawByteCount: pngData.count) <= maxEncodedBytes {
                 return (pngData, "image/png", captureWidthPx, captureHeightPx)
             }
             toEncode = cgImage
@@ -1392,12 +1907,25 @@ final class AnthropicComputerUseRunner: LLMExecutionToolLoopRunner {
 
         // Encode as JPEG; vary quality to fit <= 5 MB.
         for quality in [0.80, 0.72, 0.65, 0.58, 0.50, 0.42, 0.35, 0.28, 0.22] as [CGFloat] {
-            if let data = encodeJPEG(cgImage: toEncode, quality: quality), data.count <= maxBytes {
+            if let data = encodeJPEG(cgImage: toEncode, quality: quality),
+               data.count <= maxRawBytes,
+               base64EncodedByteCount(forRawByteCount: data.count) <= maxEncodedBytes {
                 return (data, "image/jpeg", toEncode.width, toEncode.height)
             }
         }
 
-        throw AnthropicExecutionPlannerError.screenshotTooLarge(maxBytes)
+        throw AnthropicExecutionPlannerError.screenshotTooLarge(maxEncodedBytes)
+    }
+
+    nonisolated static func base64EncodedByteCount(forRawByteCount rawByteCount: Int) -> Int {
+        guard rawByteCount > 0 else { return 0 }
+        let base64Blocks = (rawByteCount + 2) / 3
+        return base64Blocks * 4
+    }
+
+    nonisolated static func maxRawByteCountForBase64Limit(_ base64ByteLimit: Int) -> Int {
+        guard base64ByteLimit > 0 else { return 0 }
+        return (base64ByteLimit / 4) * 3
     }
 
     nonisolated private static func encodeJPEG(cgImage: CGImage, quality: CGFloat) -> Data? {
@@ -1540,6 +2068,15 @@ final class AnthropicComputerUseRunner: LLMExecutionToolLoopRunner {
     private func summarizeToolUse(_ block: AnthropicMessageContent) -> String {
         let toolName = (block.name ?? "unknown").trimmingCharacters(in: .whitespacesAndNewlines)
         let object = block.input?.objectValue ?? [:]
+
+        if toolName.lowercased() == "terminal_exec" {
+            let executable = (object["executable"]?.stringValue ?? "?").trimmingCharacters(in: .whitespacesAndNewlines)
+            let args = object["args"]?.arrayValue?.compactMap(\.stringValue) ?? []
+            let argsPreview = args.prefix(6).joined(separator: " ")
+            let suffix = args.count > 6 ? " …" : ""
+            return "terminal_exec(executable=\"\(truncate(executable, limit: 80))\", args=\"\(truncate(argsPreview + suffix, limit: 160))\")"
+        }
+
         let action = (object["action"]?.stringValue ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         if action.isEmpty {
             return "\(toolName): (missing action)"
@@ -1579,6 +2116,8 @@ final class AnthropicComputerUseRunner: LLMExecutionToolLoopRunner {
                 return "\(toolName).wait(\(String(format: "%.1f", seconds))s)"
             }
             return "\(toolName).wait"
+        case "cursor_position", "get_cursor_position", "mouse_position":
+            return "\(toolName).cursor_position"
         case "screenshot":
             return "\(toolName).screenshot"
         default:
@@ -1705,7 +2244,7 @@ private struct AnthropicMessagesRequest: Encodable {
     var maxTokens: Int
     var system: String
     var messages: [AnthropicConversationMessage]
-    var tools: [AnthropicToolDefinition]?
+    var tools: [AnthropicToolSpec]?
 
     enum CodingKeys: String, CodingKey {
         case model
@@ -1721,7 +2260,21 @@ private struct AnthropicConversationMessage: Codable {
     var content: [AnthropicMessageContent]
 }
 
-private struct AnthropicToolDefinition: Encodable {
+private enum AnthropicToolSpec: Encodable {
+    case computer(AnthropicComputerToolDefinition)
+    case function(AnthropicFunctionToolDefinition)
+
+    func encode(to encoder: Encoder) throws {
+        switch self {
+        case .computer(let tool):
+            try tool.encode(to: encoder)
+        case .function(let tool):
+            try tool.encode(to: encoder)
+        }
+    }
+}
+
+private struct AnthropicComputerToolDefinition: Encodable {
     var type: String
     var name: String
     var displayWidthPx: Int
@@ -1734,6 +2287,62 @@ private struct AnthropicToolDefinition: Encodable {
         case displayWidthPx = "display_width_px"
         case displayHeightPx = "display_height_px"
         case displayNumber = "display_number"
+    }
+}
+
+private struct AnthropicFunctionToolDefinition: Encodable {
+    var name: String
+    var description: String
+    var inputSchema: AnthropicToolInputSchema
+
+    enum CodingKeys: String, CodingKey {
+        case name
+        case description
+        case inputSchema = "input_schema"
+    }
+}
+
+private indirect enum AnthropicToolInputSchema: Encodable {
+    case object(properties: [String: AnthropicToolInputSchema], required: [String], additionalProperties: Bool)
+    case array(items: AnthropicToolInputSchema, description: String?)
+    case string(description: String?)
+    case number(description: String?)
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+
+        switch self {
+        case .object(let properties, let required, let additionalProperties):
+            try container.encode("object", forKey: .type)
+            try container.encode(properties, forKey: .properties)
+            try container.encode(required, forKey: .required)
+            try container.encode(additionalProperties, forKey: .additionalProperties)
+        case .array(let items, let description):
+            try container.encode("array", forKey: .type)
+            try container.encode(items, forKey: .items)
+            if let description {
+                try container.encode(description, forKey: .description)
+            }
+        case .string(let description):
+            try container.encode("string", forKey: .type)
+            if let description {
+                try container.encode(description, forKey: .description)
+            }
+        case .number(let description):
+            try container.encode("number", forKey: .type)
+            if let description {
+                try container.encode(description, forKey: .description)
+            }
+        }
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case type
+        case description
+        case properties
+        case required
+        case items
+        case additionalProperties
     }
 }
 

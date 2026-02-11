@@ -20,13 +20,18 @@ description: Active unresolved issues with concrete repro details, mitigation, a
 - Observed:
   - Previously observed: `computer.key("cmd+space")` failed with a non-actionable `DesktopActionExecutorError` (AppleScript `System Events` path).
   - Some runs included tool actions like `scroll` that were not yet implemented, causing repeated unsupported-action loops.
+  - Some runs included `cursor_position` before local support existed, causing unsupported-action loops.
   - Screenshot capture succeeds.
 - Expected:
   - Tool uses should map cleanly to local actions (key/click/type/open) and produce visible progress.
 - Current Mitigation:
   - Execution Trace is available in-app so failures are visible.
   - `Stop` button can cancel runaway tool loops.
-  - Shortcut + typing injection now prefer CGEvent-based injection (reduces reliance on `System Events` automation permission); scroll action is now supported. Manual verification pending.
+  - Shortcut + typing injection now prefer CGEvent-based injection (reduces reliance on `System Events` automation permission).
+  - `scroll` and `cursor_position` actions are now supported in the tool loop (covered by unit tests). Manual live-flow verification pending.
+  - Tool-loop requests now keep full text/tool history but retain only the latest screenshot image block, reducing payload growth during long runs.
+  - Screenshot encoding now enforces Anthropic's 5 MB limit on base64 payload size (prevents raw-bytes-under-limit/base64-over-limit request failures).
+  - Runtime terminal policy now rejects visual/UI-oriented terminal commands and directs model behavior to the `computer` tool.
 - Next Action:
   - Validate coordinate translation between Anthropic screenshot coordinates and macOS `CGEvent` coordinates (Retina logical vs capture pixels and origin/space); add scaling/translation if clicks land in the wrong place.
   - Improve shortcut/key execution to reduce reliance on AppleScript `System Events` where possible (consider CGEvent-based key events).

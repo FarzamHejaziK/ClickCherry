@@ -96,7 +96,23 @@ description: Step-by-step implementation plan with code scope, automated tests, 
   - Keep model identity separate from tool identity (`claude-opus-4-6` is model; `computer_20251124` is tool version).
 - Remove legacy planner/fallback execution path; keep tool-loop as the only action authority path. (Implemented)
 - Load execution-agent prompt from file-based prompt folder (`Prompts/execution_agent/prompt.md` + `config.yaml`) via `PromptCatalogService`. (Implemented)
-- Expand tool/action coverage to scroll/drag/right-click/move in tool-loop path. (Pending)
+- Include host OS version string in the execution-agent prompt via placeholder (`{{OS_VERSION}}`). (Implemented)
+- Advertise and handle a custom tool-loop tool `terminal_exec` for unrestricted terminal command execution (absolute-path or PATH-resolved executables). (Implemented)
+- Add cursor-position action support (`cursor_position`) in tool-loop path. (Implemented)
+- Include mouse cursor in tool-loop screenshots for visual grounding during hover/mouse tasks. (Implemented)
+- Enforce fail-closed screenshot capture when HUD exclusion is requested (never fall back to non-excluding capture for LLM screenshots). (Implemented)
+- Reduce tool-loop payload growth by keeping full text/tool history but only the latest screenshot image block in each request. (Implemented)
+- Enforce screenshot-size safety against Anthropic's base64 5 MB image limit (not raw bytes) before request send. (Implemented)
+- Enforce tool-policy boundary at runtime: reject visual/UI-oriented terminal commands and direct model to `computer`. (Implemented)
+- Prepare a cleaner visual workspace before run by hiding other regular apps. (Implemented)
+- Add diagnostics screenshot log showing the exact images sent to the LLM tool loop. (Implemented)
+- During takeover, significantly increase cursor visibility and restore at run end/cancel:
+  - preferred path: temporary system cursor-size increase + restore.
+  - fallback path: large cursor-following halo overlay when system cursor-size writes are blocked.
+  (Implemented)
+- Update execution-agent prompt guidance so the model knows cursor visibility may be enhanced (larger cursor and/or halo) and should treat it as pointer visualization, not target UI. (Implemented)
+- Add explicit execution-provider toggle in main-shell settings (`OpenAI` vs `Anthropic`) and route runs by selected provider (no implicit fallback). (Implemented)
+- Expand tool/action coverage to drag in tool-loop path. (Pending)
 - Baseline policy for this implementation increment:
   - allow run with unresolved open questions and request clarifications in run report.
   - no deterministic local action-plan synthesis; model tool calls are the only action authority.
@@ -114,6 +130,14 @@ description: Step-by-step implementation plan with code scope, automated tests, 
 - State-store tests for run-trigger flow and persistence of updated heartbeat + run summary state.
 - Unit tests for Anthropic tool-loop API-key gating and request formatting.
 - Unit tests for iterative tool-loop request formatting and response-to-result mapping.
+- Unit tests for `terminal_exec` tool definition + dispatch (PATH resolution + output capture).
+- Unit tests for cursor-position tool action mapping and tool-result payload format.
+- Unit tests for request-history image compaction (latest-image only).
+- Unit tests for terminal policy enforcement (visual command rejection -> `computer` guidance).
+- Unit tests for base64 image-size budgeting helpers (5 MB encoded limit mapping).
+- Unit tests for LLM screenshot-log entries (initial + tool-result screenshot captures).
+- State-store test for run preflight desktop preparation invocation.
+- State-store tests for takeover cursor-size activation/restoration (Escape cancellation and monitor-start failure paths).
 - Integration tests for richer tool-action coverage (scroll/drag/right-click/move) are pending.
 
 ### Manual test
@@ -121,8 +145,15 @@ description: Step-by-step implementation plan with code scope, automated tests, 
 - While the run is executing, confirm:
   - a centered "agent running" overlay appears.
   - pressing `Escape` cancels the run and hides the overlay.
+  - cursor visibility is significantly larger while the agent is in control (either larger system cursor or halo overlay).
+  - agent behavior remains stable when cursor halo is visible (the model does not treat halo as a UI target).
 - Confirm clicking `Run Task` minimizes the app window immediately (agent overlay remains visible).
+- Confirm cursor visibility enhancement is removed after run completion/cancellation (including early takeover setup failure).
 - Confirm the agent overlay is not present in the screenshots sent to the LLM (no overlay visible in agent behavior / screenshots used for navigation).
+- Validate `terminal_exec` can run unrestricted commands and open apps reliably (ex: `open -a "Google Chrome"`), and that stdout/stderr/exit code are reported back to the tool loop.
+- Validate UI-oriented terminal commands are rejected and model switches to `computer` actions.
+- Validate request payload size does not grow linearly with screenshot count during long tool loops.
+- Validate Diagnostics shows “LLM Screenshots” that match the model-visible images per turn.
 - Validate a multi-app flow where the runner opens an app and performs click/type steps.
 - Trigger an ambiguity/failure case and confirm `HEARTBEAT.md` receives unresolved blocking question(s).
 - Answer the generated question in-app, rerun, and confirm progression.

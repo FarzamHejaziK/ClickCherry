@@ -106,6 +106,14 @@ private final class MockAPIKeyStore: APIKeyStore {
     }
 }
 
+private final class MockExecutionProviderSelectionStore: ExecutionProviderSelectionStore {
+    var selectedExecutionProvider: ExecutionProvider
+
+    init(initialValue: ExecutionProvider = .openAI) {
+        self.selectedExecutionProvider = initialValue
+    }
+}
+
 private final class MockAutomationEngine: AutomationEngine {
     var nextResult: AutomationRunResult
     var receivedMarkdowns: [String] = []
@@ -147,6 +155,10 @@ private final class MockAgentControlOverlayService: AgentControlOverlayService {
     func hideAgentInControl() {
         hideCount += 1
     }
+
+    func windowNumberForScreenshotExclusion() -> Int? {
+        nil
+    }
 }
 
 private final class MockUserInterruptionMonitor: UserInterruptionMonitor {
@@ -167,6 +179,23 @@ private final class MockUserInterruptionMonitor: UserInterruptionMonitor {
 
     func triggerUserInterruption() {
         handler?()
+    }
+}
+
+private final class MockAgentCursorPresentationService: AgentCursorPresentationService {
+    private(set) var activateCount = 0
+    private(set) var deactivateCount = 0
+    var shouldActivateSucceed = true
+    var shouldDeactivateSucceed = true
+
+    func activateTakeoverCursor() -> Bool {
+        activateCount += 1
+        return shouldActivateSucceed
+    }
+
+    func deactivateTakeoverCursor() -> Bool {
+        deactivateCount += 1
+        return shouldDeactivateSucceed
     }
 }
 
@@ -698,6 +727,34 @@ struct MainShellStateStoreTests {
     }
 
     @Test
+    func selectExecutionProviderPersistsSelection() throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let selectionStore = MockExecutionProviderSelectionStore(initialValue: .openAI)
+        let store = MainShellStateStore(
+            taskService: taskService,
+            apiKeyStore: MockAPIKeyStore(),
+            executionProviderSelectionStore: selectionStore,
+            captureService: MockRecordingCaptureService(),
+            overlayService: MockRecordingOverlayService()
+        )
+
+        #expect(store.selectedExecutionProvider == .openAI)
+        store.selectExecutionProvider(.anthropic)
+        #expect(store.selectedExecutionProvider == .anthropic)
+        #expect(selectionStore.selectedExecutionProvider == .anthropic)
+        #expect(store.apiKeyStatusMessage == "Execution provider set to Anthropic.")
+    }
+
+    @Test
     func clearProviderKeyUpdatesSavedState() throws {
         let fm = FileManager.default
         let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -721,7 +778,7 @@ struct MainShellStateStoreTests {
         store.clearProviderKey(for: .openAI)
         #expect(!store.providerSetupState.hasOpenAIKey)
         #expect(store.apiKeyStatusMessage == "Removed OpenAI API key.")
-        #expect(store.apiKeyErrorMessage == nil)
+        #expect(store.apiKeyErrorMessage == "Selected execution provider OpenAI has no saved API key.")
     }
 
     @Test
@@ -793,6 +850,51 @@ struct MainShellStateStoreTests {
     }
 
     @Test
+    func runTaskNowPreparesDesktopBeforeExecution() async throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let task = try taskService.createTask(title: "Prepare desktop task")
+        let engine = MockAutomationEngine(
+            nextResult: AutomationRunResult(
+                outcome: .success,
+                executedSteps: [],
+                generatedQuestions: [],
+                errorMessage: nil,
+                llmSummary: nil
+            )
+        )
+
+        var prepareCalls = 0
+        let store = MainShellStateStore(
+            taskService: taskService,
+            automationEngine: engine,
+            apiKeyStore: MockAPIKeyStore(),
+            permissionService: AlwaysGrantedPermissionService(),
+            captureService: MockRecordingCaptureService(),
+            overlayService: MockRecordingOverlayService(),
+            prepareDesktopForRun: {
+                prepareCalls += 1
+                return 3
+            }
+        )
+
+        store.reloadTasks()
+        store.selectTask(task.id)
+        await store.runTaskNow()
+
+        #expect(prepareCalls == 1)
+        #expect(store.executionTrace.contains(where: { $0.message.contains("Prepared screen by hiding 3 running app(s).") }))
+    }
+
+    @Test
     func runTaskNowNeedsClarificationAppendsQuestionsToHeartbeat() async throws {
         let fm = FileManager.default
         let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -849,6 +951,7 @@ struct MainShellStateStoreTests {
         let engine = BlockingAutomationEngine()
         let overlay = MockAgentControlOverlayService()
         let monitor = MockUserInterruptionMonitor()
+        let cursorPresentation = MockAgentCursorPresentationService()
 
         let store = MainShellStateStore(
             taskService: taskService,
@@ -858,7 +961,8 @@ struct MainShellStateStoreTests {
             captureService: MockRecordingCaptureService(),
             overlayService: MockRecordingOverlayService(),
             agentControlOverlayService: overlay,
-            userInterruptionMonitor: monitor
+            userInterruptionMonitor: monitor,
+            agentCursorPresentationService: cursorPresentation
         )
 
         store.reloadTasks()
@@ -868,6 +972,7 @@ struct MainShellStateStoreTests {
         #expect(store.isRunningTask == true)
         #expect(overlay.showCount == 1)
         #expect(monitor.startCount == 1)
+        #expect(cursorPresentation.activateCount == 1)
 
         monitor.triggerUserInterruption()
         await Task.yield()
@@ -875,6 +980,7 @@ struct MainShellStateStoreTests {
         #expect(store.runStatusMessage == "Cancelling (Escape pressed)...")
         #expect(overlay.hideCount >= 1)
         #expect(monitor.stopCount >= 1)
+        #expect(cursorPresentation.deactivateCount >= 1)
 
         engine.finish(
             with: AutomationRunResult(
@@ -892,5 +998,49 @@ struct MainShellStateStoreTests {
         }
         #expect(store.isRunningTask == false)
         #expect(store.runStatusMessage == "Run cancelled.")
+    }
+
+    @Test
+    func startRunTaskNowMonitorFailureRestoresCursorSize() throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let task = try taskService.createTask(title: "Agent monitor failure task")
+
+        let engine = BlockingAutomationEngine()
+        let overlay = MockAgentControlOverlayService()
+        let monitor = MockUserInterruptionMonitor()
+        monitor.shouldStartSucceed = false
+        let cursorPresentation = MockAgentCursorPresentationService()
+
+        let store = MainShellStateStore(
+            taskService: taskService,
+            automationEngine: engine,
+            apiKeyStore: MockAPIKeyStore(),
+            permissionService: AlwaysGrantedPermissionService(),
+            captureService: MockRecordingCaptureService(),
+            overlayService: MockRecordingOverlayService(),
+            agentControlOverlayService: overlay,
+            userInterruptionMonitor: monitor,
+            agentCursorPresentationService: cursorPresentation
+        )
+
+        store.reloadTasks()
+        store.selectTask(task.id)
+        store.startRunTaskNow()
+
+        #expect(store.isRunningTask == false)
+        #expect(cursorPresentation.activateCount == 1)
+        #expect(cursorPresentation.deactivateCount == 1)
+        #expect(overlay.showCount == 1)
+        #expect(overlay.hideCount == 1)
+        #expect(store.errorMessage?.contains("Failed to start escape-key monitoring.") == true)
     }
 }

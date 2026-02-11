@@ -172,7 +172,7 @@ This means: if the agent still has unresolved questions, should execution stop o
   - Gemini for video understanding path.
 - Keys are stored locally in Keychain (never plaintext in logs).
 
-## Execution agent model/provider decision (locked: 2026-02-08)
+## Execution agent model/provider decision (locked: 2026-02-10)
 
 - Task execution agent provider for Step 4 is Anthropic computer-use with:
   - model: `claude-opus-4-6`
@@ -203,6 +203,70 @@ This means: if the agent still has unresolved questions, should execution stop o
 - The app must not synthesize local click/type/shortcut/scroll action plans outside model-issued tool calls.
 - If tool output is invalid, missing, or ambiguous, the run must stop and append clarification question(s) to `HEARTBEAT.md` instead of guessing.
 
+## Execution prompt runtime context (locked: 2026-02-10)
+
+- The execution-agent prompt includes the host OS version string inline via a placeholder (`{{OS_VERSION}}`) that is rendered at run start.
+- Rationale: Some system UI and shortcut behaviors vary by macOS version; including it helps the model choose robust actions.
+- Implementation:
+  - prompt contains: `OS: {{OS_VERSION}}`
+  - render value source: `ProcessInfo.processInfo.operatingSystemVersionString`
+  - prompt explicitly tells the model cursor visibility may be enhanced (larger cursor and/or cursor-following halo) and that this is pointer visualization, not target UI content.
+
+## Execution terminal tool (locked: 2026-02-11)
+
+- The execution tool loop defines a second tool in addition to the built-in computer-use tool:
+  - `computer`: built-in Anthropic tool (desktop actions + screenshots)
+  - `terminal_exec`: custom tool that runs a non-shell `Process` command and returns stdout/stderr/exit code as JSON
+- Tool selection priority (prompt guideline):
+  - use `computer` for visual/spatial on-screen actions
+  - use `terminal_exec` for deterministic non-visual command-line tasks
+- Within `computer` (prompt guideline):
+  - prefer shortcut/keyword-driven actions (keyboard shortcuts + typing) over mouse movement/clicks when possible
+- Baseline safety policy for `terminal_exec`:
+  - unrestricted executable set (no allowlist).
+  - executable resolution:
+    - absolute path when provided
+    - otherwise resolve by searching `PATH`.
+  - shell executables are allowed if requested by the model.
+- Runtime enforcement:
+  - terminal commands that appear to perform UI/visual automation are rejected with an error and redirected to `computer`.
+  - examples blocked by policy include AppleScript/UI-element style commands intended to locate/click/hover screen elements.
+- Primary use-case: command-line-first task execution and reliable app control (including `open -a ...`).
+- Revisit candidate: reintroduce safety boundaries only if product policy changes (tracked in `.docs/revisits.md`).
+
+## OpenAI custom desktop tool loop (locked: 2026-02-11)
+
+- Added a second execution-provider path using OpenAI Responses API:
+  - model baseline: `gpt-5.2-codex`
+  - runtime tool: custom function tool `desktop_action` (JSON schema action envelope)
+  - loop format: screenshot + prompt input -> `function_call` -> local action execution -> `function_call_output` + fresh screenshot -> continue
+- Action surface implemented in `desktop_action`:
+  - screenshot
+  - cursor position read
+  - mouse move
+  - left click
+  - right click
+  - double click
+  - type text
+  - keyboard shortcut
+  - open app
+  - open URL
+  - scroll
+  - wait
+- Screenshot strategy for OpenAI path:
+  - reuse existing execution screenshot capture path (including HUD exclusion and cursor-visible images).
+  - send screenshot as data URL image input each turn.
+- Completion contract remains shared with Anthropic path:
+  - final plain JSON text:
+    - `status`: `SUCCESS | NEEDS_CLARIFICATION | FAILED`
+    - `summary`
+    - `error`
+    - `questions`
+- Provider routing policy:
+  - execution provider is user-selectable in app settings (`OpenAI` or `Anthropic`).
+  - routing uses the selected provider directly (no implicit OpenAI-first fallback).
+  - if the selected provider key is missing, run fails with an explicit key/switch guidance error.
+
 ## Execution takeover UX (locked: 2026-02-10)
 
 - While a run is executing, the app must show a centered on-screen HUD overlay indicating the agent is running and in control.
@@ -211,13 +275,15 @@ This means: if the agent still has unresolved questions, should execution stop o
 - Implementation details:
   - A global `CGEventTap` monitors `keyDown` and triggers only on `Escape`.
   - The desktop action executor tags injected CGEvents with a sentinel `eventSourceUserData` value so the interruption monitor ignores synthetic events (avoid self-cancel).
-  - The HUD overlay is temporarily hidden during screenshot capture so it does not appear in images sent to the LLM tool loop.
+  - Desktop screenshots are captured while excluding the HUD overlay window so it does not appear in images sent to the LLM tool loop.
+  - While takeover is active, the app attempts to increase system cursor size (target `4.0`) and restore the previous value when takeover ends.
+  - If macOS blocks writing cursor-size preferences, the app falls back to a large cursor-following halo overlay during takeover and removes it at takeover end.
 - Permission requirements for this UX:
   - Screen Recording: screenshots for the tool loop.
   - Accessibility: inject clicks/keys.
   - Input Monitoring: detect user takeover to cancel.
 
-## Step 4 implementation status (update: 2026-02-09)
+## Step 4 implementation status (update: 2026-02-11)
 
 - Implemented in this increment:
   - `Run Task` UI action and state-store run pipeline.
@@ -230,22 +296,46 @@ This means: if the agent still has unresolved questions, should execution stop o
   - Screenshot exchange for tool loop:
     - initial desktop screenshot attached in first run turn.
     - post-action screenshots attached in tool results when capture succeeds.
-    - implementation currently uses `/usr/sbin/screencapture` for screenshot capture in execution runtime.
+    - implementation uses ScreenCaptureKit for screenshot capture in execution runtime (with a `/usr/sbin/screencapture` fallback).
+    - when available, screenshots exclude the “Agent is running” HUD window so it does not appear in images sent to the LLM tool loop.
+    - when HUD exclusion is requested, fallback capture that cannot exclude windows is blocked (fail-closed) so the model never receives HUD-visible screenshots.
+    - screenshots include the mouse cursor to improve hover/mouse-move grounding for the model.
+    - request payload compaction keeps full text/tool history but retains only the latest screenshot image block when sending each turn.
+    - screenshot encoding enforces Anthropic's 5 MB limit on the base64 payload (not just raw image bytes), using a base64-safe raw-byte budget before request send.
+    - diagnostics now include an in-app LLM screenshot log that previews the exact encoded images sent to the model (initial image + tool-result images).
+  - Pre-run desktop preparation:
+    - before each execution run, the app hides other regular apps to provide a cleaner visual workspace for the model.
+  - Takeover cursor visibility:
+    - while the takeover HUD is active, cursor visibility is significantly increased.
+    - preferred path is temporary system cursor-size increase with restore on completion/cancellation.
+    - fallback path is a large cursor-following halo overlay when system cursor-size writes are blocked.
+  - Execution prompt context:
+    - execution-agent prompt renders OS version via `{{OS_VERSION}}` placeholder.
   - Tool-loop action execution for baseline action types:
     - open app
     - open URL
     - click
+    - right click
+    - mouse move
+    - cursor position read
+    - scroll
     - type text
     - keyboard shortcut
     - wait
     - screenshot action response
     - double click
+  - Tool-loop custom tools:
+    - `terminal_exec` tool (unrestricted `Process` execution with PATH resolution).
   - Runtime clarification persistence:
     - generated blocking questions are appended into `## Questions` in `HEARTBEAT.md`.
   - Run artifact persistence:
     - each run writes a markdown summary under `runs/` including LLM summary text.
+  - OpenAI Responses custom desktop-use loop:
+    - added `OpenAIComputerUseRunner` + `OpenAIAutomationEngine` using custom tool schema (`desktop_action`).
+    - added prompt folder `Prompts/execution_agent_openai/` (`prompt.md` + `config.yaml`).
+    - execution provider selection is now explicit in UI (`OpenAI` vs `Anthropic`) and persisted across app relaunch.
 - Still pending for full locked computer-use design:
-  - broader action surface (scroll/drag/right-click/move) through tool protocol path.
+  - broader action surface (drag) through tool protocol path.
   - local Xcode runtime validation across multi-app tasks and ambiguous failure paths.
 
 ## Execution-agent baseline behavior (locked, revisit-candidate: 2026-02-08)
@@ -297,6 +387,7 @@ This means: if the agent still has unresolved questions, should execution stop o
 - Initial prompt implemented with this layout:
   - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/task_extraction/`
   - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/execution_agent/`
+  - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/execution_agent_openai/`
 - Execution-agent prompt shape decision:
   - use a single prompt template (`prompt.md`) with `{{TASK_MARKDOWN}}` placeholder.
   - do not split execution-agent behavior between hardcoded system/user prompt literals in code.

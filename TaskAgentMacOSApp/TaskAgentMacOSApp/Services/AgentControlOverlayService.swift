@@ -3,10 +3,18 @@ import AppKit
 protocol AgentControlOverlayService {
     func showAgentInControl()
     func hideAgentInControl()
+    /// If non-nil, callers may exclude this window from screenshots (e.g. for LLM tool-loop captures).
+    func windowNumberForScreenshotExclusion() -> Int?
 }
 
 final class HUDWindowAgentControlOverlayService: AgentControlOverlayService {
-    private var overlayWindow: NSWindow?
+    private final class HUDPanel: NSPanel {
+        override var canBecomeKey: Bool { false }
+        override var canBecomeMain: Bool { false }
+    }
+
+    private var overlayWindow: HUDPanel?
+    private var activationObserver: NSObjectProtocol?
 
     func showAgentInControl() {
         guard Thread.isMainThread else {
@@ -23,22 +31,35 @@ final class HUDWindowAgentControlOverlayService: AgentControlOverlayService {
         if let window = overlayWindow {
             window.setFrame(frame, display: true)
             window.orderFrontRegardless()
+            ensureActivationObserver()
             return
         }
 
-        let window = NSWindow(contentRect: frame, styleMask: .borderless, backing: .buffered, defer: false, screen: targetScreen)
+        let window = HUDPanel(
+            contentRect: frame,
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false,
+            screen: targetScreen
+        )
         window.isOpaque = false
         window.backgroundColor = .clear
-        window.alphaValue = 0.70
+        window.alphaValue = 1.0
         window.hasShadow = true
         window.ignoresMouseEvents = true
+        // Keep above normal app windows while still click-through and non-activating.
         window.level = .statusBar
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
+        window.hidesOnDeactivate = false
+        window.isFloatingPanel = true
+        window.isReleasedWhenClosed = false
+        window.animationBehavior = .none
 
         window.contentView = makeContentView(size: size)
         window.orderFrontRegardless()
 
         overlayWindow = window
+        ensureActivationObserver()
     }
 
     func hideAgentInControl() {
@@ -50,6 +71,35 @@ final class HUDWindowAgentControlOverlayService: AgentControlOverlayService {
         }
 
         overlayWindow?.orderOut(nil)
+        overlayWindow = nil
+
+        if let activationObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(activationObserver)
+            self.activationObserver = nil
+        }
+    }
+
+    func windowNumberForScreenshotExclusion() -> Int? {
+        if Thread.isMainThread {
+            return overlayWindow?.windowNumber
+        }
+
+        var value: Int?
+        DispatchQueue.main.sync {
+            value = overlayWindow?.windowNumber
+        }
+        return value
+    }
+
+    private func ensureActivationObserver() {
+        guard activationObserver == nil else { return }
+        activationObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.overlayWindow?.orderFrontRegardless()
+        }
     }
 
     private func centeredFrame(size: NSSize, on container: NSRect) -> NSRect {
@@ -66,10 +116,12 @@ final class HUDWindowAgentControlOverlayService: AgentControlOverlayService {
         root.material = .hudWindow
         root.blendingMode = .withinWindow
         root.state = .active
-        root.alphaValue = 0.55
         root.wantsLayer = true
         root.layer?.cornerRadius = 14
         root.layer?.masksToBounds = true
+        root.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.35).cgColor
+        root.layer?.borderColor = NSColor.white.withAlphaComponent(0.14).cgColor
+        root.layer?.borderWidth = 1
 
         let spinner = NSProgressIndicator()
         spinner.style = .spinning
@@ -77,12 +129,12 @@ final class HUDWindowAgentControlOverlayService: AgentControlOverlayService {
         spinner.startAnimation(nil)
 
         let title = NSTextField(labelWithString: "Agent is running")
-        title.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
-        title.textColor = .labelColor
+        title.font = NSFont.systemFont(ofSize: 18, weight: .bold)
+        title.textColor = .white
 
         let subtitle = NSTextField(labelWithString: "Press Escape to stop")
-        subtitle.font = NSFont.systemFont(ofSize: 12, weight: .regular)
-        subtitle.textColor = .secondaryLabelColor
+        subtitle.font = NSFont.systemFont(ofSize: 13, weight: .medium)
+        subtitle.textColor = NSColor.white.withAlphaComponent(0.85)
 
         let header = NSStackView(views: [spinner, title])
         header.orientation = .horizontal

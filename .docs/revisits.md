@@ -10,15 +10,39 @@ description: Provisional decisions and open product/design questions that are in
 - When an item is revised, update `Status`, `Resolution Date`, and linked docs.
 - Keep newest active revisit items first.
 
+## Revisit RV-2026-02-11-015
+- Revisit ID: RV-2026-02-11-015
+- Source: Step 4 execution runner (`AnthropicComputerUseRunner` / `terminal_exec`)
+- Status: Open
+- Current Baseline: `terminal_exec` is unrestricted (no executable allowlist; absolute-path and PATH-resolved execution both allowed).
+- Why Revisit: Full terminal power increases risk of destructive commands; policy-level safety boundaries are intentionally deferred by current product direction.
+- Trigger To Revisit: When product/safety policy requires guardrails, or if misuse/incident data indicates restrictions are needed.
+- Owner: Engineering + product
+- Last Updated: 2026-02-11
+
+## Revisit RV-2026-02-10-014
+- Revisit ID: RV-2026-02-10-014
+- Source: Step 4 execution runner (`AnthropicComputerUseRunner` / `terminal_exec`)
+- Status: Closed
+- Current Baseline: `terminal_exec` no longer uses a hard-coded allowlist.
+- Why Revisit: Initial implementation intentionally constrained executable set.
+- Trigger To Revisit: N/A (resolved).
+- Owner: Engineering
+- Last Updated: 2026-02-11
+- Resolution Date: 2026-02-11
+- Resolution Summary: Switched `terminal_exec` to unrestricted execution with absolute-path + PATH-based executable resolution.
+
 ## Revisit RV-2026-02-09-013
 - Revisit ID: RV-2026-02-09-013
 - Source: Step 4 iterative computer-use implementation (`AnthropicAutomationEngine`)
-- Status: Open
-- Current Baseline: Execution-loop screenshots are captured via `/usr/sbin/screencapture` subprocess because CoreGraphics screenshot APIs are unavailable on macOS 15+ SDK.
-- Why Revisit: Process-based capture adds runtime dependency and may be less robust than a dedicated ScreenCaptureKit implementation.
-- Trigger To Revisit: During safety/reliability hardening pass for Step 4 runtime.
+- Status: Closed
+- Current Baseline: Execution-loop screenshots are captured via ScreenCaptureKit (nominal resolution) with optional HUD-window exclusion; `/usr/sbin/screencapture` is retained as a fallback only.
+- Why Revisit: Process-based capture added a runtime dependency and prevented excluding in-app HUD overlays from LLM screenshots.
+- Trigger To Revisit: N/A (resolved).
 - Owner: Engineering
-- Last Updated: 2026-02-09
+- Last Updated: 2026-02-10
+- Resolution Date: 2026-02-10
+- Resolution Summary: Implemented ScreenCaptureKit-based screenshot capture in `DesktopScreenshotService` and wired HUD window exclusion for the tool-loop screenshot provider.
 
 ## Revisit RV-2026-02-09-012
 - Revisit ID: RV-2026-02-09-012
