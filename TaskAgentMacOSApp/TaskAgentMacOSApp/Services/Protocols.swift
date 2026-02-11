@@ -65,6 +65,29 @@ struct ProviderSetupState: Equatable {
     }
 }
 
+enum ExecutionProvider: String, CaseIterable, Equatable, Sendable {
+    case openAI
+    case anthropic
+
+    var displayName: String {
+        switch self {
+        case .openAI:
+            return "OpenAI"
+        case .anthropic:
+            return "Anthropic"
+        }
+    }
+
+    var apiKeyProviderIdentifier: ProviderIdentifier {
+        switch self {
+        case .openAI:
+            return .openAI
+        case .anthropic:
+            return .anthropic
+        }
+    }
+}
+
 enum LLMProvider: String, Equatable, Sendable {
     case openAI
     case anthropic

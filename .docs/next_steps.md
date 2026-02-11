@@ -8,10 +8,14 @@ description: Short, continuously updated plan of the immediate next implementati
 2. Why now: User explicitly prioritized execution-agent delivery as the most important milestone.
 3. Code tasks:
    - Keep implemented baseline stable:
-     - `Run Task` is wired to Anthropic-backed `AutomationEngine`.
+     - `Run Task` is wired to provider-routed `AutomationEngine` with explicit execution-provider selection (`OpenAI` or `Anthropic`).
      - runtime clarifications append into `## Questions`.
      - run summaries persist under `runs/`.
      - execution-agent prompt is loaded from `Prompts/execution_agent/prompt.md` + `config.yaml` (single template prompt).
+   - Keep explicit execution-provider toggle behavior stable:
+     - provider selection is persisted across relaunch.
+     - selected provider is used directly at run time (no implicit fallback).
+     - missing selected-provider key surfaces a clear switch/save error.
    - Keep iterative Anthropic computer-use loop (`computer_20251124`) stable for turn-based screenshot/tool execution.
      - Request-format guardrail: `claude-opus-4-6` is model id; `computer_20251124` is tool type; use beta header `computer-use-2025-11-24` on tool-loop calls.
      - keep execution path tool-loop only (no planner fallback path).
@@ -54,6 +58,8 @@ description: Short, continuously updated plan of the immediate next implementati
      - automation-engine outcome tests (`success`/`needs clarification`/`failed`).
      - run-trigger persistence tests (heartbeat question writeback + run-summary writes).
      - iterative tool-loop parser/execution smoke checks.
+     - provider-routing tests for explicit selected-provider behavior (`OpenAI`/`Anthropic`/missing-key failure). (Implemented)
+     - state-store selection persistence test for execution-provider toggle. (Implemented)
    - Markdown runtime-question append/dedup tests.
    - Add richer tool-action integration tests (drag and multi-display coordinate/origin cases; scroll/right-click/move are covered).
    - Add tests for `terminal_exec` tool definition + dispatch (PATH resolution + stdout/stderr capture). (Implemented)
@@ -85,6 +91,10 @@ description: Short, continuously updated plan of the immediate next implementati
    - Confirm cursor visibility enhancement is removed after run completion/cancellation.
    - Confirm the model can use `terminal_exec` to open an app (example command: `open -a "Google Chrome"`).
    - Confirm Diagnostics -> `LLM Screenshots` matches what the model received during the run.
+   - In `Provider API Keys`, switch execution provider between `OpenAI` and `Anthropic` and confirm:
+     - selected value persists after relaunch.
+     - run path follows selected provider.
+     - if selected provider key is missing, run fails with explicit save/switch guidance.
    - Temporarily revoke Screen Recording, Accessibility, or Input Monitoring permission and confirm clicking `Run Task`:
      - triggers a permission prompt (or opens System Settings)
      - does not start a run until permissions are granted

@@ -17,6 +17,10 @@ protocol OnboardingCompletionStore {
     var hasCompletedOnboarding: Bool { get set }
 }
 
+protocol ExecutionProviderSelectionStore: AnyObject {
+    var selectedExecutionProvider: ExecutionProvider { get set }
+}
+
 enum KeychainStoreError: Error {
     case unhandledStatus(OSStatus)
 }
@@ -212,5 +216,29 @@ final class UserDefaultsOnboardingCompletionStore: OnboardingCompletionStore {
     var hasCompletedOnboarding: Bool {
         get { defaults.bool(forKey: key) }
         set { defaults.set(newValue, forKey: key) }
+    }
+}
+
+final class UserDefaultsExecutionProviderSelectionStore: ExecutionProviderSelectionStore {
+    private let defaults: UserDefaults
+    private let key = "execution.provider.selected"
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+    }
+
+    var selectedExecutionProvider: ExecutionProvider {
+        get {
+            guard
+                let rawValue = defaults.string(forKey: key),
+                let provider = ExecutionProvider(rawValue: rawValue)
+            else {
+                return .openAI
+            }
+            return provider
+        }
+        set {
+            defaults.set(newValue.rawValue, forKey: key)
+        }
     }
 }

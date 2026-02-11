@@ -9,6 +9,8 @@ final class MainShellStateStore {
     private let heartbeatQuestionService: HeartbeatQuestionService
     private let automationEngine: any AutomationEngine
     private let apiKeyStore: any APIKeyStore
+    private let executionProviderSelectionStore: any ExecutionProviderSelectionStore
+    private let executionProviderPreference: ExecutionProviderPreference
     private let permissionService: any PermissionService
     private let captureService: any RecordingCaptureService
     private let overlayService: any RecordingOverlayService
@@ -23,6 +25,7 @@ final class MainShellStateStore {
 
     var tasks: [TaskRecord]
     var selectedTaskID: String?
+    var selectedExecutionProvider: ExecutionProvider
     var providerSetupState: ProviderSetupState
     var newTaskTitle: String
     var heartbeatMarkdown: String
@@ -63,6 +66,7 @@ final class MainShellStateStore {
         heartbeatQuestionService: HeartbeatQuestionService = HeartbeatQuestionService(),
         automationEngine: (any AutomationEngine)? = nil,
         apiKeyStore: any APIKeyStore = KeychainAPIKeyStore(),
+        executionProviderSelectionStore: any ExecutionProviderSelectionStore = UserDefaultsExecutionProviderSelectionStore(),
         permissionService: any PermissionService = MacPermissionService(),
         captureService: any RecordingCaptureService = ShellRecordingCaptureService(),
         overlayService: any RecordingOverlayService = ScreenRecordingOverlayService(),
@@ -74,8 +78,12 @@ final class MainShellStateStore {
         let callRecorder = LLMCallRecorder(maxEntries: 200)
         let screenshotRecorder = LLMScreenshotRecorder(maxEntries: 120)
         let traceRecorder = ExecutionTraceRecorder(maxEntries: 400)
+        let initialExecutionProvider = executionProviderSelectionStore.selectedExecutionProvider
+        let executionProviderPreference = ExecutionProviderPreference(initial: initialExecutionProvider)
         self.taskService = taskService
         self.apiKeyStore = apiKeyStore
+        self.executionProviderSelectionStore = executionProviderSelectionStore
+        self.executionProviderPreference = executionProviderPreference
         self.permissionService = permissionService
         self.taskExtractionService = taskExtractionService ?? TaskExtractionService(
             llmClient: GeminiVideoLLMClient(apiKeyStore: apiKeyStore)
@@ -117,7 +125,8 @@ final class MainShellStateStore {
         let routedEngine = ProviderRoutingAutomationEngine(
             apiKeyStore: apiKeyStore,
             openAIEngine: OpenAIAutomationEngine(runner: openAIRunner),
-            anthropicEngine: AnthropicAutomationEngine(runner: anthropicRunner)
+            anthropicEngine: AnthropicAutomationEngine(runner: anthropicRunner),
+            preferredProvider: { executionProviderPreference.currentValue() }
         )
 
         self.automationEngine = automationEngine ?? routedEngine
@@ -133,6 +142,7 @@ final class MainShellStateStore {
         self.runTaskHandle = nil
         self.tasks = []
         self.selectedTaskID = nil
+        self.selectedExecutionProvider = initialExecutionProvider
         self.providerSetupState = ProviderSetupState(
             hasOpenAIKey: apiKeyStore.hasKey(for: .openAI),
             hasAnthropicKey: apiKeyStore.hasKey(for: .anthropic),
@@ -255,6 +265,30 @@ final class MainShellStateStore {
             hasAnthropicKey: apiKeyStore.hasKey(for: .anthropic),
             hasGeminiKey: apiKeyStore.hasKey(for: .gemini)
         )
+        if selectedExecutionProviderHasSavedKey {
+            if apiKeyErrorMessage?.hasPrefix("Selected execution provider") == true {
+                apiKeyErrorMessage = nil
+            }
+        } else {
+            apiKeyErrorMessage = "Selected execution provider \(selectedExecutionProvider.displayName) has no saved API key."
+        }
+    }
+
+    var selectedExecutionProviderHasSavedKey: Bool {
+        switch selectedExecutionProvider {
+        case .openAI:
+            return providerSetupState.hasOpenAIKey
+        case .anthropic:
+            return providerSetupState.hasAnthropicKey
+        }
+    }
+
+    func selectExecutionProvider(_ provider: ExecutionProvider) {
+        selectedExecutionProvider = provider
+        executionProviderPreference.setValue(provider)
+        executionProviderSelectionStore.selectedExecutionProvider = provider
+        apiKeyStatusMessage = "Execution provider set to \(provider.displayName)."
+        apiKeyErrorMessage = nil
     }
 
     @discardableResult
@@ -270,7 +304,9 @@ final class MainShellStateStore {
             try apiKeyStore.setKey(key, for: provider)
             updateProviderSetupState(saved: true, for: provider)
             apiKeyStatusMessage = "Saved \(providerDisplayName(provider)) API key."
-            apiKeyErrorMessage = nil
+            if provider == selectedExecutionProvider.apiKeyProviderIdentifier {
+                apiKeyErrorMessage = nil
+            }
             return true
         } catch {
             apiKeyStatusMessage = nil
@@ -284,7 +320,11 @@ final class MainShellStateStore {
             try apiKeyStore.setKey(nil, for: provider)
             updateProviderSetupState(saved: false, for: provider)
             apiKeyStatusMessage = "Removed \(providerDisplayName(provider)) API key."
-            apiKeyErrorMessage = nil
+            if provider == selectedExecutionProvider.apiKeyProviderIdentifier {
+                apiKeyErrorMessage = "Selected execution provider \(selectedExecutionProvider.displayName) has no saved API key."
+            } else {
+                apiKeyErrorMessage = nil
+            }
         } catch {
             apiKeyStatusMessage = nil
             apiKeyErrorMessage = "Failed to remove \(providerDisplayName(provider)) API key."
@@ -1009,6 +1049,27 @@ final class MainShellStateStore {
         case .gemini:
             return "Gemini"
         }
+    }
+}
+
+private final class ExecutionProviderPreference: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: ExecutionProvider
+
+    init(initial: ExecutionProvider) {
+        self.value = initial
+    }
+
+    func currentValue() -> ExecutionProvider {
+        lock.lock()
+        defer { lock.unlock() }
+        return value
+    }
+
+    func setValue(_ newValue: ExecutionProvider) {
+        lock.lock()
+        value = newValue
+        lock.unlock()
     }
 }
 

@@ -1865,3 +1865,31 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
 - Manual tests run:
   - N/A (prompt-guideline only).
 - Result: The execution-agent prompt now encodes the intended tool priority and interaction strategy.
+
+## Entry
+- Date: 2026-02-11
+- Step: Remove `terminal_exec` allowlist and enable full terminal power (incremental)
+- Changes made:
+  - Updated `terminal_exec` execution policy from hard-coded allowlist to unrestricted executable resolution:
+    - absolute executable paths are allowed when executable.
+    - non-absolute executable names are resolved via `PATH`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AnthropicAutomationEngine.swift`.
+  - Removed restrictive arg-count/arg-length gate for terminal commands so the tool can execute arbitrary command shapes.
+  - Updated terminal tool messaging:
+    - no more "not allowlisted" errors; now reports "not found or not executable" when resolution fails.
+  - Updated execution prompt guidance to reflect command-line-first behavior without allowlist language:
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/execution_agent/prompt.md`.
+  - Added regression coverage for unrestricted `PATH`-resolved command execution:
+    - new test: `runToolLoopExecutesTerminalExecUsingPathResolvedExecutable`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/AnthropicComputerUseRunnerTests.swift`.
+  - Updated docs to reflect unrestricted `terminal_exec` baseline:
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/revisits.md`.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - N/A (requires running the app and confirming a live run executes unrestricted terminal commands from model tool calls).
+- Result:
+  - `terminal_exec` now has full terminal power (no executable allowlist).

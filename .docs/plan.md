@@ -111,6 +111,7 @@ description: Step-by-step implementation plan with code scope, automated tests, 
   - fallback path: large cursor-following halo overlay when system cursor-size writes are blocked.
   (Implemented)
 - Update execution-agent prompt guidance so the model knows cursor visibility may be enhanced (larger cursor and/or halo) and should treat it as pointer visualization, not target UI. (Implemented)
+- Add explicit execution-provider toggle in main-shell settings (`OpenAI` vs `Anthropic`) and route runs by selected provider (no implicit fallback). (Implemented)
 - Expand tool/action coverage to drag in tool-loop path. (Pending)
 - Baseline policy for this implementation increment:
   - allow run with unresolved open questions and request clarifications in run report.

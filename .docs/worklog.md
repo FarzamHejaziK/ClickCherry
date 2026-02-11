@@ -8,6 +8,39 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-11
+- Step: Add explicit execution-provider toggle (`OpenAI`/`Anthropic`) and selected-provider routing (incremental)
+- Changes made:
+  - Added explicit execution-provider model + persistence:
+    - new `ExecutionProvider` enum in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/Protocols.swift`.
+    - new `ExecutionProviderSelectionStore` + `UserDefaultsExecutionProviderSelectionStore` in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OnboardingPersistence.swift`.
+  - Updated routing behavior in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/ProviderRoutingAutomationEngine.swift`:
+    - routing now uses selected provider directly.
+    - missing selected-provider key now returns explicit switch/save guidance.
+  - Wired provider selection state into `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`:
+    - added persisted selection load/save.
+    - added selection sync for routing and UI status messaging.
+  - Added main-shell UI toggle in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/RootView.swift`:
+    - segmented control for `OpenAI` vs `Anthropic`.
+    - inline selected-provider key status indicator.
+  - Added/updated tests:
+    - updated routing tests in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests.swift`.
+    - added selection persistence state-store test in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`.
+  - Updated docs:
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - N/A (requires local interactive UI run to validate provider-toggle persistence and end-to-end execution-provider switching behavior).
+- Result:
+  - In progress; explicit provider toggle and selected-provider routing are implemented with targeted automated test coverage.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-11
 - Step: Execution prompt clarification for takeover cursor visualization (incremental)
 - Changes made:
   - Updated execution-agent prompt guidance in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/execution_agent/prompt.md`:
@@ -224,32 +257,3 @@ description: Running implementation log of completed work, test evidence, blocke
   - N/A (requires running a live Anthropic task where the model emits `computer.cursor_position` and confirming it no longer returns unsupported-action errors).
 - Result:
   - `cursor_position`-style actions are now executable in the local runner and covered by unit tests.
-
-## Entry
-- Date: 2026-02-11
-- Step: Remove `terminal_exec` allowlist and enable full terminal power (incremental)
-- Changes made:
-  - Updated `terminal_exec` execution policy from hard-coded allowlist to unrestricted executable resolution:
-    - absolute executable paths are allowed when executable.
-    - non-absolute executable names are resolved via `PATH`.
-    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AnthropicAutomationEngine.swift`.
-  - Removed restrictive arg-count/arg-length gate for terminal commands so the tool can execute arbitrary command shapes.
-  - Updated terminal tool messaging:
-    - no more "not allowlisted" errors; now reports "not found or not executable" when resolution fails.
-  - Updated execution prompt guidance to reflect command-line-first behavior without allowlist language:
-    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/execution_agent/prompt.md`.
-  - Added regression coverage for unrestricted `PATH`-resolved command execution:
-    - new test: `runToolLoopExecutesTerminalExecUsingPathResolvedExecutable`.
-    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/AnthropicComputerUseRunnerTests.swift`.
-  - Updated docs to reflect unrestricted `terminal_exec` baseline:
-    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`.
-    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`.
-    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`.
-    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/revisits.md`.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
-- Manual tests run:
-  - N/A (requires running the app and confirming a live run executes unrestricted terminal commands from model tool calls).
-- Result:
-  - `terminal_exec` now has full terminal power (no executable allowlist).
-

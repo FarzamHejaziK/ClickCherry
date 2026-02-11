@@ -263,8 +263,9 @@ This means: if the agent still has unresolved questions, should execution stop o
     - `error`
     - `questions`
 - Provider routing policy:
-  - execution defaults to OpenAI path when an OpenAI API key is configured.
-  - fallback to Anthropic path when OpenAI key is missing and Anthropic key exists.
+  - execution provider is user-selectable in app settings (`OpenAI` or `Anthropic`).
+  - routing uses the selected provider directly (no implicit OpenAI-first fallback).
+  - if the selected provider key is missing, run fails with an explicit key/switch guidance error.
 
 ## Execution takeover UX (locked: 2026-02-10)
 
@@ -332,7 +333,7 @@ This means: if the agent still has unresolved questions, should execution stop o
   - OpenAI Responses custom desktop-use loop:
     - added `OpenAIComputerUseRunner` + `OpenAIAutomationEngine` using custom tool schema (`desktop_action`).
     - added prompt folder `Prompts/execution_agent_openai/` (`prompt.md` + `config.yaml`).
-    - execution provider routing now prefers OpenAI when OpenAI key exists, with Anthropic fallback.
+    - execution provider selection is now explicit in UI (`OpenAI` vs `Anthropic`) and persisted across app relaunch.
 - Still pending for full locked computer-use design:
   - broader action surface (drag) through tool protocol path.
   - local Xcode runtime validation across multi-app tasks and ambiguous failure paths.
