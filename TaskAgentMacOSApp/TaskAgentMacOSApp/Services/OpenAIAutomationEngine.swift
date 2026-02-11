@@ -825,7 +825,7 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
                 try executor.scroll(deltaX: dx, deltaY: dy)
                 return successResult(callID: functionCall.callID, stepDescription: "Scroll (\(dx), \(dy))")
             case "wait":
-                let seconds = max(0.1, object["seconds"]?.doubleValue ?? object["duration"]?.doubleValue ?? 1.0)
+                let seconds = max(0.1, object["seconds"]?.doubleValue ?? object["duration"]?.doubleValue ?? 0.5)
                 await sleepNanoseconds(UInt64(seconds * 1_000_000_000))
                 return successResult(callID: functionCall.callID, stepDescription: "Wait \(String(format: "%.1f", seconds))s")
             default:

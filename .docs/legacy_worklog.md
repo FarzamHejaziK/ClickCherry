@@ -1991,3 +1991,27 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - N/A (requires live local validation of run behavior and payload trend in Diagnostics).
 - Result:
   - Execution runner now sends only the latest screenshot image per turn, enforces terminal-vs-computer boundaries for visual commands, and clears other apps before each run.
+
+## Entry
+- Date: 2026-02-11
+- Step: Fix Anthropic screenshot size validation to use base64 payload limit (incremental)
+- Changes made:
+  - Fixed screenshot-size validation for Anthropic image blocks:
+    - enforce the 5 MB cap against base64-encoded payload size, not raw image bytes.
+    - apply base64-safe raw-byte budget before selecting PNG/JPEG output.
+    - updated trace logging to include both raw and base64 screenshot byte counts for diagnostics.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AnthropicAutomationEngine.swift`.
+  - Added regression tests for base64 image-size budget math:
+    - new tests: `base64BudgetComputesAnthropicFiveMBRawCeiling`, `base64BudgetMatchesObservedOversizeFailureMath`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/AnthropicComputerUseRunnerTests.swift`.
+  - Updated docs:
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - N/A (requires live local run to confirm previous 400 payload error no longer reproduces).
+- Result:
+  - Anthropic screenshot requests now respect the real base64 payload limit and avoid false pass/fail mismatch from raw-byte-only checks.

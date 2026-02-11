@@ -8,6 +8,28 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-11
+- Step: Reduce default `wait` action duration to 0.5s (incremental)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomationEngine.swift`:
+    - changed default `wait` duration fallback from `1.0` to `0.5` seconds when `seconds`/`duration` is omitted.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AnthropicAutomationEngine.swift`:
+    - changed default `wait` duration fallback from `1.0` to `0.5` seconds when `seconds`/`duration` is omitted.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/execution_agent_openai/prompt.md`:
+    - updated `wait` action help text/example to reflect `0.5s` default/fallback guidance.
+  - Updated docs:
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - N/A (requires local interactive run to observe reduced default stabilization delay in real desktop-action loops when the model emits `wait` without duration).
+- Result:
+  - In progress; default wait fallback is now 0.5 seconds in both provider paths.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-11
 - Step: Remove takeover cursor halo/size override and keep normal cursor (incremental)
 - Changes made:
   - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AgentCursorPresentationService.swift`:
@@ -229,28 +251,4 @@ description: Running implementation log of completed work, test evidence, blocke
   - N/A (requires local app run to visually confirm Diagnostics previews match model-visible screenshots per turn).
 - Result:
   - Diagnostics now shows the exact screenshot images sent to the LLM during execution.
-
-## Entry
-- Date: 2026-02-11
-- Step: Fix Anthropic screenshot size validation to use base64 payload limit (incremental)
-- Changes made:
-  - Fixed screenshot-size validation for Anthropic image blocks:
-    - enforce the 5 MB cap against base64-encoded payload size, not raw image bytes.
-    - apply base64-safe raw-byte budget before selecting PNG/JPEG output.
-    - updated trace logging to include both raw and base64 screenshot byte counts for diagnostics.
-    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AnthropicAutomationEngine.swift`.
-  - Added regression tests for base64 image-size budget math:
-    - new tests: `base64BudgetComputesAnthropicFiveMBRawCeiling`, `base64BudgetMatchesObservedOversizeFailureMath`.
-    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/AnthropicComputerUseRunnerTests.swift`.
-  - Updated docs:
-    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`.
-    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`.
-    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`.
-    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
-- Manual tests run:
-  - N/A (requires live local run to confirm previous 400 payload error no longer reproduces).
-- Result:
-  - Anthropic screenshot requests now respect the real base64 payload limit and avoid false pass/fail mismatch from raw-byte-only checks.
 

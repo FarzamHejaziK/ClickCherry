@@ -82,8 +82,8 @@ Actions:
 
 12. Wait
    - Action: `wait`
-   - Optional `seconds` (or `duration`), short stabilization pauses only.
-   - Example: `{"action":"wait","seconds":1.0}`
+   - Optional `seconds` (or `duration`), short stabilization pauses only (default is `0.5`).
+   - Example: `{"action":"wait","seconds":0.5}`
 
 ## Terminal Exec Help (`terminal_exec`)
 Input:

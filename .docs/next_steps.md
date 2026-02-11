@@ -28,6 +28,7 @@ description: Short, continuously updated plan of the immediate next implementati
    - Keep OpenAI execution prompt organized and action-explicit:
      - separate sections for `desktop_action` help and `terminal_exec` help.
      - include full `desktop_action` action reference and accepted input forms so tool calls are predictable. (Implemented)
+   - Keep default `wait` action duration at `0.5s` (when model omits duration) for both OpenAI and Anthropic execution loops. (Implemented)
    - Keep mouse cursor visible in LLM screenshots to improve hover/mouse-move task reliability. (Implemented)
    - Ensure LLM screenshots never include the “Agent is running” HUD by failing closed when exclusion-capable capture is unavailable. (Implemented)
    - Keep full text/tool history but send only the latest screenshot image block per LLM turn to control payload size growth. (Implemented)

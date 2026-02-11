@@ -254,6 +254,7 @@ This means: if the agent still has unresolved questions, should execution stop o
   - open URL
   - scroll
   - wait
+- Wait-action default duration (when omitted by the model) is `0.5s` with a `0.1s` minimum floor in both provider paths.
 - `terminal_exec` baseline behavior matches Anthropic path:
   - unrestricted executable set (absolute path or PATH-resolved executable names)
   - optional timeout control (`timeout_seconds`)
