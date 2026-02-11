@@ -210,7 +210,6 @@ This means: if the agent still has unresolved questions, should execution stop o
 - Implementation:
   - prompt contains: `OS: {{OS_VERSION}}`
   - render value source: `ProcessInfo.processInfo.operatingSystemVersionString`
-  - prompt explicitly tells the model cursor visibility may be enhanced (larger cursor and/or cursor-following halo) and that this is pointer visualization, not target UI content.
 
 ## Execution terminal tool (locked: 2026-02-11)
 
@@ -238,7 +237,9 @@ This means: if the agent still has unresolved questions, should execution stop o
 
 - Added a second execution-provider path using OpenAI Responses API:
   - model baseline: `gpt-5.2-codex`
-  - runtime tool: custom function tool `desktop_action` (JSON schema action envelope)
+  - runtime tools:
+    - `desktop_action`: custom function tool for on-screen desktop actions (JSON schema action envelope)
+    - `terminal_exec`: custom function tool for deterministic terminal command execution (stdout/stderr/exit_code JSON result)
   - loop format: screenshot + prompt input -> `function_call` -> local action execution -> `function_call_output` + fresh screenshot -> continue
 - Action surface implemented in `desktop_action`:
   - screenshot
@@ -253,6 +254,10 @@ This means: if the agent still has unresolved questions, should execution stop o
   - open URL
   - scroll
   - wait
+- `terminal_exec` baseline behavior matches Anthropic path:
+  - unrestricted executable set (absolute path or PATH-resolved executable names)
+  - optional timeout control (`timeout_seconds`)
+  - runtime policy guard rejects visual/UI-oriented terminal commands and directs the model to `desktop_action`
 - Screenshot strategy for OpenAI path:
   - reuse existing execution screenshot capture path (including HUD exclusion and cursor-visible images).
   - send screenshot as data URL image input each turn.
@@ -276,8 +281,7 @@ This means: if the agent still has unresolved questions, should execution stop o
   - A global `CGEventTap` monitors `keyDown` and triggers only on `Escape`.
   - The desktop action executor tags injected CGEvents with a sentinel `eventSourceUserData` value so the interruption monitor ignores synthetic events (avoid self-cancel).
   - Desktop screenshots are captured while excluding the HUD overlay window so it does not appear in images sent to the LLM tool loop.
-  - While takeover is active, the app attempts to increase system cursor size (target `4.0`) and restore the previous value when takeover ends.
-  - If macOS blocks writing cursor-size preferences, the app falls back to a large cursor-following halo overlay during takeover and removes it at takeover end.
+  - During takeover, the app leaves cursor presentation unchanged (no system cursor-size override and no cursor-following halo overlay).
 - Permission requirements for this UX:
   - Screen Recording: screenshots for the tool loop.
   - Accessibility: inject clicks/keys.
@@ -305,10 +309,8 @@ This means: if the agent still has unresolved questions, should execution stop o
     - diagnostics now include an in-app LLM screenshot log that previews the exact encoded images sent to the model (initial image + tool-result images).
   - Pre-run desktop preparation:
     - before each execution run, the app hides other regular apps to provide a cleaner visual workspace for the model.
-  - Takeover cursor visibility:
-    - while the takeover HUD is active, cursor visibility is significantly increased.
-    - preferred path is temporary system cursor-size increase with restore on completion/cancellation.
-    - fallback path is a large cursor-following halo overlay when system cursor-size writes are blocked.
+  - Takeover cursor behavior:
+    - while the takeover HUD is active, cursor presentation remains unchanged (normal system cursor size, no cursor-following halo overlay).
   - Execution prompt context:
     - execution-agent prompt renders OS version via `{{OS_VERSION}}` placeholder.
   - Tool-loop action execution for baseline action types:
@@ -333,6 +335,7 @@ This means: if the agent still has unresolved questions, should execution stop o
   - OpenAI Responses custom desktop-use loop:
     - added `OpenAIComputerUseRunner` + `OpenAIAutomationEngine` using custom tool schema (`desktop_action`).
     - added prompt folder `Prompts/execution_agent_openai/` (`prompt.md` + `config.yaml`).
+    - OpenAI runner now includes `terminal_exec` tool parity with Anthropic (PATH resolution, timeout/output payload, and visual-command policy boundary).
     - execution provider selection is now explicit in UI (`OpenAI` vs `Anthropic`) and persisted across app relaunch.
 - Still pending for full locked computer-use design:
   - broader action surface (drag) through tool protocol path.
@@ -362,6 +365,7 @@ This means: if the agent still has unresolved questions, should execution stop o
   - Gemini
 - Saved keys remain non-readable in UI; UI only shows saved/not-saved status.
 - All key writes/removals use the same Keychain-backed store as onboarding.
+- Execution-provider selection (`OpenAI` vs `Anthropic`) is shown as an always-visible segmented control in main shell (not hidden inside collapsed key-management panels).
 
 ## Recording UX decisions (locked: 2026-02-07)
 

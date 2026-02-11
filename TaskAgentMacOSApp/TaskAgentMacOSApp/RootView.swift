@@ -345,34 +345,35 @@ private struct MainShellView: View {
                 .font(.title)
                 .fontWeight(.semibold)
 
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Execution Provider")
+                    .fontWeight(.medium)
+                Picker(
+                    "Execution Provider",
+                    selection: Binding(
+                        get: { mainShellStateStore.selectedExecutionProvider },
+                        set: { mainShellStateStore.selectExecutionProvider($0) }
+                    )
+                ) {
+                    Text("OpenAI").tag(ExecutionProvider.openAI)
+                    Text("Anthropic").tag(ExecutionProvider.anthropic)
+                }
+                .pickerStyle(.segmented)
+                .frame(maxWidth: 360)
+
+                Text(
+                    mainShellStateStore.selectedExecutionProviderHasSavedKey
+                        ? "\(mainShellStateStore.selectedExecutionProvider.displayName) key is saved."
+                        : "\(mainShellStateStore.selectedExecutionProvider.displayName) key is not saved."
+                )
+                .foregroundStyle(mainShellStateStore.selectedExecutionProviderHasSavedKey ? .green : .orange)
+                .font(.caption)
+            }
+
             DisclosureGroup("Provider API Keys", isExpanded: $isAPIKeySettingsExpanded) {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Update provider keys any time. Values are stored in macOS Keychain.")
                         .foregroundStyle(.secondary)
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Execution Provider")
-                            .fontWeight(.medium)
-                        Picker(
-                            "Execution Provider",
-                            selection: Binding(
-                                get: { mainShellStateStore.selectedExecutionProvider },
-                                set: { mainShellStateStore.selectExecutionProvider($0) }
-                            )
-                        ) {
-                            Text("OpenAI").tag(ExecutionProvider.openAI)
-                            Text("Anthropic").tag(ExecutionProvider.anthropic)
-                        }
-                        .pickerStyle(.segmented)
-
-                        Text(
-                            mainShellStateStore.selectedExecutionProviderHasSavedKey
-                                ? "\(mainShellStateStore.selectedExecutionProvider.displayName) key is saved."
-                                : "\(mainShellStateStore.selectedExecutionProvider.displayName) key is not saved."
-                        )
-                        .foregroundStyle(mainShellStateStore.selectedExecutionProviderHasSavedKey ? .green : .orange)
-                        .font(.caption)
-                    }
 
                     providerInputSection(
                         title: "OpenAI API Key",

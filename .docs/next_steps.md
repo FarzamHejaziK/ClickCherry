@@ -13,6 +13,7 @@ description: Short, continuously updated plan of the immediate next implementati
      - run summaries persist under `runs/`.
      - execution-agent prompt is loaded from `Prompts/execution_agent/prompt.md` + `config.yaml` (single template prompt).
    - Keep explicit execution-provider toggle behavior stable:
+     - toggle remains always visible in main shell (not hidden behind collapsed disclosures).
      - provider selection is persisted across relaunch.
      - selected provider is used directly at run time (no implicit fallback).
      - missing selected-provider key surfaces a clear switch/save error.
@@ -21,6 +22,12 @@ description: Short, continuously updated plan of the immediate next implementati
      - keep execution path tool-loop only (no planner fallback path).
    - Include host OS version string in the execution-agent prompt (via `{{OS_VERSION}}` placeholder). (Implemented)
    - Add a custom `terminal_exec` tool to the execution tool loop for unrestricted terminal command execution (absolute-path or PATH-resolved executables). (Implemented)
+   - Keep OpenAI tool-surface parity with Anthropic baseline:
+     - OpenAI runner exposes both `desktop_action` and `terminal_exec` tools.
+     - OpenAI `terminal_exec` matches Anthropic behavior for PATH resolution, timeout/output payload, and visual-command rejection policy. (Implemented)
+   - Keep OpenAI execution prompt organized and action-explicit:
+     - separate sections for `desktop_action` help and `terminal_exec` help.
+     - include full `desktop_action` action reference and accepted input forms so tool calls are predictable. (Implemented)
    - Keep mouse cursor visible in LLM screenshots to improve hover/mouse-move task reliability. (Implemented)
    - Ensure LLM screenshots never include the “Agent is running” HUD by failing closed when exclusion-capable capture is unavailable. (Implemented)
    - Keep full text/tool history but send only the latest screenshot image block per LLM turn to control payload size growth. (Implemented)
@@ -28,11 +35,7 @@ description: Short, continuously updated plan of the immediate next implementati
    - Before each run, hide other regular apps to provide a cleaner screen for the agent. (Implemented)
    - Ensure screenshots sent to Anthropic stay under the 5 MB base64 image limit (raw-byte budgeting + JPEG re-encode fallback for retina screenshots). (Implemented)
    - Expose model-visible screenshots in Diagnostics so users can review the exact images sent to Anthropic. (Implemented)
-   - While agent takeover is active, significantly increase cursor visibility and restore/remove it when the run ends/cancels (including early monitor-start failure):
-     - preferred path: temporary system cursor-size increase.
-     - fallback path: large cursor-following halo overlay when macOS blocks cursor-size writes.
-     (Implemented)
-   - Keep execution-agent prompt aligned with takeover cursor visualization so the model treats larger cursor/halo as pointer presentation (not actionable UI). (Implemented)
+   - Keep cursor presentation unchanged during agent takeover (normal cursor size, no cursor-following halo overlay), including cancellation/monitor-start-failure paths. (Implemented)
    - Expand action coverage through tool-loop path (scroll/right-click/move/cursor_position implemented; drag and richer UI control still pending).
    - Fix tool schema parsing for `computer_20251124` tool inputs:
      - accept click coordinates in the model-returned schema (top-level `x`/`y` and `coordinate: [x,y]` / nested position fields). (Implemented)
@@ -63,12 +66,13 @@ description: Short, continuously updated plan of the immediate next implementati
    - Markdown runtime-question append/dedup tests.
    - Add richer tool-action integration tests (drag and multi-display coordinate/origin cases; scroll/right-click/move are covered).
    - Add tests for `terminal_exec` tool definition + dispatch (PATH resolution + stdout/stderr capture). (Implemented)
+   - Keep OpenAI parity tests passing for `terminal_exec` (execution output, visual-command rejection, PATH-resolved executable). (Implemented)
    - Keep coverage for `cursor_position` tool action mapping + payload return format. (Implemented)
    - Keep coverage for latest-image-only request compaction and visual terminal-command rejection. (Implemented)
    - Keep coverage for base64 image-size budget math (encoded 5 MB limit). (Implemented)
    - Keep coverage for LLM screenshot-log emission (initial + tool-result captures). (Implemented)
    - Keep state-store coverage for desktop preparation before run start. (Implemented)
-   - Keep state-store coverage for takeover cursor-size activation/restoration paths. (Implemented)
+   - Keep state-store coverage for takeover cursor-presentation activation/deactivation paths. (Implemented)
    - Add tool-input parsing tests for:
      - click coordinate schema variants (array/nested/top-level)
      - key schema variants (`key` vs `text`) and special keys like space
@@ -85,13 +89,13 @@ description: Short, continuously updated plan of the immediate next implementati
    - While the run is executing, confirm:
      - a centered "Agent is running" overlay is visible.
      - pressing `Escape` cancels the run and the overlay disappears.
-     - cursor visibility is visibly larger while takeover is active (larger cursor or halo overlay).
-     - model behavior is not distracted by cursor-visibility halo (continues acting on real UI targets).
+     - cursor presentation remains normal while takeover is active (no enlarged cursor and no halo overlay).
    - Confirm clicking `Run Task` minimizes the app window immediately (agent overlay remains visible).
-   - Confirm cursor visibility enhancement is removed after run completion/cancellation.
+   - Confirm cursor presentation remains unchanged after run completion/cancellation.
    - Confirm the model can use `terminal_exec` to open an app (example command: `open -a "Google Chrome"`).
+   - In both `OpenAI` and `Anthropic` execution-provider modes, confirm `terminal_exec` is available and behaves consistently (successful command output + visual-command rejection).
    - Confirm Diagnostics -> `LLM Screenshots` matches what the model received during the run.
-   - In `Provider API Keys`, switch execution provider between `OpenAI` and `Anthropic` and confirm:
+   - In the always-visible `Execution Provider` segmented control, switch between `OpenAI` and `Anthropic` and confirm:
      - selected value persists after relaunch.
      - run path follows selected provider.
      - if selected provider key is missing, run fails with explicit save/switch guidance.

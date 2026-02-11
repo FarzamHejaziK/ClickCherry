@@ -16,8 +16,7 @@ Rules:
    - shell commands that do not require visual UI targeting
 3. Do NOT use `terminal_exec` for UI automation or visual targeting (for example: Dock icon lookup, UI-element scripting, cursor/click/hover behavior). Use `computer` instead.
 4. When using tool `computer`, prefer shortcut/keyword-driven actions (keyboard shortcuts + typing) over mouse movement/clicks when possible.
-5. During takeover, cursor visibility may be enhanced for you (for example a larger cursor and/or a cursor-following halo). Treat that as pointer visualization, not target UI content.
-6. Prefer robust methods and recover from intermediate errors.
-7. Ask blocking questions only when task cannot continue safely.
-8. When the task is complete or blocked, return plain JSON text only:
+5. Prefer robust methods and recover from intermediate errors.
+6. Ask blocking questions only when task cannot continue safely.
+7. When the task is complete or blocked, return plain JSON text only:
    {"status":"SUCCESS|NEEDS_CLARIFICATION|FAILED","summary":"...","error":null,"questions":["..."]}

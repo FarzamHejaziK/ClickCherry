@@ -169,9 +169,6 @@ struct OpenAIComputerUseRunnerTests {
                 let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any],
                 let model = json["model"] as? String,
                 let tools = json["tools"] as? [[String: Any]],
-                let firstTool = tools.first,
-                let toolName = firstTool["name"] as? String,
-                let toolType = firstTool["type"] as? String,
                 let input = json["input"] as? [[String: Any]],
                 let firstTurn = input.first,
                 let content = firstTurn["content"] as? [[String: Any]]
@@ -180,8 +177,8 @@ struct OpenAIComputerUseRunnerTests {
             }
 
             #expect(model == "gpt-5.2-codex")
-            #expect(toolName == "desktop_action")
-            #expect(toolType == "function")
+            #expect(tools.compactMap { $0["name"] as? String }.contains("desktop_action"))
+            #expect(tools.compactMap { $0["name"] as? String }.contains("terminal_exec"))
             #expect(content.contains(where: { ($0["type"] as? String) == "input_image" }))
 
             let responseBody = """
@@ -336,6 +333,260 @@ struct OpenAIComputerUseRunnerTests {
 
         _ = try await runner.runToolLoop(taskMarkdown: "# Task\nClick target", executor: executor)
         #expect(executor.clicks == [OpenAIXY(x: 200, y: 400)])
+    }
+
+    @Test
+    func runToolLoopExecutesTerminalExecToolUseAndReturnsOutput() async throws {
+        let (promptCatalog, tempRoot) = try makePromptCatalog()
+        defer { try? FileManager.default.removeItem(at: tempRoot) }
+
+        OpenAIQueueURLProtocol.reset()
+        defer { OpenAIQueueURLProtocol.reset() }
+
+        OpenAIQueueURLProtocol.enqueue { request in
+            let responseBody = """
+            {
+              "id": "resp_1",
+              "output": [
+                {
+                  "type": "function_call",
+                  "id": "fc_1",
+                  "call_id": "call_1",
+                  "name": "terminal_exec",
+                  "arguments": "{\\"executable\\":\\"echo\\",\\"args\\":[\\"hello\\"]}"
+                }
+              ]
+            }
+            """
+            return (Self.response(url: request.url!, code: 200), Data(responseBody.utf8))
+        }
+
+        OpenAIQueueURLProtocol.enqueue { request in
+            guard
+                let bodyData = Self.requestBodyData(from: request),
+                let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any],
+                let input = json["input"] as? [[String: Any]],
+                let functionOutput = input.first(where: { ($0["type"] as? String) == "function_call_output" }),
+                let callID = functionOutput["call_id"] as? String,
+                let output = functionOutput["output"] as? String
+            else {
+                throw NSError(domain: "OpenAIComputerUseRunnerTests", code: 12)
+            }
+
+            #expect(callID == "call_1")
+            #expect(output.contains("\"exit_code\":0"))
+            #expect(output.contains("hello"))
+
+            let responseBody = """
+            {
+              "id": "resp_2",
+              "output": [
+                {
+                  "type": "message",
+                  "content": [
+                    {
+                      "type": "output_text",
+                      "text": "{\\"status\\":\\"SUCCESS\\",\\"summary\\":\\"ok\\",\\"error\\":null,\\"questions\\":[]}"
+                    }
+                  ]
+                }
+              ]
+            }
+            """
+            return (Self.response(url: request.url!, code: 200), Data(responseBody.utf8))
+        }
+
+        let runner = OpenAIComputerUseRunner(
+            apiKeyStore: OpenAIStubAPIKeyStore(values: [.openAI: "openai-test-key"]),
+            promptCatalog: promptCatalog,
+            session: makeSession(),
+            screenshotProvider: {
+                let data = Data("png".utf8)
+                return OpenAICapturedScreenshot(
+                    width: 1280,
+                    height: 800,
+                    captureWidthPx: 1280,
+                    captureHeightPx: 800,
+                    coordinateSpaceWidthPx: 1280,
+                    coordinateSpaceHeightPx: 800,
+                    mediaType: "image/png",
+                    base64Data: data.base64EncodedString(),
+                    byteCount: data.count
+                )
+            }
+        )
+
+        let result = try await runner.runToolLoop(taskMarkdown: "# Task", executor: OpenAIMockDesktopExecutor())
+        #expect(result.outcome == .success)
+        #expect(result.executedSteps.contains(where: { $0.contains("Terminal exec:") }))
+    }
+
+    @Test
+    func runToolLoopRejectsVisualTerminalCommandAndRequestsDesktopActionTool() async throws {
+        let (promptCatalog, tempRoot) = try makePromptCatalog()
+        defer { try? FileManager.default.removeItem(at: tempRoot) }
+
+        OpenAIQueueURLProtocol.reset()
+        defer { OpenAIQueueURLProtocol.reset() }
+
+        OpenAIQueueURLProtocol.enqueue { request in
+            let responseBody = """
+            {
+              "id": "resp_1",
+              "output": [
+                {
+                  "type": "function_call",
+                  "id": "fc_1",
+                  "call_id": "call_1",
+                  "name": "terminal_exec",
+                  "arguments": "{\\"executable\\":\\"osascript\\",\\"args\\":[\\"-e\\",\\"tell application \\\\\\"System Events\\\\\\" to tell process \\\\\\"Dock\\\\\\" to get every UI element\\"]}"
+                }
+              ]
+            }
+            """
+            return (Self.response(url: request.url!, code: 200), Data(responseBody.utf8))
+        }
+
+        OpenAIQueueURLProtocol.enqueue { request in
+            guard
+                let bodyData = Self.requestBodyData(from: request),
+                let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any],
+                let input = json["input"] as? [[String: Any]],
+                let functionOutput = input.first(where: { ($0["type"] as? String) == "function_call_output" }),
+                let output = functionOutput["output"] as? String
+            else {
+                throw NSError(domain: "OpenAIComputerUseRunnerTests", code: 13)
+            }
+
+            #expect(output.contains("\"ok\":false"))
+            #expect(output.contains("Use tool 'desktop_action'"))
+
+            let responseBody = """
+            {
+              "id": "resp_2",
+              "output": [
+                {
+                  "type": "message",
+                  "content": [
+                    {
+                      "type": "output_text",
+                      "text": "{\\"status\\":\\"SUCCESS\\",\\"summary\\":\\"ok\\",\\"error\\":null,\\"questions\\":[]}"
+                    }
+                  ]
+                }
+              ]
+            }
+            """
+            return (Self.response(url: request.url!, code: 200), Data(responseBody.utf8))
+        }
+
+        let runner = OpenAIComputerUseRunner(
+            apiKeyStore: OpenAIStubAPIKeyStore(values: [.openAI: "openai-test-key"]),
+            promptCatalog: promptCatalog,
+            session: makeSession(),
+            screenshotProvider: {
+                let data = Data("png".utf8)
+                return OpenAICapturedScreenshot(
+                    width: 1280,
+                    height: 800,
+                    captureWidthPx: 1280,
+                    captureHeightPx: 800,
+                    coordinateSpaceWidthPx: 1280,
+                    coordinateSpaceHeightPx: 800,
+                    mediaType: "image/png",
+                    base64Data: data.base64EncodedString(),
+                    byteCount: data.count
+                )
+            }
+        )
+
+        let result = try await runner.runToolLoop(taskMarkdown: "# Task", executor: OpenAIMockDesktopExecutor())
+        #expect(result.outcome == .success)
+        #expect(result.executedSteps.contains(where: { $0.contains("Terminal exec:") }) == false)
+    }
+
+    @Test
+    func runToolLoopExecutesTerminalExecUsingPathResolvedExecutable() async throws {
+        let (promptCatalog, tempRoot) = try makePromptCatalog()
+        defer { try? FileManager.default.removeItem(at: tempRoot) }
+
+        OpenAIQueueURLProtocol.reset()
+        defer { OpenAIQueueURLProtocol.reset() }
+
+        OpenAIQueueURLProtocol.enqueue { request in
+            let responseBody = """
+            {
+              "id": "resp_1",
+              "output": [
+                {
+                  "type": "function_call",
+                  "id": "fc_1",
+                  "call_id": "call_1",
+                  "name": "terminal_exec",
+                  "arguments": "{\\"executable\\":\\"true\\"}"
+                }
+              ]
+            }
+            """
+            return (Self.response(url: request.url!, code: 200), Data(responseBody.utf8))
+        }
+
+        OpenAIQueueURLProtocol.enqueue { request in
+            guard
+                let bodyData = Self.requestBodyData(from: request),
+                let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any],
+                let input = json["input"] as? [[String: Any]],
+                let functionOutput = input.first(where: { ($0["type"] as? String) == "function_call_output" }),
+                let output = functionOutput["output"] as? String
+            else {
+                throw NSError(domain: "OpenAIComputerUseRunnerTests", code: 14)
+            }
+
+            #expect(output.contains("\"exit_code\":0"))
+            #expect(output.contains("\"ok\":true"))
+
+            let responseBody = """
+            {
+              "id": "resp_2",
+              "output": [
+                {
+                  "type": "message",
+                  "content": [
+                    {
+                      "type": "output_text",
+                      "text": "{\\"status\\":\\"SUCCESS\\",\\"summary\\":\\"ok\\",\\"error\\":null,\\"questions\\":[]}"
+                    }
+                  ]
+                }
+              ]
+            }
+            """
+            return (Self.response(url: request.url!, code: 200), Data(responseBody.utf8))
+        }
+
+        let runner = OpenAIComputerUseRunner(
+            apiKeyStore: OpenAIStubAPIKeyStore(values: [.openAI: "openai-test-key"]),
+            promptCatalog: promptCatalog,
+            session: makeSession(),
+            screenshotProvider: {
+                let data = Data("png".utf8)
+                return OpenAICapturedScreenshot(
+                    width: 1280,
+                    height: 800,
+                    captureWidthPx: 1280,
+                    captureHeightPx: 800,
+                    coordinateSpaceWidthPx: 1280,
+                    coordinateSpaceHeightPx: 800,
+                    mediaType: "image/png",
+                    base64Data: data.base64EncodedString(),
+                    byteCount: data.count
+                )
+            }
+        )
+
+        let result = try await runner.runToolLoop(taskMarkdown: "# Task", executor: OpenAIMockDesktopExecutor())
+        #expect(result.outcome == .success)
+        #expect(result.executedSteps.contains(where: { $0.contains("Terminal exec: true") }))
     }
 
     @Test

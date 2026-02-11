@@ -713,9 +713,9 @@ final class MainShellStateStore {
         executionTraceRecorder.record(ExecutionTraceEntry(kind: .info, message: "Run requested for task \(selectedTaskID)."))
         agentControlOverlayService.showAgentInControl()
         if agentCursorPresentationService.activateTakeoverCursor() {
-            executionTraceRecorder.record(ExecutionTraceEntry(kind: .info, message: "Increased cursor size during agent takeover."))
+            executionTraceRecorder.record(ExecutionTraceEntry(kind: .info, message: "Cursor presentation left unchanged during agent takeover."))
         } else {
-            executionTraceRecorder.record(ExecutionTraceEntry(kind: .error, message: "Failed to increase cursor size during agent takeover."))
+            executionTraceRecorder.record(ExecutionTraceEntry(kind: .error, message: "Failed to activate takeover cursor presentation."))
         }
 
         let didStartMonitor = userInterruptionMonitor.start { [weak self] in
@@ -724,7 +724,7 @@ final class MainShellStateStore {
         if !didStartMonitor {
             agentControlOverlayService.hideAgentInControl()
             if !agentCursorPresentationService.deactivateTakeoverCursor() {
-                executionTraceRecorder.record(ExecutionTraceEntry(kind: .error, message: "Failed to restore cursor size after takeover monitor startup failed."))
+                executionTraceRecorder.record(ExecutionTraceEntry(kind: .error, message: "Failed to deactivate takeover cursor presentation after monitor startup failed."))
             }
             isRunningTask = false
             runStatusMessage = nil
@@ -781,7 +781,7 @@ final class MainShellStateStore {
         agentControlOverlayService.hideAgentInControl()
         userInterruptionMonitor.stop()
         if !agentCursorPresentationService.deactivateTakeoverCursor() {
-            executionTraceRecorder.record(ExecutionTraceEntry(kind: .error, message: "Failed to restore cursor size after cancellation request."))
+            executionTraceRecorder.record(ExecutionTraceEntry(kind: .error, message: "Failed to deactivate takeover cursor presentation after cancellation request."))
         }
         runStatusMessage = "Cancelling..."
         executionTraceRecorder.record(ExecutionTraceEntry(kind: .cancelled, message: "Cancel requested by user."))
@@ -797,7 +797,7 @@ final class MainShellStateStore {
         agentControlOverlayService.hideAgentInControl()
         userInterruptionMonitor.stop()
         if !agentCursorPresentationService.deactivateTakeoverCursor() {
-            executionTraceRecorder.record(ExecutionTraceEntry(kind: .error, message: "Failed to restore cursor size after run completion."))
+            executionTraceRecorder.record(ExecutionTraceEntry(kind: .error, message: "Failed to deactivate takeover cursor presentation after run completion."))
         }
 
         var heartbeatChanged = false
@@ -858,7 +858,7 @@ final class MainShellStateStore {
         agentControlOverlayService.hideAgentInControl()
         userInterruptionMonitor.stop()
         if !agentCursorPresentationService.deactivateTakeoverCursor() {
-            executionTraceRecorder.record(ExecutionTraceEntry(kind: .error, message: "Failed to restore cursor size after Escape takeover."))
+            executionTraceRecorder.record(ExecutionTraceEntry(kind: .error, message: "Failed to deactivate takeover cursor presentation after Escape takeover."))
         }
         runStatusMessage = "Cancelling (Escape pressed)..."
         executionTraceRecorder.record(ExecutionTraceEntry(kind: .cancelled, message: "Escape pressed; cancelling run."))

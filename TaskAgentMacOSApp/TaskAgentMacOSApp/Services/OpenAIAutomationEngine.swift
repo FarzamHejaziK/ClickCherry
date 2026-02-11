@@ -77,6 +77,95 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
         var errorMessage: String?
     }
 
+    private struct TerminalExecToolResultPayload: Encodable {
+        var ok: Bool
+        var exitCode: Int
+        var timedOut: Bool
+        var stdout: String
+        var stderr: String
+        var truncated: Bool
+
+        enum CodingKeys: String, CodingKey {
+            case ok
+            case exitCode = "exit_code"
+            case timedOut = "timed_out"
+            case stdout
+            case stderr
+            case truncated
+        }
+    }
+
+    private struct TerminalCommandExecutionResult {
+        var exitCode: Int32
+        var timedOut: Bool
+        var stdout: Data
+        var stderr: Data
+        var truncated: Bool
+    }
+
+    private final class PipeCollector {
+        private let lock = NSLock()
+        private let maxBytes: Int
+        private(set) var truncated: Bool = false
+        private var buffer = Data()
+
+        init(maxBytes: Int) {
+            self.maxBytes = max(0, maxBytes)
+        }
+
+        func append(_ chunk: Data) {
+            lock.lock()
+            defer { lock.unlock() }
+
+            guard maxBytes > 0 else {
+                truncated = true
+                return
+            }
+
+            if buffer.count >= maxBytes {
+                truncated = true
+                return
+            }
+
+            let remaining = maxBytes - buffer.count
+            if chunk.count <= remaining {
+                buffer.append(chunk)
+            } else {
+                buffer.append(chunk.prefix(remaining))
+                truncated = true
+            }
+        }
+
+        func snapshot() -> Data {
+            lock.lock()
+            defer { lock.unlock() }
+            return buffer
+        }
+    }
+
+    private static let terminalExecMaxCapturedOutputBytes = 64 * 1024
+    private static let terminalExecDefaultTimeoutSeconds = 30.0
+    private static let terminalExecMaxTimeoutSeconds = 120.0
+    private static let terminalExecAlwaysVisualExecutables: Set<String> = [
+        "osascript",
+        "cliclick"
+    ]
+    private static let terminalExecVisualCommandKeywords: [String] = [
+        "system events",
+        "ui element",
+        "click",
+        "keystroke",
+        "key code",
+        "dock",
+        "window",
+        "menu bar",
+        "mouse",
+        "cursor",
+        "screenshot",
+        "screen shot",
+        "screencapture"
+    ]
+
     private let apiKeyStore: any APIKeyStore
     private let promptCatalog: PromptCatalogService
     private let promptName: String
@@ -157,7 +246,7 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
             coordinateScaleY = 1.0
         }
 
-        recordTrace(kind: .info, "Execution started (model=\(promptTemplate.config.llm), tool=desktop_action).")
+        recordTrace(kind: .info, "Execution started (model=\(promptTemplate.config.llm), tools=desktop_action,terminal_exec).")
         recordTrace(
             kind: .info,
             "Captured initial screenshot (\(initialScreenshot.width)x\(initialScreenshot.height), \(initialScreenshot.mediaType), raw=\(initialScreenshot.byteCount) bytes, base64=\(initialScreenshot.base64Data.utf8.count) bytes; capture=\(initialScreenshot.captureWidthPx)x\(initialScreenshot.captureHeightPx) coordSpace=\(initialScreenshot.coordinateSpaceWidthPx)x\(initialScreenshot.coordinateSpaceHeightPx))."
@@ -170,7 +259,10 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
             screenHeight: initialScreenshot.height
         )
 
-        let tools = [desktopActionToolDefinition()]
+        let tools = [
+            desktopActionToolDefinition(),
+            terminalExecToolDefinition()
+        ]
 
         let initialInput = [
             userTextAndImageInput(
@@ -576,7 +668,7 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
         executor: any DesktopActionExecutor
     ) async throws -> ToolExecutionResult {
         let toolName = functionCall.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard toolName == "desktop_action" else {
+        guard toolName == "desktop_action" || toolName == "terminal_exec" else {
             return ToolExecutionResult(
                 callID: functionCall.callID,
                 output: makeToolOutput(
@@ -605,6 +697,10 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
                 stepDescription: nil,
                 generatedQuestions: ["Execution input from model was invalid. How should I proceed?"]
             )
+        }
+
+        if toolName == "terminal_exec" {
+            return await executeTerminalExecFunctionCall(callID: functionCall.callID, input: object)
         }
 
         let action = (object["action"]?.stringValue ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -783,6 +879,250 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
             isError: true,
             stepDescription: nil,
             generatedQuestions: ["Action '\(action)' had invalid input from the model. How should I proceed?"]
+        )
+    }
+
+    private func executeTerminalExecFunctionCall(
+        callID: String,
+        input: [String: OpenAIJSONValue]
+    ) async -> ToolExecutionResult {
+        guard let executableRaw = input["executable"]?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !executableRaw.isEmpty else {
+            return ToolExecutionResult(
+                callID: callID,
+                output: makeToolOutput(ok: false, message: "Terminal tool input missing 'executable'.", error: "invalid_input"),
+                isError: true,
+                stepDescription: nil,
+                generatedQuestions: ["Model omitted the terminal executable to run. What should I do?"]
+            )
+        }
+
+        var args: [String] = []
+        if let argsValue = input["args"] {
+            guard let array = argsValue.arrayValue else {
+                return ToolExecutionResult(
+                    callID: callID,
+                    output: makeToolOutput(ok: false, message: "Terminal tool input field 'args' must be an array of strings.", error: "invalid_input"),
+                    isError: true,
+                    stepDescription: nil,
+                    generatedQuestions: ["Terminal tool input field 'args' was invalid. What should I do?"]
+                )
+            }
+            for value in array {
+                guard let s = value.stringValue else {
+                    return ToolExecutionResult(
+                        callID: callID,
+                        output: makeToolOutput(ok: false, message: "Terminal tool input field 'args' must contain only strings.", error: "invalid_input"),
+                        isError: true,
+                        stepDescription: nil,
+                        generatedQuestions: ["Terminal tool input field 'args' was invalid. What should I do?"]
+                    )
+                }
+                args.append(s)
+            }
+        }
+
+        let timeoutRaw = input["timeout_seconds"]?.doubleValue ?? Self.terminalExecDefaultTimeoutSeconds
+        let timeoutSeconds = min(Self.terminalExecMaxTimeoutSeconds, max(0.1, timeoutRaw))
+
+        if let policyViolationMessage = validateTerminalExecPolicy(executable: executableRaw, args: args) {
+            return ToolExecutionResult(
+                callID: callID,
+                output: makeToolOutput(ok: false, message: policyViolationMessage, error: "policy_violation"),
+                isError: true,
+                stepDescription: nil,
+                generatedQuestions: []
+            )
+        }
+
+        guard let resolvedExecutable = resolveTerminalExecutable(executableRaw) else {
+            return ToolExecutionResult(
+                callID: callID,
+                output: makeToolOutput(
+                    ok: false,
+                    message: "Executable '\(executableRaw)' was not found or is not executable.",
+                    error: "executable_not_found"
+                ),
+                isError: true,
+                stepDescription: nil,
+                generatedQuestions: ["Terminal command executable was not found ('\(executableRaw)'). What should I do instead?"]
+            )
+        }
+
+        let commandSummary = summarizeTerminalCommand(executablePath: resolvedExecutable, args: args)
+        recordTrace(kind: .info, "Terminal exec requested: \(commandSummary)")
+
+        do {
+            let exec = try await runTerminalCommand(executablePath: resolvedExecutable, args: args, timeoutSeconds: timeoutSeconds)
+            let stdout = String(decoding: exec.stdout, as: UTF8.self)
+            let stderr = String(decoding: exec.stderr, as: UTF8.self)
+
+            let payload = TerminalExecToolResultPayload(
+                ok: (exec.exitCode == 0) && !exec.timedOut,
+                exitCode: Int(exec.exitCode),
+                timedOut: exec.timedOut,
+                stdout: stdout,
+                stderr: stderr,
+                truncated: exec.truncated
+            )
+
+            let payloadText: String
+            if let json = try? String(data: jsonEncoder.encode(payload), encoding: .utf8) {
+                payloadText = json
+            } else {
+                payloadText = "{\"ok\":false,\"exit_code\":-1,\"timed_out\":false,\"stdout\":\"\",\"stderr\":\"Failed to encode terminal tool result.\",\"truncated\":false}"
+            }
+
+            return ToolExecutionResult(
+                callID: callID,
+                output: payloadText,
+                isError: !payload.ok,
+                stepDescription: "Terminal exec: \(commandSummary)",
+                generatedQuestions: payload.ok ? [] : ["Terminal command failed (\(commandSummary)). What should I do instead?"]
+            )
+        } catch {
+            return ToolExecutionResult(
+                callID: callID,
+                output: makeToolOutput(ok: false, message: "Terminal exec failed: \(error.localizedDescription)", error: "execution_failed"),
+                isError: true,
+                stepDescription: nil,
+                generatedQuestions: ["Terminal exec failed for (\(commandSummary)). What should I do instead?"]
+            )
+        }
+    }
+
+    private func resolveTerminalExecutable(_ raw: String) -> String? {
+        let cleaned = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty else { return nil }
+
+        if cleaned.hasPrefix("/") {
+            return FileManager.default.isExecutableFile(atPath: cleaned) ? cleaned : nil
+        }
+
+        let pathEnv = ProcessInfo.processInfo.environment["PATH"] ?? "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+        for directory in pathEnv.split(separator: ":").map(String.init) {
+            let candidate = URL(fileURLWithPath: directory, isDirectory: true)
+                .appendingPathComponent(cleaned, isDirectory: false)
+                .path
+            if FileManager.default.isExecutableFile(atPath: candidate) {
+                return candidate
+            }
+        }
+
+        return nil
+    }
+
+    private func validateTerminalExecPolicy(executable: String, args: [String]) -> String? {
+        let executableName = URL(fileURLWithPath: executable).lastPathComponent.lowercased()
+        let commandLineLower = ([executableName] + args).joined(separator: " ").lowercased()
+
+        if Self.terminalExecAlwaysVisualExecutables.contains(executableName) {
+            return "Terminal command '\(executableName)' is blocked for UI/visual automation. Use tool 'desktop_action' for on-screen actions (find/hover/click/scroll/type based on screenshots)."
+        }
+
+        if Self.terminalExecVisualCommandKeywords.contains(where: { commandLineLower.contains($0) }) {
+            return "Terminal command appears to target visual UI state. Use tool 'desktop_action' for on-screen actions and coordinates."
+        }
+
+        return nil
+    }
+
+    private func summarizeTerminalCommand(executablePath: String, args: [String]) -> String {
+        let cmd = ([URL(fileURLWithPath: executablePath).lastPathComponent] + args).joined(separator: " ")
+        return truncate(cmd, limit: 220)
+    }
+
+    private func runTerminalCommand(
+        executablePath: String,
+        args: [String],
+        timeoutSeconds: Double
+    ) async throws -> TerminalCommandExecutionResult {
+        try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .utility).async {
+                do {
+                    let result = try self.runTerminalCommandSync(
+                        executablePath: executablePath,
+                        args: args,
+                        timeoutSeconds: timeoutSeconds
+                    )
+                    continuation.resume(returning: result)
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
+    private func runTerminalCommandSync(
+        executablePath: String,
+        args: [String],
+        timeoutSeconds: Double
+    ) throws -> TerminalCommandExecutionResult {
+        let exeURL = URL(fileURLWithPath: executablePath)
+
+        let process = Process()
+        process.executableURL = exeURL
+        process.arguments = args
+
+        let stdoutPipe = Pipe()
+        let stderrPipe = Pipe()
+        process.standardOutput = stdoutPipe
+        process.standardError = stderrPipe
+
+        let stdoutCollector = PipeCollector(maxBytes: Self.terminalExecMaxCapturedOutputBytes)
+        let stderrCollector = PipeCollector(maxBytes: Self.terminalExecMaxCapturedOutputBytes)
+
+        let terminationSemaphore = DispatchSemaphore(value: 0)
+        process.terminationHandler = { _ in
+            terminationSemaphore.signal()
+        }
+
+        try process.run()
+
+        let group = DispatchGroup()
+        group.enter()
+        DispatchQueue.global(qos: .utility).async {
+            let handle = stdoutPipe.fileHandleForReading
+            while true {
+                let chunk = handle.availableData
+                if chunk.isEmpty { break }
+                stdoutCollector.append(chunk)
+            }
+            group.leave()
+        }
+        group.enter()
+        DispatchQueue.global(qos: .utility).async {
+            let handle = stderrPipe.fileHandleForReading
+            while true {
+                let chunk = handle.availableData
+                if chunk.isEmpty { break }
+                stderrCollector.append(chunk)
+            }
+            group.leave()
+        }
+
+        var timedOut = false
+        if terminationSemaphore.wait(timeout: .now() + max(0.1, timeoutSeconds)) != .success {
+            timedOut = true
+            if process.isRunning {
+                process.terminate()
+            }
+            _ = terminationSemaphore.wait(timeout: .now() + 2.0)
+            if process.isRunning {
+                kill(process.processIdentifier, SIGKILL)
+                _ = terminationSemaphore.wait(timeout: .now() + 1.0)
+            }
+        }
+
+        group.wait()
+
+        let truncated = stdoutCollector.truncated || stderrCollector.truncated
+        return TerminalCommandExecutionResult(
+            exitCode: process.terminationStatus,
+            timedOut: timedOut,
+            stdout: stdoutCollector.snapshot(),
+            stderr: stderrCollector.snapshot(),
+            truncated: truncated
         )
     }
 
@@ -1062,6 +1402,34 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
         ]
     }
 
+    private func terminalExecToolDefinition() -> [String: Any] {
+        [
+            "type": "function",
+            "name": "terminal_exec",
+            "description": "Execute a terminal command and return stdout/stderr/exit_code. Use this for deterministic command-line tasks and reliable app launching.",
+            "parameters": [
+                "type": "object",
+                "properties": [
+                    "executable": [
+                        "type": "string",
+                        "description": "Executable name (resolved from PATH) or absolute path."
+                    ],
+                    "args": [
+                        "type": "array",
+                        "items": ["type": "string"],
+                        "description": "Argument list."
+                    ],
+                    "timeout_seconds": [
+                        "type": "number",
+                        "description": "Optional timeout in seconds (default 30)."
+                    ]
+                ],
+                "required": ["executable"],
+                "additionalProperties": false
+            ]
+        ]
+    }
+
     private func extractCompletionText(from response: OpenAIResponsesResponse) -> String {
         if let topLevel = response.outputText?.trimmingCharacters(in: .whitespacesAndNewlines), !topLevel.isEmpty {
             return topLevel
@@ -1261,6 +1629,19 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
             let object = try? jsonDecoder.decode([String: OpenAIJSONValue].self, from: data)
         else {
             return "\(functionCall.name)(invalid_arguments)"
+        }
+
+        if functionCall.name.lowercased() == "terminal_exec" {
+            let executable = firstStringValue(from: object, keys: ["executable"]) ?? ""
+            let args: [String]
+            if let array = object["args"]?.arrayValue {
+                args = array.compactMap(\.stringValue)
+            } else {
+                args = []
+            }
+            let argsPreview = args.prefix(6).joined(separator: " ")
+            let suffix = args.count > 6 ? " ..." : ""
+            return "terminal_exec(executable=\"\(truncate(executable, limit: 80))\", args=\"\(truncate(argsPreview + suffix, limit: 160))\")"
         }
 
         let action = (object["action"]?.stringValue ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
