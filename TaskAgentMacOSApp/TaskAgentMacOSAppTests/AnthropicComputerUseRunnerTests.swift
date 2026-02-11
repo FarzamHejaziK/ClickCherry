@@ -168,7 +168,9 @@ struct AnthropicComputerUseRunnerTests {
                 throw NSError(domain: "AnthropicComputerUseRunnerTests", code: 0)
             }
             #expect(firstTool["type"] as? String == "computer_20251124")
+            #expect(tools.compactMap { $0["name"] as? String }.contains("terminal_exec"))
             #expect(firstText.contains("PROMPT_HEADER"))
+            #expect(!firstText.contains("{{OS_VERSION}}"))
             #expect(firstText.contains("TASK_MARKDOWN:\n# Task\nType hello world"))
 
             let responseBody = """
@@ -228,6 +230,164 @@ struct AnthropicComputerUseRunnerTests {
         #expect(result.executedSteps.contains("Type text 'hello world'"))
         #expect(result.llmSummary == "Task completed")
         #expect(executor.typedTexts == ["hello world"])
+    }
+
+    @Test
+    func runToolLoopKeepsOnlyLatestScreenshotImageInRequestHistory() async throws {
+        let (promptCatalog, tempRoot) = try makePromptCatalog()
+        defer { try? FileManager.default.removeItem(at: tempRoot) }
+
+        AnthropicQueueURLProtocol.reset()
+        defer { AnthropicQueueURLProtocol.reset() }
+
+        AnthropicQueueURLProtocol.enqueue { request in
+            let responseBody = """
+            {
+              "content": [
+                { "type": "tool_use", "id": "toolu_1", "name": "computer", "input": { "action": "screenshot" } }
+              ]
+            }
+            """
+            return (Self.response(url: request.url!, code: 200), Data(responseBody.utf8))
+        }
+
+        AnthropicQueueURLProtocol.enqueue { request in
+            guard
+                let bodyData = Self.requestBodyData(from: request),
+                let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any],
+                let messages = json["messages"] as? [[String: Any]]
+            else {
+                throw NSError(domain: "AnthropicComputerUseRunnerTests", code: 12)
+            }
+
+            var imageBlockCount = 0
+            for message in messages {
+                guard let content = message["content"] as? [[String: Any]] else { continue }
+                for block in content {
+                    if (block["type"] as? String) == "image" {
+                        imageBlockCount += 1
+                    }
+                    if (block["type"] as? String) == "tool_result",
+                       let toolContent = block["content"] as? [[String: Any]] {
+                        imageBlockCount += toolContent.filter { ($0["type"] as? String) == "image" }.count
+                    }
+                }
+            }
+
+            #expect(imageBlockCount == 1)
+            if let firstMessage = messages.first,
+               let firstContent = firstMessage["content"] as? [[String: Any]] {
+                #expect(firstContent.contains(where: { ($0["type"] as? String) == "image" }) == false)
+            }
+
+            let responseBody = """
+            {
+              "content": [
+                { "type": "text", "text": "{\\"status\\":\\"SUCCESS\\",\\"summary\\":\\"ok\\",\\"error\\":null,\\"questions\\":[]}" }
+              ]
+            }
+            """
+            return (Self.response(url: request.url!, code: 200), Data(responseBody.utf8))
+        }
+
+        let runner = AnthropicComputerUseRunner(
+            apiKeyStore: AnthropicStubAPIKeyStore(values: [.anthropic: "anthropic-test-key"]),
+            promptCatalog: promptCatalog,
+            session: makeSession(),
+            screenshotProvider: {
+                let data = Data("png".utf8)
+                return AnthropicCapturedScreenshot(
+                    width: 1280,
+                    height: 800,
+                    captureWidthPx: 1280,
+                    captureHeightPx: 800,
+                    coordinateSpaceWidthPx: 1280,
+                    coordinateSpaceHeightPx: 800,
+                    mediaType: "image/png",
+                    base64Data: data.base64EncodedString(),
+                    byteCount: data.count
+                )
+            }
+        )
+
+        let result = try await runner.runToolLoop(taskMarkdown: "# Task", executor: AnthropicMockDesktopExecutor())
+        #expect(result.outcome == .success)
+        #expect(result.executedSteps.contains("Capture screenshot"))
+    }
+
+    @Test
+    func runToolLoopRecordsLLMScreenshotsThatAreSentToModel() async throws {
+        let (promptCatalog, tempRoot) = try makePromptCatalog()
+        defer { try? FileManager.default.removeItem(at: tempRoot) }
+
+        AnthropicQueueURLProtocol.reset()
+        defer { AnthropicQueueURLProtocol.reset() }
+
+        AnthropicQueueURLProtocol.enqueue { request in
+            let body = """
+            {
+              "content": [
+                { "type": "tool_use", "id": "toolu_1", "name": "computer", "input": { "action": "screenshot" } }
+              ]
+            }
+            """
+            return (Self.response(url: request.url!, code: 200), Data(body.utf8))
+        }
+
+        AnthropicQueueURLProtocol.enqueue { request in
+            let body = """
+            {
+              "content": [
+                { "type": "text", "text": "{\\"status\\":\\"SUCCESS\\",\\"summary\\":\\"ok\\",\\"error\\":null,\\"questions\\":[]}" }
+              ]
+            }
+            """
+            return (Self.response(url: request.url!, code: 200), Data(body.utf8))
+        }
+
+        let screenshotData = Data("fake-jpeg-bytes".utf8)
+        let screenshotBase64 = screenshotData.base64EncodedString()
+        let expectedBase64ByteCount = screenshotBase64.utf8.count
+
+        let lock = NSLock()
+        var entries: [LLMScreenshotLogEntry] = []
+        let runner = AnthropicComputerUseRunner(
+            apiKeyStore: AnthropicStubAPIKeyStore(values: [.anthropic: "anthropic-test-key"]),
+            promptCatalog: promptCatalog,
+            screenshotLogSink: { entry in
+                lock.lock()
+                entries.append(entry)
+                lock.unlock()
+            },
+            session: makeSession(),
+            screenshotProvider: {
+                AnthropicCapturedScreenshot(
+                    width: 1280,
+                    height: 800,
+                    captureWidthPx: 1280,
+                    captureHeightPx: 800,
+                    coordinateSpaceWidthPx: 1280,
+                    coordinateSpaceHeightPx: 800,
+                    mediaType: "image/jpeg",
+                    base64Data: screenshotBase64,
+                    byteCount: screenshotData.count
+                )
+            }
+        )
+
+        let result = try await runner.runToolLoop(taskMarkdown: "# Task", executor: AnthropicMockDesktopExecutor())
+        #expect(result.outcome == .success)
+
+        lock.lock()
+        let snapshot = entries
+        lock.unlock()
+
+        #expect(snapshot.count == 2)
+        #expect(snapshot.first?.source == .initialPromptImage)
+        #expect(snapshot.last?.source == .actionScreenshot)
+        #expect(snapshot.allSatisfy { $0.imageData == screenshotData })
+        #expect(snapshot.allSatisfy { $0.rawByteCount == screenshotData.count })
+        #expect(snapshot.allSatisfy { $0.base64ByteCount == expectedBase64ByteCount })
     }
 
     @Test
@@ -319,6 +479,312 @@ struct AnthropicComputerUseRunnerTests {
         #expect(result.executedSteps.contains("Open app 'Safari'"))
         #expect(result.executedSteps.contains("Open URL 'https://example.com'"))
         #expect(result.executedSteps.contains("Wait 0.1s"))
+    }
+
+    @Test
+    func runToolLoopReturnsCursorPositionForCursorPositionAction() async throws {
+        let (promptCatalog, tempRoot) = try makePromptCatalog()
+        defer { try? FileManager.default.removeItem(at: tempRoot) }
+
+        AnthropicQueueURLProtocol.reset()
+        defer { AnthropicQueueURLProtocol.reset() }
+
+        AnthropicQueueURLProtocol.enqueue { request in
+            let body = """
+            {
+              "content": [
+                { "type": "tool_use", "id": "toolu_1", "name": "computer", "input": { "action": "cursor_position" } }
+              ]
+            }
+            """
+            return (Self.response(url: request.url!, code: 200), Data(body.utf8))
+        }
+
+        AnthropicQueueURLProtocol.enqueue { request in
+            guard
+                let bodyData = Self.requestBodyData(from: request),
+                let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any],
+                let messages = json["messages"] as? [[String: Any]],
+                let lastMessage = messages.last,
+                let content = lastMessage["content"] as? [[String: Any]],
+                let toolResult = content.first(where: { ($0["type"] as? String) == "tool_result" }),
+                let toolContent = toolResult["content"] as? [[String: Any]],
+                let firstText = toolContent.first?["text"] as? String
+            else {
+                throw NSError(domain: "AnthropicComputerUseRunnerTests", code: 3)
+            }
+
+            #expect(firstText.contains("\"x\":321"))
+            #expect(firstText.contains("\"y\":654"))
+
+            let body = """
+            {
+              "content": [
+                { "type": "text", "text": "{\\"status\\":\\"SUCCESS\\",\\"summary\\":\\"ok\\",\\"error\\":null,\\"questions\\":[]}" }
+              ]
+            }
+            """
+            return (Self.response(url: request.url!, code: 200), Data(body.utf8))
+        }
+
+        let runner = AnthropicComputerUseRunner(
+            apiKeyStore: AnthropicStubAPIKeyStore(values: [.anthropic: "anthropic-test-key"]),
+            promptCatalog: promptCatalog,
+            session: makeSession(),
+            screenshotProvider: {
+                let data = Data("png".utf8)
+                return AnthropicCapturedScreenshot(
+                    width: 1280,
+                    height: 800,
+                    captureWidthPx: 1280,
+                    captureHeightPx: 800,
+                    coordinateSpaceWidthPx: 1280,
+                    coordinateSpaceHeightPx: 800,
+                    mediaType: "image/png",
+                    base64Data: data.base64EncodedString(),
+                    byteCount: data.count
+                )
+            },
+            cursorPositionProvider: { (x: 321, y: 654) }
+        )
+
+        let result = try await runner.runToolLoop(taskMarkdown: "# Task", executor: AnthropicMockDesktopExecutor())
+        #expect(result.outcome == .success)
+        #expect(result.executedSteps.contains("Read cursor position (321, 654)"))
+    }
+
+    @Test
+    func runToolLoopExecutesTerminalExecToolUseAndReturnsOutput() async throws {
+        let (promptCatalog, tempRoot) = try makePromptCatalog()
+        defer { try? FileManager.default.removeItem(at: tempRoot) }
+
+        AnthropicQueueURLProtocol.reset()
+        defer { AnthropicQueueURLProtocol.reset() }
+
+        AnthropicQueueURLProtocol.enqueue { request in
+            let body = """
+            {
+              "content": [
+                {
+                  "type": "tool_use",
+                  "id": "toolu_1",
+                  "name": "terminal_exec",
+                  "input": { "executable": "echo", "args": ["hello"] }
+                }
+              ]
+            }
+            """
+            return (Self.response(url: request.url!, code: 200), Data(body.utf8))
+        }
+
+        AnthropicQueueURLProtocol.enqueue { request in
+            guard
+                let bodyData = Self.requestBodyData(from: request),
+                let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any],
+                let messages = json["messages"] as? [[String: Any]],
+                let lastMessage = messages.last,
+                let content = lastMessage["content"] as? [[String: Any]],
+                let toolResult = content.first(where: { ($0["type"] as? String) == "tool_result" }),
+                let toolUseId = toolResult["tool_use_id"] as? String,
+                let toolContent = toolResult["content"] as? [[String: Any]],
+                let firstText = toolContent.first?["text"] as? String
+            else {
+                throw NSError(domain: "AnthropicComputerUseRunnerTests", code: 1)
+            }
+
+            #expect(toolUseId == "toolu_1")
+            #expect(firstText.contains("\"exit_code\":0"))
+            #expect(firstText.contains("hello"))
+
+            let body = """
+            {
+              "content": [
+                { "type": "text", "text": "{\\"status\\":\\"SUCCESS\\",\\"summary\\":\\"ok\\",\\"error\\":null,\\"questions\\":[]}" }
+              ]
+            }
+            """
+            return (Self.response(url: request.url!, code: 200), Data(body.utf8))
+        }
+
+        let runner = AnthropicComputerUseRunner(
+            apiKeyStore: AnthropicStubAPIKeyStore(values: [.anthropic: "anthropic-test-key"]),
+            promptCatalog: promptCatalog,
+            session: makeSession(),
+            screenshotProvider: {
+                let data = Data("png".utf8)
+                return AnthropicCapturedScreenshot(
+                    width: 1280,
+                    height: 800,
+                    captureWidthPx: 1280,
+                    captureHeightPx: 800,
+                    coordinateSpaceWidthPx: 1280,
+                    coordinateSpaceHeightPx: 800,
+                    mediaType: "image/png",
+                    base64Data: data.base64EncodedString(),
+                    byteCount: data.count
+                )
+            }
+        )
+
+        let result = try await runner.runToolLoop(taskMarkdown: "# Task", executor: AnthropicMockDesktopExecutor())
+        #expect(result.outcome == .success)
+        #expect(result.executedSteps.contains(where: { $0.contains("Terminal exec:") }))
+    }
+
+    @Test
+    func runToolLoopRejectsVisualTerminalCommandAndRequestsComputerTool() async throws {
+        let (promptCatalog, tempRoot) = try makePromptCatalog()
+        defer { try? FileManager.default.removeItem(at: tempRoot) }
+
+        AnthropicQueueURLProtocol.reset()
+        defer { AnthropicQueueURLProtocol.reset() }
+
+        AnthropicQueueURLProtocol.enqueue { request in
+            let body = """
+            {
+              "content": [
+                {
+                  "type": "tool_use",
+                  "id": "toolu_1",
+                  "name": "terminal_exec",
+                  "input": {
+                    "executable": "osascript",
+                    "args": ["-e", "tell application \\"System Events\\" to tell process \\"Dock\\" to get every UI element"]
+                  }
+                }
+              ]
+            }
+            """
+            return (Self.response(url: request.url!, code: 200), Data(body.utf8))
+        }
+
+        AnthropicQueueURLProtocol.enqueue { request in
+            guard
+                let bodyData = Self.requestBodyData(from: request),
+                let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any],
+                let messages = json["messages"] as? [[String: Any]],
+                let lastMessage = messages.last,
+                let content = lastMessage["content"] as? [[String: Any]],
+                let toolResult = content.first(where: { ($0["type"] as? String) == "tool_result" }),
+                let isError = toolResult["is_error"] as? Bool,
+                let toolContent = toolResult["content"] as? [[String: Any]],
+                let firstText = toolContent.first?["text"] as? String
+            else {
+                throw NSError(domain: "AnthropicComputerUseRunnerTests", code: 13)
+            }
+
+            #expect(isError == true)
+            #expect(firstText.contains("Use tool 'computer'"))
+
+            let body = """
+            {
+              "content": [
+                { "type": "text", "text": "{\\"status\\":\\"SUCCESS\\",\\"summary\\":\\"ok\\",\\"error\\":null,\\"questions\\":[]}" }
+              ]
+            }
+            """
+            return (Self.response(url: request.url!, code: 200), Data(body.utf8))
+        }
+
+        let runner = AnthropicComputerUseRunner(
+            apiKeyStore: AnthropicStubAPIKeyStore(values: [.anthropic: "anthropic-test-key"]),
+            promptCatalog: promptCatalog,
+            session: makeSession(),
+            screenshotProvider: {
+                let data = Data("png".utf8)
+                return AnthropicCapturedScreenshot(
+                    width: 1280,
+                    height: 800,
+                    captureWidthPx: 1280,
+                    captureHeightPx: 800,
+                    coordinateSpaceWidthPx: 1280,
+                    coordinateSpaceHeightPx: 800,
+                    mediaType: "image/png",
+                    base64Data: data.base64EncodedString(),
+                    byteCount: data.count
+                )
+            }
+        )
+
+        let result = try await runner.runToolLoop(taskMarkdown: "# Task", executor: AnthropicMockDesktopExecutor())
+        #expect(result.outcome == .success)
+        #expect(result.executedSteps.contains(where: { $0.contains("Terminal exec:") }) == false)
+    }
+
+    @Test
+    func runToolLoopExecutesTerminalExecUsingPathResolvedExecutable() async throws {
+        let (promptCatalog, tempRoot) = try makePromptCatalog()
+        defer { try? FileManager.default.removeItem(at: tempRoot) }
+
+        AnthropicQueueURLProtocol.reset()
+        defer { AnthropicQueueURLProtocol.reset() }
+
+        AnthropicQueueURLProtocol.enqueue { request in
+            let body = """
+            {
+              "content": [
+                {
+                  "type": "tool_use",
+                  "id": "toolu_1",
+                  "name": "terminal_exec",
+                  "input": { "executable": "true" }
+                }
+              ]
+            }
+            """
+            return (Self.response(url: request.url!, code: 200), Data(body.utf8))
+        }
+
+        AnthropicQueueURLProtocol.enqueue { request in
+            guard
+                let bodyData = Self.requestBodyData(from: request),
+                let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any],
+                let messages = json["messages"] as? [[String: Any]],
+                let lastMessage = messages.last,
+                let content = lastMessage["content"] as? [[String: Any]],
+                let toolResult = content.first(where: { ($0["type"] as? String) == "tool_result" }),
+                let toolContent = toolResult["content"] as? [[String: Any]],
+                let firstText = toolContent.first?["text"] as? String
+            else {
+                throw NSError(domain: "AnthropicComputerUseRunnerTests", code: 2)
+            }
+
+            #expect(firstText.contains("\"exit_code\":0"))
+            #expect(firstText.contains("\"ok\":true"))
+
+            let body = """
+            {
+              "content": [
+                { "type": "text", "text": "{\\"status\\":\\"SUCCESS\\",\\"summary\\":\\"ok\\",\\"error\\":null,\\"questions\\":[]}" }
+              ]
+            }
+            """
+            return (Self.response(url: request.url!, code: 200), Data(body.utf8))
+        }
+
+        let runner = AnthropicComputerUseRunner(
+            apiKeyStore: AnthropicStubAPIKeyStore(values: [.anthropic: "anthropic-test-key"]),
+            promptCatalog: promptCatalog,
+            session: makeSession(),
+            screenshotProvider: {
+                let data = Data("png".utf8)
+                return AnthropicCapturedScreenshot(
+                    width: 1280,
+                    height: 800,
+                    captureWidthPx: 1280,
+                    captureHeightPx: 800,
+                    coordinateSpaceWidthPx: 1280,
+                    coordinateSpaceHeightPx: 800,
+                    mediaType: "image/png",
+                    base64Data: data.base64EncodedString(),
+                    byteCount: data.count
+                )
+            }
+        )
+
+        let result = try await runner.runToolLoop(taskMarkdown: "# Task", executor: AnthropicMockDesktopExecutor())
+        #expect(result.outcome == .success)
+        #expect(result.executedSteps.contains(where: { $0.contains("Terminal exec: true") }))
     }
 
     @Test
@@ -581,6 +1047,25 @@ struct AnthropicComputerUseRunnerTests {
         }
     }
 
+    @Test
+    func base64BudgetComputesAnthropicFiveMBRawCeiling() {
+        let encodedLimit = 5 * 1024 * 1024
+        let rawLimit = AnthropicComputerUseRunner.maxRawByteCountForBase64Limit(encodedLimit)
+
+        #expect(rawLimit == 3_932_160)
+        #expect(AnthropicComputerUseRunner.base64EncodedByteCount(forRawByteCount: rawLimit) <= encodedLimit)
+        #expect(AnthropicComputerUseRunner.base64EncodedByteCount(forRawByteCount: rawLimit + 1) > encodedLimit)
+    }
+
+    @Test
+    func base64BudgetMatchesObservedOversizeFailureMath() {
+        let rawBytes = 4_734_603
+        let encodedBytes = AnthropicComputerUseRunner.base64EncodedByteCount(forRawByteCount: rawBytes)
+
+        #expect(encodedBytes == 6_312_804)
+        #expect(encodedBytes > 5 * 1024 * 1024)
+    }
+
     private static func response(url: URL, code: Int) -> HTTPURLResponse {
         HTTPURLResponse(url: url, statusCode: code, httpVersion: nil, headerFields: nil)!
     }
@@ -621,6 +1106,7 @@ struct AnthropicComputerUseRunnerTests {
         try fm.createDirectory(at: promptDir, withIntermediateDirectories: true)
         try """
         PROMPT_HEADER
+        OS: {{OS_VERSION}}
         TASK_MARKDOWN:
         {{TASK_MARKDOWN}}
 

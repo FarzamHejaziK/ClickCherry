@@ -81,6 +81,58 @@ enum LLMCallOutcome: String, Equatable, Sendable {
     case failure
 }
 
+enum LLMScreenshotSource: String, Equatable, Sendable {
+    case initialPromptImage = "initial_prompt_image"
+    case actionScreenshot = "action_screenshot"
+    case postActionSnapshot = "post_action_snapshot"
+}
+
+struct LLMScreenshotLogEntry: Identifiable, Equatable, Sendable {
+    var id: UUID
+    var timestamp: Date
+    var source: LLMScreenshotSource
+    var mediaType: String
+    var width: Int
+    var height: Int
+    var captureWidthPx: Int
+    var captureHeightPx: Int
+    var coordinateSpaceWidthPx: Int
+    var coordinateSpaceHeightPx: Int
+    var rawByteCount: Int
+    var base64ByteCount: Int
+    var imageData: Data
+
+    init(
+        id: UUID = UUID(),
+        timestamp: Date = Date(),
+        source: LLMScreenshotSource,
+        mediaType: String,
+        width: Int,
+        height: Int,
+        captureWidthPx: Int,
+        captureHeightPx: Int,
+        coordinateSpaceWidthPx: Int,
+        coordinateSpaceHeightPx: Int,
+        rawByteCount: Int,
+        base64ByteCount: Int,
+        imageData: Data
+    ) {
+        self.id = id
+        self.timestamp = timestamp
+        self.source = source
+        self.mediaType = mediaType
+        self.width = width
+        self.height = height
+        self.captureWidthPx = captureWidthPx
+        self.captureHeightPx = captureHeightPx
+        self.coordinateSpaceWidthPx = coordinateSpaceWidthPx
+        self.coordinateSpaceHeightPx = coordinateSpaceHeightPx
+        self.rawByteCount = rawByteCount
+        self.base64ByteCount = base64ByteCount
+        self.imageData = imageData
+    }
+}
+
 enum ExecutionTraceKind: String, Equatable, Sendable {
     case info
     case llmResponse

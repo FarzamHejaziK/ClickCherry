@@ -444,6 +444,11 @@ private struct MainShellView: View {
                         }
                         .buttonStyle(.bordered)
 
+                        Button("Clear LLM Screenshots") {
+                            mainShellStateStore.clearLLMScreenshotLog()
+                        }
+                        .buttonStyle(.bordered)
+
                         Button("Clear Trace") {
                             mainShellStateStore.clearExecutionTrace()
                         }
@@ -484,6 +489,60 @@ private struct MainShellView: View {
                         Text(diagnosticScreenshotStatusMessage)
                             .foregroundStyle(diagnosticScreenshotStatusMessage.lowercased().contains("failed") ? .red : .green)
                             .font(.caption)
+                    }
+
+                    Divider()
+                        .padding(.vertical, 4)
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("LLM Screenshots (exact images sent to model)")
+                            .font(.headline)
+
+                        let entries = Array(mainShellStateStore.llmScreenshotLog.suffix(24).reversed())
+                        if entries.isEmpty {
+                            Text("No LLM screenshots captured yet.")
+                                .foregroundStyle(.secondary)
+                                .font(.caption)
+                        } else {
+                            ScrollView {
+                                LazyVStack(alignment: .leading, spacing: 12) {
+                                    ForEach(entries) { entry in
+                                        VStack(alignment: .leading, spacing: 6) {
+                                            HStack(spacing: 8) {
+                                                Text(entry.source.rawValue.replacingOccurrences(of: "_", with: " "))
+                                                    .font(.caption2)
+                                                    .fontWeight(.semibold)
+                                                    .foregroundStyle(.secondary)
+
+                                                Text(entry.timestamp.formatted(date: .omitted, time: .standard))
+                                                    .font(.caption2)
+                                                    .foregroundStyle(.secondary)
+
+                                                Spacer()
+                                            }
+
+                                            Text("\(entry.mediaType), sent=\(entry.width)x\(entry.height), raw=\(entry.rawByteCount) bytes, base64=\(entry.base64ByteCount) bytes")
+                                                .font(.caption2)
+                                                .foregroundStyle(.secondary)
+
+                                            if let nsImage = NSImage(data: entry.imageData) {
+                                                Image(nsImage: nsImage)
+                                                    .resizable()
+                                                    .scaledToFit()
+                                                    .frame(maxHeight: 180)
+                                                    .border(.quaternary)
+                                            } else {
+                                                Text("Failed to decode image bytes.")
+                                                    .font(.caption2)
+                                                    .foregroundStyle(.red)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            .frame(maxHeight: 420)
+                            .border(.quaternary)
+                        }
                     }
 
                     if let data = mainShellStateStore.lastDiagnosticScreenshotPNGData,

@@ -17,3 +17,4 @@ Example:
 Current note:
 - `task_extraction` uses the file-based prompt layout above.
 - `execution_agent` now also uses file-based prompt layout and is loaded through `PromptCatalogService`.
+- `execution_agent_openai` uses the same layout for OpenAI Responses-based execution.
