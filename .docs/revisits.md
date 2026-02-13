@@ -10,6 +10,16 @@ description: Provisional decisions and open product/design questions that are in
 - When an item is revised, update `Status`, `Resolution Date`, and linked docs.
 - Keep newest active revisit items first.
 
+## Revisit RV-2026-02-11-016
+- Revisit ID: RV-2026-02-11-016
+- Source: `.docs/open_issues.md` (`OI-2026-02-11-007`)
+- Status: Open
+- Current Baseline: Stable custom top-bar `ClickCherry` branding is deferred; current titlebar-branding behavior is not considered finalized.
+- Why Revisit: Current implementations can produce either unwanted capsule styling or missing icon/name in local runtime.
+- Trigger To Revisit: After current execution-agent priorities are stable and dedicated UI validation time is available.
+- Owner: Codex + user validation
+- Last Updated: 2026-02-11
+
 ## Revisit RV-2026-02-11-015
 - Revisit ID: RV-2026-02-11-015
 - Source: Step 4 execution runner (`AnthropicComputerUseRunner` / `terminal_exec`)

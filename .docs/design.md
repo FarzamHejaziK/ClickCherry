@@ -55,7 +55,7 @@ description: Design decision checklist for the native macOS task agent, includin
 - Timezone policy and daylight-saving handling
 
 ## 8) Permissions and system integration
-- Required permission set in v1 (Accessibility, Screen Recording, Automation)
+- Required permission set in v1 (Accessibility, Screen Recording, Input Monitoring, Microphone for voice capture). Avoid Automation permission by not relying on AppleScript `System Events`.
 - Permission preflight UX and remediation flow
 - Managed-device limitations handling
 - Least-privilege policy and permission revocation handling
@@ -164,29 +164,38 @@ This means: if the agent still has unresolved questions, should execution stop o
 - Max recording duration: 5 minutes.
 - If exceeded, app blocks ingestion and asks user to trim/re-record.
 
+## Branding identity (locked: 2026-02-11)
+
+- App display identity is now `ClickCherry`.
+- Target Info.plist-generated keys set for app target:
+  - `CFBundleName = ClickCherry`
+  - `CFBundleDisplayName = ClickCherry`
+- App menu-bar title on macOS follows product/executable naming. App target build settings therefore use:
+  - `PRODUCT_NAME = ClickCherry` (Debug/Release)
+  - `PRODUCT_MODULE_NAME = TaskAgentMacOSApp` (kept stable so existing `@testable import TaskAgentMacOSApp` tests continue to compile)
+- App icon source of truth remains `Assets.xcassets/AppIcon.appiconset` with explicit macOS icon slots (`16/32/128/256/512` and `2x`) populated from the approved logo asset.
+- Window branding is rendered via AppKit titlebar accessory view, aligned near traffic-light controls:
+  - `AppMain` hides the default leading title (`.windowToolbarStyle(.unified(showsTitle: false))`).
+  - `RootView` installs a left-side `NSTitlebarAccessoryViewController` containing the `ClickCherry` icon+text view.
+  - avoid SwiftUI title-bar toolbar placements (`.principal`, `.navigation`, `.toolbarRole(.editor)`) for the brand item because they can render an unwanted capsule/border style in the title bar.
+
 ## LLM provider onboarding (locked)
 
 - App asks for API keys during first-run setup.
 - Required providers in v1 onboarding:
-  - OpenAI or Anthropic (Claude) for core agent tasks.
+  - OpenAI for core agent tasks and task execution (v1 execution provider is OpenAI only).
   - Gemini for video understanding path.
 - Keys are stored locally in Keychain (never plaintext in logs).
 
-## Execution agent model/provider decision (locked: 2026-02-10)
+## Execution agent model/provider decision (locked: 2026-02-13)
 
-- Task execution agent provider for Step 4 is Anthropic computer-use with:
-  - model: `claude-opus-4-6`
-  - tool type: `computer_20251124`
-- Anthropic computer-use identifiers must be treated as:
-  - `claude-opus-4-6`: the model.
-  - `computer_20251124`: the computer-use tool schema/version identifier (not a model).
-  - `anthropic-beta: computer-use-2025-11-24`: required beta header paired with `computer_20251124`.
-- Usage boundary:
-  - These values are required on Anthropic `messages` requests that include the computer-use tool loop (`tools` entry with type `computer_20251124`).
-  - Execution now uses tool-loop only; there is no planner-only execution path.
+- Task execution agent provider for Step 4 is OpenAI tool-loop execution via the Responses API:
+  - runner: `OpenAIComputerUseRunner`
+  - engine: `OpenAIAutomationEngine`
+  - model baseline (prompt config): `gpt-5.2-codex`
 - Execution loop is tool-driven:
   1. app captures current desktop screenshot/state
-  2. model returns tool actions
+  2. model returns tool actions (`desktop_action` / `terminal_exec`)
   3. app executes actions locally
   4. app returns tool results and continues until stop condition
 - Runner scope in this decision is app-agnostic desktop control, including:
@@ -194,6 +203,8 @@ This means: if the agent still has unresolved questions, should execution stop o
   - clicking, typing, keyboard shortcuts
   - scrolling/dragging/waiting
 - If execution is blocked by ambiguity or runtime failure, the app must append unresolved blocking questions to `## Questions` in `HEARTBEAT.md` instead of silently guessing.
+- Legacy note:
+  - Anthropic computer-use code remains in the repository for reference, but v1 UI no longer exposes an execution-provider toggle and always uses OpenAI for task execution.
 
 ## Execution action-authority policy (locked: 2026-02-09)
 
@@ -213,13 +224,13 @@ This means: if the agent still has unresolved questions, should execution stop o
 
 ## Execution terminal tool (locked: 2026-02-11)
 
-- The execution tool loop defines a second tool in addition to the built-in computer-use tool:
-  - `computer`: built-in Anthropic tool (desktop actions + screenshots)
+- The execution tool loop defines two tools:
+  - `desktop_action`: custom desktop tool for on-screen actions (and screenshot exchange)
   - `terminal_exec`: custom tool that runs a non-shell `Process` command and returns stdout/stderr/exit code as JSON
 - Tool selection priority (prompt guideline):
-  - use `computer` for visual/spatial on-screen actions
+  - use `desktop_action` for visual/spatial on-screen actions
   - use `terminal_exec` for deterministic non-visual command-line tasks
-- Within `computer` (prompt guideline):
+- Within `desktop_action` (prompt guideline):
   - prefer shortcut/keyword-driven actions (keyboard shortcuts + typing) over mouse movement/clicks when possible
 - Baseline safety policy for `terminal_exec`:
   - unrestricted executable set (no allowlist).
@@ -228,14 +239,14 @@ This means: if the agent still has unresolved questions, should execution stop o
     - otherwise resolve by searching `PATH`.
   - shell executables are allowed if requested by the model.
 - Runtime enforcement:
-  - terminal commands that appear to perform UI/visual automation are rejected with an error and redirected to `computer`.
+  - terminal commands that appear to perform UI/visual automation are rejected with an error and redirected to `desktop_action`.
   - examples blocked by policy include AppleScript/UI-element style commands intended to locate/click/hover screen elements.
 - Primary use-case: command-line-first task execution and reliable app control (including `open -a ...`).
 - Revisit candidate: reintroduce safety boundaries only if product policy changes (tracked in `.docs/revisits.md`).
 
 ## OpenAI custom desktop tool loop (locked: 2026-02-11)
 
-- Added a second execution-provider path using OpenAI Responses API:
+- Execution tool loop uses OpenAI Responses API:
   - model baseline: `gpt-5.2-codex`
   - runtime tools:
     - `desktop_action`: custom function tool for on-screen desktop actions (JSON schema action envelope)
@@ -252,26 +263,23 @@ This means: if the agent still has unresolved questions, should execution stop o
   - keyboard shortcut
   - open app
   - open URL
-  - scroll
-  - wait
+- scroll
+- wait
 - Wait-action default duration (when omitted by the model) is `0.5s` with a `0.1s` minimum floor in both provider paths.
-- `terminal_exec` baseline behavior matches Anthropic path:
+- `terminal_exec` baseline behavior:
   - unrestricted executable set (absolute path or PATH-resolved executable names)
   - optional timeout control (`timeout_seconds`)
   - runtime policy guard rejects visual/UI-oriented terminal commands and directs the model to `desktop_action`
 - Screenshot strategy for OpenAI path:
   - reuse existing execution screenshot capture path (including HUD exclusion and cursor-visible images).
   - send screenshot as data URL image input each turn.
-- Completion contract remains shared with Anthropic path:
+- Completion contract:
   - final plain JSON text:
     - `status`: `SUCCESS | NEEDS_CLARIFICATION | FAILED`
     - `summary`
     - `error`
     - `questions`
-- Provider routing policy:
-  - execution provider is user-selectable in app settings (`OpenAI` or `Anthropic`).
-  - routing uses the selected provider directly (no implicit OpenAI-first fallback).
-  - if the selected provider key is missing, run fails with an explicit key/switch guidance error.
+- If the OpenAI API key is missing, the run fails with explicit key-save guidance.
 
 ## Execution takeover UX (locked: 2026-02-10)
 
@@ -288,26 +296,22 @@ This means: if the agent still has unresolved questions, should execution stop o
   - Accessibility: inject clicks/keys.
   - Input Monitoring: detect user takeover to cancel.
 
-## Step 4 implementation status (update: 2026-02-11)
+## Step 4 implementation status (update: 2026-02-13)
 
 - Implemented in this increment:
   - `Run Task` UI action and state-store run pipeline.
-  - Anthropic computer-use runner using `claude-opus-4-6` request path.
-  - Iterative Anthropic computer-use tool loop (`computer_20251124`) with turn-by-turn `tool_use` -> local execution -> `tool_result`.
-  - Legacy planner fallback path removed; execution path is tool-loop only.
-  - Tool-loop request guards:
-    - request header `anthropic-beta: computer-use-2025-11-24`
-    - request tool type `computer_20251124`
-  - Screenshot exchange for tool loop:
-    - initial desktop screenshot attached in first run turn.
-    - post-action screenshots attached in tool results when capture succeeds.
+  - OpenAI Responses custom desktop-use loop (active execution path):
+    - `OpenAIComputerUseRunner` + `OpenAIAutomationEngine` using custom tool schema (`desktop_action` + `terminal_exec`).
+    - prompt folder: `Prompts/execution_agent_openai/` (`prompt.md` + `config.yaml`).
+  - Execution path is tool-loop only (no planner-only fallback path).
+  - Screenshot exchange for the tool loop:
     - implementation uses ScreenCaptureKit for screenshot capture in execution runtime (with a `/usr/sbin/screencapture` fallback).
-    - when available, screenshots exclude the “Agent is running” HUD window so it does not appear in images sent to the LLM tool loop.
+    - when available, screenshots exclude the “Agent is running” HUD window so it does not appear in images sent to the model.
     - when HUD exclusion is requested, fallback capture that cannot exclude windows is blocked (fail-closed) so the model never receives HUD-visible screenshots.
     - screenshots include the mouse cursor to improve hover/mouse-move grounding for the model.
     - request payload compaction keeps full text/tool history but retains only the latest screenshot image block when sending each turn.
-    - screenshot encoding enforces Anthropic's 5 MB limit on the base64 payload (not just raw image bytes), using a base64-safe raw-byte budget before request send.
-    - diagnostics now include an in-app LLM screenshot log that previews the exact encoded images sent to the model (initial image + tool-result images).
+    - screenshot encoding enforces a conservative base64 image-size budget before request send (downscale/re-encode when required).
+    - diagnostics include an in-app LLM screenshot log that previews the exact encoded images sent to the model (initial image + tool-result images).
   - Pre-run desktop preparation:
     - before each execution run, the app hides other regular apps to provide a cleaner visual workspace for the model.
   - Takeover cursor behavior:
@@ -333,11 +337,8 @@ This means: if the agent still has unresolved questions, should execution stop o
     - generated blocking questions are appended into `## Questions` in `HEARTBEAT.md`.
   - Run artifact persistence:
     - each run writes a markdown summary under `runs/` including LLM summary text.
-  - OpenAI Responses custom desktop-use loop:
-    - added `OpenAIComputerUseRunner` + `OpenAIAutomationEngine` using custom tool schema (`desktop_action`).
-    - added prompt folder `Prompts/execution_agent_openai/` (`prompt.md` + `config.yaml`).
-    - OpenAI runner now includes `terminal_exec` tool parity with Anthropic (PATH resolution, timeout/output payload, and visual-command policy boundary).
-    - execution provider selection is now explicit in UI (`OpenAI` vs `Anthropic`) and persisted across app relaunch.
+  - Execution provider UX:
+    - removed execution-provider selection UI; v1 always uses OpenAI for task execution.
 - Still pending for full locked computer-use design:
   - broader action surface (drag) through tool protocol path.
   - local Xcode runtime validation across multi-app tasks and ambiguous failure paths.
@@ -362,11 +363,10 @@ This means: if the agent still has unresolved questions, should execution stop o
 - Users can update or remove provider API keys after onboarding from main shell UI (`Provider API Keys` section).
 - This settings surface manages keys for:
   - OpenAI
-  - Anthropic
   - Gemini
 - Saved keys remain non-readable in UI; UI only shows saved/not-saved status.
 - All key writes/removals use the same Keychain-backed store as onboarding.
-- Execution-provider selection (`OpenAI` vs `Anthropic`) is shown as an always-visible segmented control in main shell (not hidden inside collapsed key-management panels).
+- Execution provider is OpenAI only; there is no execution-provider selection control in the main shell UI.
 
 ## Recording UX decisions (locked: 2026-02-07)
 

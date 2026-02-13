@@ -35,9 +35,9 @@ final class OnboardingStateStore {
     var currentStep: OnboardingStep
     var providerSetupState: ProviderSetupState
     var screenRecordingStatus: PermissionGrantStatus
+    var microphoneStatus: PermissionGrantStatus
     var accessibilityStatus: PermissionGrantStatus
     var inputMonitoringStatus: PermissionGrantStatus
-    var automationStatus: PermissionGrantStatus
     var hasCompletedOnboarding: Bool
     var persistenceErrorMessage: String?
 
@@ -48,9 +48,9 @@ final class OnboardingStateStore {
         currentStep: OnboardingStep = .welcome,
         providerSetupState: ProviderSetupState? = nil,
         hasScreenRecordingPermission: Bool = false,
+        hasMicrophonePermission: Bool = false,
         hasAccessibilityPermission: Bool = false,
         hasInputMonitoringPermission: Bool = false,
-        hasAutomationPermission: Bool = false,
         hasCompletedOnboarding: Bool? = nil
     ) {
         self.keyStore = keyStore
@@ -59,9 +59,9 @@ final class OnboardingStateStore {
         self.currentStep = currentStep
         self.providerSetupState = providerSetupState ?? Self.loadProviderSetupState(from: keyStore)
         self.screenRecordingStatus = hasScreenRecordingPermission ? .granted : .notGranted
+        self.microphoneStatus = hasMicrophonePermission ? .granted : .notGranted
         self.accessibilityStatus = hasAccessibilityPermission ? .granted : .notGranted
         self.inputMonitoringStatus = hasInputMonitoringPermission ? .granted : .notGranted
-        self.automationStatus = hasAutomationPermission ? .granted : .notGranted
         self.hasCompletedOnboarding = hasCompletedOnboarding ?? completionStore.hasCompletedOnboarding
         self.persistenceErrorMessage = nil
     }
@@ -76,9 +76,9 @@ final class OnboardingStateStore {
 
     var areRequiredPermissionsGranted: Bool {
         screenRecordingStatus == .granted
+            && microphoneStatus == .granted
             && accessibilityStatus == .granted
             && inputMonitoringStatus == .granted
-            && automationStatus == .granted
     }
 
     var canContinueCurrentStep: Bool {
@@ -108,6 +108,30 @@ final class OnboardingStateStore {
 
     func goForward() {
         guard canContinueCurrentStep else {
+            return
+        }
+
+        guard let next = OnboardingStep(rawValue: currentStep.rawValue + 1) else {
+            return
+        }
+
+        currentStep = next
+    }
+
+    func skipProviderSetup() {
+        guard currentStep == .providerSetup else {
+            return
+        }
+
+        guard let next = OnboardingStep(rawValue: currentStep.rawValue + 1) else {
+            return
+        }
+
+        currentStep = next
+    }
+
+    func skipPermissionsPreflight() {
+        guard currentStep == .permissionsPreflight else {
             return
         }
 
@@ -161,32 +185,42 @@ final class OnboardingStateStore {
         permissionService.openSystemSettings(for: permission)
     }
 
+    /// Passive status poll (no prompts). Used for the onboarding Permissions step UI.
+    func pollPermissionStatuses() {
+        let screenRecording = permissionService.currentStatus(for: .screenRecording)
+        if screenRecording != screenRecordingStatus {
+            screenRecordingStatus = screenRecording
+        }
+
+        let microphone = permissionService.currentStatus(for: .microphone)
+        if microphone != microphoneStatus {
+            microphoneStatus = microphone
+        }
+
+        let accessibility = permissionService.currentStatus(for: .accessibility)
+        if accessibility != accessibilityStatus {
+            accessibilityStatus = accessibility
+        }
+
+        let inputMonitoring = permissionService.currentStatus(for: .inputMonitoring)
+        if inputMonitoring != inputMonitoringStatus {
+            inputMonitoringStatus = inputMonitoring
+        }
+    }
+
     func refreshPermissionStatus(for permission: AppPermission) {
         let status = permissionService.requestAccessIfNeeded(for: permission)
 
         switch permission {
         case .screenRecording:
             screenRecordingStatus = status
+        case .microphone:
+            microphoneStatus = status
         case .accessibility:
             accessibilityStatus = status
         case .inputMonitoring:
             inputMonitoringStatus = status
-        case .automation:
-            if status != .unknown {
-                automationStatus = status
-            }
         }
-    }
-
-    func confirmAutomationPermission(granted: Bool) {
-        automationStatus = granted ? .granted : .notGranted
-    }
-
-    func enablePermissionTestingBypass() {
-        screenRecordingStatus = .granted
-        accessibilityStatus = .granted
-        inputMonitoringStatus = .granted
-        automationStatus = .granted
     }
 
     private func updateProviderSetupState(saved: Bool, for provider: ProviderIdentifier) {

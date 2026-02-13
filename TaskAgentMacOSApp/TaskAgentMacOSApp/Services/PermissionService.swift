@@ -1,13 +1,14 @@
 import AppKit
 import ApplicationServices
+import AVFoundation
 import CoreGraphics
 import Foundation
 
 enum AppPermission: Equatable {
     case screenRecording
+    case microphone
     case accessibility
     case inputMonitoring
-    case automation
 }
 
 enum PermissionGrantStatus: Equatable {
@@ -58,13 +59,12 @@ final class MacPermissionService: PermissionService {
         switch permission {
         case .screenRecording:
             return CGPreflightScreenCaptureAccess() ? .granted : .notGranted
+        case .microphone:
+            return microphoneStatus()
         case .accessibility:
             return AXIsProcessTrusted() ? .granted : .notGranted
         case .inputMonitoring:
             return CGPreflightListenEventAccess() ? .granted : .notGranted
-        case .automation:
-            // Generic automation status cannot be reliably preflighted without a target app.
-            return .unknown
         }
     }
 
@@ -76,6 +76,16 @@ final class MacPermissionService: PermissionService {
             }
             _ = CGRequestScreenCaptureAccess()
             return CGPreflightScreenCaptureAccess() ? .granted : .notGranted
+        case .microphone:
+            let status = AVCaptureDevice.authorizationStatus(for: .audio)
+            if status == .authorized {
+                return .granted
+            }
+            if status == .notDetermined {
+                // Trigger the system prompt; the onboarding poller will update the status pill once the user responds.
+                AVCaptureDevice.requestAccess(for: .audio) { _ in }
+            }
+            return microphoneStatus()
         case .accessibility:
             if AXIsProcessTrusted() {
                 return .granted
@@ -90,9 +100,6 @@ final class MacPermissionService: PermissionService {
             }
             _ = CGRequestListenEventAccess()
             return CGPreflightListenEventAccess() ? .granted : .notGranted
-        case .automation:
-            // Generic automation status cannot be reliably preflighted without a target app.
-            return .unknown
         }
     }
 
@@ -102,6 +109,11 @@ final class MacPermissionService: PermissionService {
             return [
                 "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture",
                 "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenRecording",
+                "x-apple.systempreferences:com.apple.preference.security?Privacy"
+            ]
+        case .microphone:
+            return [
+                "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone",
                 "x-apple.systempreferences:com.apple.preference.security?Privacy"
             ]
         case .accessibility:
@@ -114,11 +126,17 @@ final class MacPermissionService: PermissionService {
                 "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent",
                 "x-apple.systempreferences:com.apple.preference.security?Privacy"
             ]
-        case .automation:
-            return [
-                "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation",
-                "x-apple.systempreferences:com.apple.preference.security?Privacy"
-            ]
+        }
+    }
+
+    private func microphoneStatus() -> PermissionGrantStatus {
+        switch AVCaptureDevice.authorizationStatus(for: .audio) {
+        case .authorized:
+            return .granted
+        case .notDetermined, .denied, .restricted:
+            return .notGranted
+        @unknown default:
+            return .unknown
         }
     }
 }

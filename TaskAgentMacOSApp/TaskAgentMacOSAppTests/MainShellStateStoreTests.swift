@@ -106,14 +106,6 @@ private final class MockAPIKeyStore: APIKeyStore {
     }
 }
 
-private final class MockExecutionProviderSelectionStore: ExecutionProviderSelectionStore {
-    var selectedExecutionProvider: ExecutionProvider
-
-    init(initialValue: ExecutionProvider = .openAI) {
-        self.selectedExecutionProvider = initialValue
-    }
-}
-
 private final class MockAutomationEngine: AutomationEngine {
     var nextResult: AutomationRunResult
     var receivedMarkdowns: [String] = []
@@ -727,34 +719,6 @@ struct MainShellStateStoreTests {
     }
 
     @Test
-    func selectExecutionProviderPersistsSelection() throws {
-        let fm = FileManager.default
-        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
-        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
-        defer { try? fm.removeItem(at: tempRoot) }
-
-        let taskService = TaskService(
-            baseDir: tempRoot,
-            fileManager: fm,
-            workspaceService: WorkspaceService(fileManager: fm)
-        )
-        let selectionStore = MockExecutionProviderSelectionStore(initialValue: .openAI)
-        let store = MainShellStateStore(
-            taskService: taskService,
-            apiKeyStore: MockAPIKeyStore(),
-            executionProviderSelectionStore: selectionStore,
-            captureService: MockRecordingCaptureService(),
-            overlayService: MockRecordingOverlayService()
-        )
-
-        #expect(store.selectedExecutionProvider == .openAI)
-        store.selectExecutionProvider(.anthropic)
-        #expect(store.selectedExecutionProvider == .anthropic)
-        #expect(selectionStore.selectedExecutionProvider == .anthropic)
-        #expect(store.apiKeyStatusMessage == "Execution provider set to Anthropic.")
-    }
-
-    @Test
     func clearProviderKeyUpdatesSavedState() throws {
         let fm = FileManager.default
         let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -778,7 +742,7 @@ struct MainShellStateStoreTests {
         store.clearProviderKey(for: .openAI)
         #expect(!store.providerSetupState.hasOpenAIKey)
         #expect(store.apiKeyStatusMessage == "Removed OpenAI API key.")
-        #expect(store.apiKeyErrorMessage == "Selected execution provider OpenAI has no saved API key.")
+        #expect(store.apiKeyErrorMessage == "OpenAI API key is not saved.")
     }
 
     @Test

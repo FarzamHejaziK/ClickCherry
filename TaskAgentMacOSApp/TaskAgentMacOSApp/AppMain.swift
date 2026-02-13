@@ -13,5 +13,6 @@ struct TaskAgentMacOSApp: App {
         WindowGroup {
             RootView()
         }
+        .windowToolbarStyle(.unified(showsTitle: false))
     }
 }

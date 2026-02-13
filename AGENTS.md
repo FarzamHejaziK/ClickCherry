@@ -13,6 +13,15 @@
   - `config.yaml` with at least `version` and `llm`.
 - Do not keep production prompt text inline in service code; load prompts via `PromptCatalogService`.
 
+## UI/UX Change Rules
+
+- Track all UI/UX plan and decision updates in `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`.
+- For each UI/UX change, record:
+  - plan alignment (how it follows `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`)
+  - design-decision alignment (how it follows `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`)
+  - implementation notes and validation status.
+- Keep `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md` current in the same task/PR where UI/UX work is introduced.
+
 ## `.docs/` Update Contract
 
 - `.docs/PRD.md`:
@@ -42,6 +51,9 @@
 - `.docs/open_issues.md`:
   - Update when a known unresolved issue is discovered, re-scoped, mitigated, or closed.
   - Keep entries actionable and current; do not leave stale "in progress" items without next steps.
+- `.docs/ui_ux_changes.md`:
+  - Update when UI/UX plans, decisions, or implementation direction changes.
+  - Explicitly state how each entry aligns with `.docs/plan.md` and `.docs/design.md`.
 - `.docs/*.bak`:
   - Treat as snapshots.
   - Do not edit routinely; refresh only when intentionally creating a backup snapshot.
