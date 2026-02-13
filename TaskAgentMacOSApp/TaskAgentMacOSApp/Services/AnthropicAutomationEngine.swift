@@ -30,12 +30,12 @@ protocol DesktopActionExecutor {
 enum DesktopActionExecutorError: Error, Equatable, LocalizedError {
     case invalidURL
     case appOpenFailed(String)
-    case appleScriptFailed(String)
     case clickInjectionFailed
     case mouseMoveInjectionFailed
     case rightClickInjectionFailed
     case scrollInjectionFailed
     case keyInjectionFailed
+    case unsupportedKey(String)
     case typeInjectionFailed
 
     var errorDescription: String? {
@@ -44,8 +44,6 @@ enum DesktopActionExecutorError: Error, Equatable, LocalizedError {
             return "Failed to open URL."
         case .appOpenFailed(let name):
             return "Failed to open app '\(name)'."
-        case .appleScriptFailed(let message):
-            return "Automation (AppleScript) failed: \(message)"
         case .clickInjectionFailed:
             return "Failed to inject click event (check Accessibility permission)."
         case .mouseMoveInjectionFailed:
@@ -56,6 +54,8 @@ enum DesktopActionExecutorError: Error, Equatable, LocalizedError {
             return "Failed to inject scroll event (check Accessibility permission)."
         case .keyInjectionFailed:
             return "Failed to inject key shortcut (check Accessibility permission)."
+        case .unsupportedKey(let key):
+            return "Unsupported key '\(key)'."
         case .typeInjectionFailed:
             return "Failed to inject typed text (check Accessibility permission)."
         }
@@ -87,28 +87,12 @@ struct SystemDesktopActionExecutor: DesktopActionExecutor {
     }
 
     func sendShortcut(key: String, command: Bool, option: Bool, control: Bool, shift: Bool) throws {
-        // Prefer CGEvent-based injection: avoids "System Events" automation permissions.
-        if let code = keyCode(for: key) {
-            let flags = cgEventFlags(command: command, option: option, control: control, shift: shift)
-            try postKey(code: code, flags: flags)
-            return
+        guard let code = keyCode(for: key) else {
+            throw DesktopActionExecutorError.unsupportedKey(key)
         }
 
-        // Fallback to AppleScript for unrecognized keys.
-        var modifiers: [String] = []
-        if command { modifiers.append("command down") }
-        if option { modifiers.append("option down") }
-        if control { modifiers.append("control down") }
-        if shift { modifiers.append("shift down") }
-
-        let keyLiteral = key == "return" ? "return" : "\"\(key)\""
-        let usingClause = modifiers.isEmpty ? "" : " using {\(modifiers.joined(separator: ", "))}"
-        let script = """
-        tell application "System Events"
-            keystroke \(keyLiteral)\(usingClause)
-        end tell
-        """
-        try runAppleScript(script)
+        let flags = cgEventFlags(command: command, option: option, control: control, shift: shift)
+        try postKey(code: code, flags: flags)
     }
 
     func typeText(_ text: String) throws {
@@ -450,15 +434,6 @@ struct SystemDesktopActionExecutor: DesktopActionExecutor {
         return nil
     }
 
-    private func runAppleScript(_ source: String) throws {
-        var error: NSDictionary?
-        let script = NSAppleScript(source: source)
-        script?.executeAndReturnError(&error)
-        if let error,
-           let message = error[NSAppleScript.errorMessage] as? String {
-            throw DesktopActionExecutorError.appleScriptFailed(message)
-        }
-    }
 }
 
 enum AnthropicExecutionPlannerError: Error, LocalizedError, Equatable {

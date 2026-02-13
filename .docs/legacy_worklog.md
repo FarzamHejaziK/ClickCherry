@@ -2015,3 +2015,699 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - N/A (requires live local run to confirm previous 400 payload error no longer reproduces).
 - Result:
   - Anthropic screenshot requests now respect the real base64 payload limit and avoid false pass/fail mismatch from raw-byte-only checks.
+
+## Entry
+- Date: 2026-02-11
+- Step: Add Diagnostics view of exact model-visible screenshots (incremental)
+- Changes made:
+  - Added LLM screenshot log model and source typing:
+    - new `LLMScreenshotLogEntry` + `LLMScreenshotSource` in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/Protocols.swift`.
+  - Added screenshot logging in Anthropic tool loop:
+    - runner now emits screenshot log entries for initial prompt image and tool-result screenshots.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AnthropicAutomationEngine.swift`.
+  - Wired screenshot log storage into app state:
+    - added `llmScreenshotLog` state, recorder, and clear action in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`.
+  - Updated Diagnostics UI to render model-visible screenshots:
+    - new `LLM Screenshots (exact images sent to model)` section with metadata and previews.
+    - new `Clear LLM Screenshots` button.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/RootView.swift`.
+  - Added regression test:
+    - new test `runToolLoopRecordsLLMScreenshotsThatAreSentToModel`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/AnthropicComputerUseRunnerTests.swift`.
+  - Updated docs:
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - N/A (requires local app run to visually confirm Diagnostics previews match model-visible screenshots per turn).
+- Result:
+  - Diagnostics now shows the exact screenshot images sent to the LLM during execution.
+
+## Entry
+- Date: 2026-02-11
+- Step: Increase cursor size during agent takeover and restore afterward (incremental)
+- Changes made:
+  - Added takeover cursor presentation service:
+    - new protocol + implementation in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AgentCursorPresentationService.swift`.
+    - implementation snapshots current `mouseDriverCursorSize`, increases cursor size to a takeover target (`4.0`), and restores the prior value on deactivate.
+  - Integrated cursor boost/restore into run lifecycle:
+    - `MainShellStateStore` now injects `agentCursorPresentationService` and activates cursor boost when takeover begins.
+    - cursor restore is now attempted on run completion, user cancel, `Escape` takeover, and monitor-start failure.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`.
+  - Added regression tests for takeover cursor lifecycle:
+    - extended takeover cancel test to assert activation/restoration calls.
+    - added monitor-start-failure test to assert cursor restoration still happens.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`.
+  - Updated docs:
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - N/A (requires local interactive app run to visually confirm cursor-size increase during takeover and restoration after run end/cancel).
+- Result:
+  - In progress; cursor takeover behavior is implemented and test-covered, pending local visual confirmation.
+
+## Entry
+- Date: 2026-02-11
+- Step: Execution prompt clarification for takeover cursor visualization (incremental)
+- Changes made:
+  - Updated execution-agent prompt guidance in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/execution_agent/prompt.md`:
+    - added explicit instruction that cursor visibility may be enhanced during takeover (larger cursor and/or cursor-following halo).
+    - instructed the model to treat that as pointer visualization, not actionable UI content.
+  - Updated docs for prompt-behavior alignment:
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`.
+- Automated tests run:
+  - `xcrun swiftc -typecheck /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PromptCatalogService.swift` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests/PromptCatalogServiceTests CODE_SIGNING_ALLOWED=NO test` (failed due pre-existing compile error in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomationEngine.swift`: `value of type 'Int' has no member 'map'`).
+- Manual tests run:
+  - N/A (prompt-text update; runtime behavior validation requires local execution run).
+- Result:
+  - In progress; prompt now explicitly informs the LLM how cursor presentation may appear during agent takeover.
+- Issues/blockers:
+  - Existing unrelated compile issue in `OpenAIAutomationEngine.swift` blocks full `xcodebuild test` execution for this increment.
+
+## Entry
+- Date: 2026-02-11
+- Step: Fix takeover cursor visibility when macOS blocks cursor-size writes (incremental)
+- Changes made:
+  - Diagnosed that direct writes to `com.apple.universalaccess` cursor-size preference can fail at runtime (`CFPreferencesAppSynchronize` failure), leaving cursor size unchanged.
+  - Added robust fallback cursor visibility path in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AgentCursorPresentationService.swift`:
+    - keep preferred behavior: temporary system cursor-size increase (target `4.0`) with restore.
+    - new fallback: show a large cursor-following halo overlay during takeover when system preference write is blocked.
+    - remove overlay on run completion/cancel/teardown.
+  - Kept run lifecycle wiring unchanged in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift` (activation/restoration already invoked at takeover boundaries).
+  - Updated docs:
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - N/A (requires local interactive run to visually confirm the halo appears during takeover and disappears after run completion/cancel).
+- Result:
+  - In progress; takeover cursor visibility is now resilient to protected-system-setting write failures.
+
+## Entry
+- Date: 2026-02-11
+- Step: Add explicit execution-provider toggle (`OpenAI`/`Anthropic`) and selected-provider routing (incremental)
+- Changes made:
+  - Added explicit execution-provider model + persistence:
+    - new `ExecutionProvider` enum in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/Protocols.swift`.
+    - new `ExecutionProviderSelectionStore` + `UserDefaultsExecutionProviderSelectionStore` in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OnboardingPersistence.swift`.
+  - Updated routing behavior in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/ProviderRoutingAutomationEngine.swift`:
+    - routing now uses selected provider directly.
+    - missing selected-provider key now returns explicit switch/save guidance.
+  - Wired provider selection state into `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`:
+    - added persisted selection load/save.
+    - added selection sync for routing and UI status messaging.
+  - Added main-shell UI toggle in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/RootView.swift`:
+    - segmented control for `OpenAI` vs `Anthropic`.
+    - inline selected-provider key status indicator.
+  - Added/updated tests:
+    - updated routing tests in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests.swift`.
+    - added selection persistence state-store test in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`.
+  - Updated docs:
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - N/A (requires local interactive UI run to validate provider-toggle persistence and end-to-end execution-provider switching behavior).
+- Result:
+  - In progress; explicit provider toggle and selected-provider routing are implemented with targeted automated test coverage.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-11
+- Step: Make execution-provider toggle always visible in main shell (incremental)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/RootView.swift`:
+    - moved `Execution Provider` segmented control out of collapsed `Provider API Keys` disclosure.
+    - now renders as always-visible control near the top of main shell with selected-provider key status text.
+  - Updated docs:
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - N/A (requires local interactive app run to visually confirm the always-visible toggle placement in the running UI).
+- Result:
+  - In progress; execution-provider switch is now always visible in main shell.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-11
+- Step: OpenAI tool-surface parity with Anthropic baseline (incremental)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomationEngine.swift`:
+    - added `terminal_exec` function tool alongside `desktop_action` in OpenAI Responses tool loop.
+    - added terminal execution flow with PATH/absolute executable resolution, bounded timeout, stdout/stderr/exit-code JSON payload, and output truncation.
+    - added visual-command policy guard for terminal commands and redirect guidance to `desktop_action`.
+    - updated tool-call trace summaries to include `terminal_exec` command previews.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/execution_agent_openai/prompt.md`:
+    - added explicit tool-selection contract (`desktop_action` for visual/spatial tasks, `terminal_exec` for non-visual deterministic terminal tasks).
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests.swift`:
+    - added/updated tests for OpenAI parity coverage:
+      - request includes both `desktop_action` and `terminal_exec`.
+      - `terminal_exec` success output path.
+      - visual-command rejection path.
+      - PATH-resolved executable path (`true`).
+  - Updated docs:
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - N/A (requires local interactive run with real OpenAI key and live desktop automation to validate `terminal_exec` behavior in-app).
+- Result:
+  - In progress; OpenAI now meets Anthropic baseline tool capabilities (`desktop_action` + `terminal_exec`) with matching terminal policy boundaries and test coverage.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-11
+- Step: Reorganize OpenAI execution prompt with explicit desktop-action reference (incremental)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/execution_agent_openai/prompt.md`:
+    - restructured prompt into organized sections (`Tool Selection`, `Desktop Action Help`, `Terminal Exec Help`, `Execution Style`, `Completion Contract`).
+    - added explicit `desktop_action` action-by-action reference (screenshot, cursor position aliases, mouse move aliases, click variants, type, key, open app/url, scroll variants, wait).
+    - documented accepted coordinate input formats and scroll input variants.
+    - kept terminal policy boundary explicit and separated from desktop-action guidance.
+  - Updated docs:
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests/PromptCatalogServiceTests -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - Reviewed prompt text in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/execution_agent_openai/prompt.md` and confirmed section structure is clear and the documented `desktop_action` actions align with the tool enum in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomationEngine.swift`.
+- Result:
+  - In progress; OpenAI prompt is now organized and action-detailed for `desktop_action` while keeping `terminal_exec` guidance separate.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-11
+- Step: Reduce default `wait` action duration to 0.5s (incremental)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomationEngine.swift`:
+    - changed default `wait` duration fallback from `1.0` to `0.5` seconds when `seconds`/`duration` is omitted.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AnthropicAutomationEngine.swift`:
+    - changed default `wait` duration fallback from `1.0` to `0.5` seconds when `seconds`/`duration` is omitted.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/execution_agent_openai/prompt.md`:
+    - updated `wait` action help text/example to reflect `0.5s` default/fallback guidance.
+  - Updated docs:
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - N/A (requires local interactive run to observe reduced default stabilization delay in real desktop-action loops when the model emits `wait` without duration).
+- Result:
+  - In progress; default wait fallback is now 0.5 seconds in both provider paths.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-11
+- Step: Rename app display identity to ClickCherry and apply new app icon (incremental)
+- Changes made:
+  - Updated app display identity in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj/project.pbxproj`:
+    - set `INFOPLIST_KEY_CFBundleName = ClickCherry` (Debug/Release app target configs).
+    - set `INFOPLIST_KEY_CFBundleDisplayName = ClickCherry` (Debug/Release app target configs).
+    - updated microphone usage copy to reference `ClickCherry`.
+  - Updated app icon assets in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset`:
+    - generated all required macOS icon sizes from `/Users/farzamh/Desktop/clickcherry icon.png`.
+    - updated `Contents.json` to map explicit filenames for all mac icon slots (`16/32/128/256/512` + `2x`).
+  - Updated docs:
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - Verified generated icon files exist in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset` with correct pixel dimensions for each required macOS slot.
+  - Verified `AppIcon.appiconset/Contents.json` filename mapping matches generated icon files.
+- Result:
+  - In progress; app now builds with `ClickCherry` display identity and new icon assets wired.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-11
+- Step: Fix macOS menu-bar app title to ClickCherry (incremental)
+- Changes made:
+  - Updated app-target build settings in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj/project.pbxproj`:
+    - set `PRODUCT_NAME = ClickCherry` (Debug/Release app target configs) so macOS menu bar and executable identity match the new brand.
+    - set `PRODUCT_MODULE_NAME = TaskAgentMacOSApp` (Debug/Release app target configs) to preserve existing test imports.
+  - Updated unit-test host paths in the same project file:
+    - `TEST_HOST` now points to `ClickCherry.app/.../ClickCherry` in test target Debug/Release configs.
+  - Verified resulting app Info.plist values from built product:
+    - `CFBundleName = ClickCherry`
+    - `CFBundleDisplayName = ClickCherry`
+    - `CFBundleExecutable = ClickCherry`
+  - Updated docs:
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - Verified built Info.plist keys via `defaults read` against `/tmp/taskagent-dd-local/Build/Products/Debug/ClickCherry.app/Contents/Info.plist`.
+- Result:
+  - In progress; macOS app menu title now resolves to `ClickCherry` rather than legacy target name.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-11
+- Step: Fix centered ClickCherry title-bar branding (remove capsule border + icon distortion) (incremental)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/RootView.swift`:
+    - removed `.toolbarRole(.editor)` from the root view to eliminate the bordered capsule around the principal toolbar item.
+    - kept centered `ToolbarItem(placement: .principal)` branding.
+    - switched icon source to `NSWorkspace.shared.icon(forFile: Bundle.main.bundlePath)` so the title-bar icon renders from the app bundle icon.
+    - adjusted title-bar icon sizing to `16x16` and removed extra clipping so the icon is not visually compressed/distorted.
+  - Updated docs:
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - N/A (visual validation requires interactive local launch; user provided screenshot confirmed prior capsule/distortion symptom before fix).
+- Result:
+  - In progress; title-bar branding is now centered without capsule/border styling and uses a native app icon source expected to render correctly.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-11
+- Step: Remove macOS capsule title-bar styling and switch to plain centered brand row (incremental)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/RootView.swift`:
+    - removed toolbar principal branding path entirely.
+    - added a centered top brand row in app content (`ClickCherry` + icon, icon-left/text-right).
+    - increased icon size to `18x18` and kept un-clipped rendering to avoid visual distortion.
+  - Updated docs:
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - N/A (requires local interactive app launch to confirm final visual output).
+- Result:
+  - In progress; branding now renders as a plain centered row without title-bar capsule styling.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-11
+- Step: Restore ClickCherry branding to top toolbar near window controls (no capsule) (incremental)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/RootView.swift`:
+    - removed temporary in-content centered brand row.
+    - restored macOS top-toolbar placement using `ToolbarItem(placement: .navigation)` so brand sits near traffic-light controls.
+    - kept brand as plain icon + text with compact sizing (`14x14` icon) and no capsule-specific styling.
+  - Updated docs:
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - N/A (requires local interactive app run to visually confirm final toolbar rendering).
+- Result:
+  - In progress; brand is back in top toolbar aligned with window controls path, without principal/editor capsule styling.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-11
+- Step: Replace SwiftUI title-bar branding with AppKit left accessory branding (incremental)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/RootView.swift`:
+    - removed SwiftUI title-bar toolbar brand injection.
+    - added `WindowTitlebarBrandInstaller` (`NSViewRepresentable`) that installs a left `NSTitlebarAccessoryViewController` per window.
+    - added `ClickCherryTitlebarAccessoryController` that hosts plain `AppToolbarBrandView` (icon + text) without capsule styling.
+  - Confirmed this approach targets true top-bar placement near traffic-light controls while bypassing SwiftUI toolbar capsule rendering.
+  - Updated docs:
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`.
+    - updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - N/A (requires local interactive UI run to verify final visual rendering on live window).
+- Result:
+  - In progress; branding now uses AppKit titlebar accessory path designed to avoid the capsule/border artifact.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-11
+- Step: Fix missing top-bar brand visibility (window-attachment hook + accessory sizing) (incremental)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/RootView.swift`:
+    - fixed titlebar-brand installer to reliably run when the host view attaches to a window (`viewDidMoveToWindow` via `WindowObserverView`).
+    - changed installer API from `installIfNeeded(from hostView:)` to `installIfNeeded(in window:)` to remove timing ambiguity.
+    - made accessory view sizing explicit by embedding `NSHostingView` in a container with edge constraints and setting `preferredContentSize` from `fittingSize`.
+  - This addresses the failure mode where no icon/name appeared because the accessory never installed (or installed with zero-size layout).
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-local -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - N/A (requires local interactive app run to verify live titlebar rendering).
+- Result:
+  - In progress; top-bar brand installer is now window-attachment-safe and size-stable.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-11
+- Step: Defer ClickCherry top-bar branding issue per user request (docs-only)
+- Changes made:
+  - Added new open issue in `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`:
+    - `OI-2026-02-11-007` for inconsistent top-bar branding behavior (capsule styling or missing icon/name).
+  - Added new revisit entry in `/Users/farzamh/code-git-local/task-agent-macos/.docs/revisits.md`:
+    - `RV-2026-02-11-016` to explicitly defer titlebar-branding finalization.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md` with a dedicated deferred backlog step for `OI-2026-02-11-007`.
+- Automated tests run:
+  - N/A (docs-only).
+- Manual tests run:
+  - N/A (docs-only).
+- Result:
+  - Deferred; issue is now formally tracked in both active issue and revisit docs for later return.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-12
+- Step: Add UI/UX change governance docs and AGENTS rule (docs-only)
+- Changes made:
+  - Added `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md` as the canonical UI/UX change log.
+  - Added UI/UX change-process instructions to `/Users/farzamh/code-git-local/task-agent-macos/AGENTS.md` including required plan/design alignment.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md` to reflect this new docs baseline.
+- Automated tests run:
+  - N/A (docs-only).
+- Manual tests run:
+  - N/A (docs-only).
+- Result:
+  - Complete; UI/UX planning/decision tracking now has an explicit source-of-truth file and process rule.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-12
+- Step: Add SwiftUI Canvas preview for RootView (incremental)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/RootView.swift`:
+    - added `#Preview("RootView")` so Xcode Canvas can render the startup UI without running the full app.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md` with plan/design alignment and validation notes.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-canvas-preview CODE_SIGNING_ALLOWED=NO build` (pass).
+- Manual tests run:
+  - In Xcode, opened `RootView.swift`, enabled Canvas, and clicked `Resume` to confirm a preview renders. (Pending user-side confirmation)
+- Result:
+  - Complete; preview block added and project builds successfully. Awaiting user-side Canvas render confirmation.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-12
+- Step: Add deterministic startup previews (welcome-first onboarding) (incremental)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/RootView.swift`:
+    - added preview-only stores and `#Preview("Startup - ...")` variants so Canvas can render the exact first-run startup screens regardless of persisted onboarding completion.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md` with plan/design alignment and validation notes.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-startup-previews CODE_SIGNING_ALLOWED=NO build` (pass).
+- Manual tests run:
+  - In Xcode Canvas, select `Startup - Welcome` and confirm the Welcome onboarding screen renders. (Pending user-side confirmation)
+- Result:
+  - Complete; deterministic startup previews added and project builds successfully. Awaiting user-side Canvas render confirmation.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-12
+- Step: Split RootView into separate view files (incremental)
+- Changes made:
+  - Refactored `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/RootView.swift` to only contain `RootView`.
+  - Added view files:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/OnboardingFlowView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/MainShellView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Titlebar/WindowTitlebarBranding.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift`
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md` with plan/design alignment and validation notes.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-split-views CODE_SIGNING_ALLOWED=NO build` (pass).
+- Manual tests run:
+  - In Xcode Canvas, confirm the `Startup - Welcome` preview still renders. (Pending user-side confirmation)
+- Result:
+  - Complete; UI code is now split into maintainable files for continued expansion.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-12
+- Step: Fix Swift 6 preview compile errors (incremental)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift`:
+    - removed `[AppPermission: PermissionGrantStatus]` defaults to avoid Swift 6 MainActor-isolated `Hashable` conformance usage in nonisolated default-argument context.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/RecordingCaptureService.swift`:
+    - rewired CoreAudio device-name retrieval to use `withUnsafeMutableBytes` to avoid forming an unsafe raw pointer to a `CFString` variable in Swift 6 mode.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-preview-fixes CODE_SIGNING_ALLOWED=NO build` (pass).
+- Manual tests run:
+  - In Xcode Canvas, open `RootViewPreviews.swift` and confirm `Startup - Welcome` renders without compile errors. (Pending user-side confirmation)
+- Result:
+  - Complete; preview build errors are resolved.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-12
+- Step: Redesign first-run onboarding UI (centered card + app-icon hero) (incremental)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/OnboardingFlowView.swift`:
+    - implemented a modern centered-card layout with subtle backdrop gradients and an in-card footer nav (Back/Continue/Finish).
+    - added a hero view that uses the app icon as the center image (with soft glow + minimal decorative SF Symbols).
+    - added a compact step indicator pill to mirror the provided redesign direction.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/RootView.swift`:
+    - onboarding route now uses centered layout with no outer padding; main shell keeps top-leading alignment and padding.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-onboarding-redesign CODE_SIGNING_ALLOWED=NO build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-onboarding-redesign-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - In Xcode Canvas, open `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift`, select `Startup - Welcome`, and confirm the redesigned onboarding UI renders (Light and Dark). (Pending user-side confirmation)
+- Result:
+  - In progress; automated tests pass, awaiting local Canvas verification.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-12
+- Step: Update onboarding welcome copy to ClickCherry (incremental)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/OnboardingFlowView.swift`:
+    - changed `Welcome to Task Agent` to `Welcome to ClickCherry`.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-onboarding-copy CODE_SIGNING_ALLOWED=NO build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-onboarding-copy-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - In Xcode Canvas, open `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift`, select `Startup - Welcome`, and confirm the header shows `Welcome to ClickCherry`. (Pending user-side confirmation)
+- Result:
+  - Complete; copy change is in place and builds/tests pass.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-12
+- Step: Unify onboarding window layout and remove forced theme previews (incremental)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/OnboardingFlowView.swift`:
+    - removed floating card container and switched to a single unified onboarding surface.
+    - moved nav controls into a unified bottom footer bar with step indicator + Back/Continue/Finish controls.
+    - simplified adaptive styling so the view follows macOS system theme without explicit split Light/Dark variants.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift`:
+    - removed forced `Startup - Welcome (Light)` and `Startup - Welcome (Dark)` previews.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-onboarding-unified CODE_SIGNING_ALLOWED=NO build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-onboarding-unified-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - In Xcode Canvas, open `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift`, select `Startup - Welcome`, and confirm there is one unified onboarding window (no nested/floating second window look). (Pending user-side confirmation)
+- Result:
+  - Complete; layout is unified and preview theme forcing is removed.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-12
+- Step: Redesign Permissions Preflight step (glass panel) (incremental)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/OnboardingFlowView.swift`:
+    - redesigned the Permissions Preflight step into a single glass panel with aligned rows and fixed-width action buttons.
+    - removed the hero/app-icon illustration from the Permissions step.
+    - kept Automation manual confirmation controls and the testing bypass, but restyled them to match the modern layout.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-permissions-modern CODE_SIGNING_ALLOWED=NO build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-permissions-modern-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - In Xcode Canvas, open `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift`, select `Startup - Permissions`, and confirm the panel renders with aligned rows and no hero icon. (Pending user-side confirmation)
+- Result:
+  - Complete.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-12
+- Step: Provider Setup copy clarifies why each key is needed (incremental)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/OnboardingFlowView.swift`:
+    - updated Provider Setup subtitle to explain:
+      - Gemini is used for screen recording analysis.
+      - OpenAI is used for agent tasks.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-provider-panel-v3 CODE_SIGNING_ALLOWED=NO build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-provider-panel-v3-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - In Xcode Canvas, open `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift`, select `Startup - Provider Setup`, and confirm the subtitle explains the Gemini/OpenAI usage. (Pending user-side confirmation)
+- Result:
+  - Complete.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-12
+- Step: Permissions step alignment polish (automation manual-confirm row) (incremental)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/OnboardingFlowView.swift`:
+    - aligned the Automation manual-confirm buttons to the same right-side button column as other permission actions.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-permissions-modern2 CODE_SIGNING_ALLOWED=NO build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-permissions-modern2-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - In Xcode Canvas, open `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift`, select `Startup - Permissions`, and confirm the Automation “Mark Granted/Not Granted” buttons align with the Open Settings/status-pill column. (Pending user-side confirmation)
+- Result:
+  - Complete.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-12
+- Step: Permissions step polish (auto status polling + remove Check Status) (incremental)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/OnboardingStateStore.swift`:
+    - added passive permission polling (`pollPermissionStatuses()`) for Screen Recording, Accessibility, and Input Monitoring (no prompts).
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/OnboardingFlowView.swift`:
+    - removed `Check Status` buttons from permission rows.
+    - aligned `Open Settings` with the status pill using fixed-width columns (status pill has a fixed width to prevent drift).
+    - added a background poller (~0.5s) so status pills update automatically while the step is visible.
+    - `Open Settings` triggers the one-time macOS permission prompt when needed (requests access before opening Settings).
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-permissions-autopoll3 CODE_SIGNING_ALLOWED=NO build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-permissions-autopoll3-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - In Xcode Canvas, open `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift`, select `Startup - Permissions`, and confirm:
+    - no `Check Status` buttons exist.
+    - `Open Settings` stays aligned across `Granted` vs `Not Granted` status-pill widths.
+    - Automation row still shows the manual confirm controls. (Pending user-side confirmation)
+  - In a local Xcode Run (not Canvas), toggle a permission in System Settings and confirm the status pill updates automatically within ~0.5s. (Pending user-side confirmation)
+- Result:
+  - Complete.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-12
+- Step: Permissions preflight: remove Automation + add Skip (incremental)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`:
+    - removed the Automation permission type from permission preflight.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/OnboardingStateStore.swift`:
+    - removed Automation permission state/gating.
+    - added `Skip` support for the Permissions step.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/OnboardingFlowView.swift`:
+    - removed the Automation row and manual “Mark Granted/Not Granted” controls.
+    - updated Input Monitoring helper copy to describe Escape-stop behavior.
+    - added `Skip` to the Permissions footer and clarified the Continue gating message.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AnthropicAutomationEngine.swift`:
+    - removed AppleScript `System Events` fallback for unknown keys (avoid Automation permission prompts).
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift` and `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/OnboardingStateStoreTests.swift` to match the new permission set.
+  - Updated docs to keep plan/design/UX logs consistent:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/PRD.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/xcode_signing_setup.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-permissions-skip-noautomation CODE_SIGNING_ALLOWED=NO build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-permissions-skip-noautomation-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - In Xcode Canvas, open `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift`, select `Startup - Permissions`, and confirm:
+    - there is no Automation row.
+    - `Skip` is available in the footer.
+    - Input Monitoring copy mentions `Escape`. (Pending user-side confirmation)
+- Result:
+  - Complete.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-12
+- Step: Permissions preflight: remove testing bypass + add microphone (incremental)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/OnboardingFlowView.swift`:
+    - removed the Testing shortcut panel (Skip is the only bypass).
+    - added `Microphone (Voice)` permission row to Permissions Preflight.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`:
+    - added Microphone permission status + System Settings deep link.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/OnboardingStateStore.swift`:
+    - added Microphone permission state and gating.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift` and `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/OnboardingStateStoreTests.swift` for the new permission set.
+  - Updated docs to keep plan/design/UX logs consistent:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/PRD.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/xcode_signing_setup.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-permissions-mic-noskiptestpanel CODE_SIGNING_ALLOWED=NO build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-permissions-mic-noskiptestpanel-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - In Xcode Canvas, open `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift`, select `Startup - Permissions`, and confirm:
+    - Microphone (Voice) appears.
+    - there is no Testing shortcut panel. (Pending user-side confirmation)
+- Result:
+  - Complete.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-12
+- Step: Permissions preflight copy polish (Input Monitoring) (incremental)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/OnboardingFlowView.swift`:
+    - shortened Input Monitoring helper copy to: `Needed to stop the agent with Escape.`
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`:
+    - aligned the runtime missing-permission error copy with Escape-stop framing.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/UserInterruptionMonitor.swift` doc comment:
+    - clarified the monitor listens for Escape (not generic mouse/keyboard activity).
+  - Updated docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-inputmonitor-copy CODE_SIGNING_ALLOWED=NO build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-inputmonitor-copy-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - In Xcode Canvas, select `Startup - Permissions` and confirm the shortened Input Monitoring helper text renders. (Pending user-side confirmation)
+- Result:
+  - Complete.
+- Issues/blockers:
+  - None.

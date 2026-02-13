@@ -2,6 +2,12 @@ import Foundation
 import Observation
 import AppKit
 
+enum MainShellRoute: Equatable {
+    case newTask
+    case task(String)
+    case settings
+}
+
 @Observable
 final class MainShellStateStore {
     private let taskService: TaskService
@@ -9,8 +15,6 @@ final class MainShellStateStore {
     private let heartbeatQuestionService: HeartbeatQuestionService
     private let automationEngine: any AutomationEngine
     private let apiKeyStore: any APIKeyStore
-    private let executionProviderSelectionStore: any ExecutionProviderSelectionStore
-    private let executionProviderPreference: ExecutionProviderPreference
     private let permissionService: any PermissionService
     private let captureService: any RecordingCaptureService
     private let overlayService: any RecordingOverlayService
@@ -22,10 +26,11 @@ final class MainShellStateStore {
     private let llmScreenshotRecorder: LLMScreenshotRecorder
     private let executionTraceRecorder: ExecutionTraceRecorder
     private var runTaskHandle: Task<Void, Never>?
+    @ObservationIgnored private var previousRouteBeforeSettings: MainShellRoute?
 
     var tasks: [TaskRecord]
     var selectedTaskID: String?
-    var selectedExecutionProvider: ExecutionProvider
+    var route: MainShellRoute
     var providerSetupState: ProviderSetupState
     var newTaskTitle: String
     var heartbeatMarkdown: String
@@ -66,7 +71,6 @@ final class MainShellStateStore {
         heartbeatQuestionService: HeartbeatQuestionService = HeartbeatQuestionService(),
         automationEngine: (any AutomationEngine)? = nil,
         apiKeyStore: any APIKeyStore = KeychainAPIKeyStore(),
-        executionProviderSelectionStore: any ExecutionProviderSelectionStore = UserDefaultsExecutionProviderSelectionStore(),
         permissionService: any PermissionService = MacPermissionService(),
         captureService: any RecordingCaptureService = ShellRecordingCaptureService(),
         overlayService: any RecordingOverlayService = ScreenRecordingOverlayService(),
@@ -78,33 +82,13 @@ final class MainShellStateStore {
         let callRecorder = LLMCallRecorder(maxEntries: 200)
         let screenshotRecorder = LLMScreenshotRecorder(maxEntries: 120)
         let traceRecorder = ExecutionTraceRecorder(maxEntries: 400)
-        let initialExecutionProvider = executionProviderSelectionStore.selectedExecutionProvider
-        let executionProviderPreference = ExecutionProviderPreference(initial: initialExecutionProvider)
         self.taskService = taskService
         self.apiKeyStore = apiKeyStore
-        self.executionProviderSelectionStore = executionProviderSelectionStore
-        self.executionProviderPreference = executionProviderPreference
         self.permissionService = permissionService
         self.taskExtractionService = taskExtractionService ?? TaskExtractionService(
             llmClient: GeminiVideoLLMClient(apiKeyStore: apiKeyStore)
         )
         self.heartbeatQuestionService = heartbeatQuestionService
-        let anthropicRunner = AnthropicComputerUseRunner(
-            apiKeyStore: apiKeyStore,
-            callLogSink: { entry in
-                callRecorder.record(entry)
-            },
-            screenshotLogSink: { entry in
-                screenshotRecorder.record(entry)
-            },
-            traceSink: { entry in
-                traceRecorder.record(entry)
-            },
-            screenshotProvider: {
-                let excludedWindowNumber = agentControlOverlayService.windowNumberForScreenshotExclusion()
-                return try AnthropicComputerUseRunner.captureMainDisplayScreenshot(excludingWindowNumber: excludedWindowNumber)
-            }
-        )
         let openAIRunner = OpenAIComputerUseRunner(
             apiKeyStore: apiKeyStore,
             callLogSink: { entry in
@@ -122,14 +106,7 @@ final class MainShellStateStore {
             }
         )
 
-        let routedEngine = ProviderRoutingAutomationEngine(
-            apiKeyStore: apiKeyStore,
-            openAIEngine: OpenAIAutomationEngine(runner: openAIRunner),
-            anthropicEngine: AnthropicAutomationEngine(runner: anthropicRunner),
-            preferredProvider: { executionProviderPreference.currentValue() }
-        )
-
-        self.automationEngine = automationEngine ?? routedEngine
+        self.automationEngine = automationEngine ?? OpenAIAutomationEngine(runner: openAIRunner)
         self.captureService = captureService
         self.overlayService = overlayService
         self.agentControlOverlayService = agentControlOverlayService
@@ -142,7 +119,7 @@ final class MainShellStateStore {
         self.runTaskHandle = nil
         self.tasks = []
         self.selectedTaskID = nil
-        self.selectedExecutionProvider = initialExecutionProvider
+        self.route = .newTask
         self.providerSetupState = ProviderSetupState(
             hasOpenAIKey: apiKeyStore.hasKey(for: .openAI),
             hasAnthropicKey: apiKeyStore.hasKey(for: .anthropic),
@@ -230,10 +207,11 @@ final class MainShellStateStore {
     func reloadTasks() {
         do {
             tasks = try taskService.listTasks()
-            if selectedTaskID == nil {
-                selectedTaskID = tasks.first?.id
-            } else if selectedTask == nil {
-                selectedTaskID = tasks.first?.id
+            if let selectedTaskID, tasks.contains(where: { $0.id == selectedTaskID }) == false {
+                self.selectedTaskID = nil
+                if case .task = route {
+                    route = .newTask
+                }
             }
             loadSelectedTaskHeartbeat()
             loadSelectedTaskRecordings()
@@ -250,12 +228,83 @@ final class MainShellStateStore {
             let created = try taskService.createTask(title: newTaskTitle)
             newTaskTitle = ""
             reloadTasks()
-            selectedTaskID = created.id
-            loadSelectedTaskHeartbeat()
-            loadSelectedTaskRecordings()
+            openTask(created.id)
             errorMessage = nil
         } catch {
             errorMessage = "Failed to create task."
+        }
+    }
+
+    func openNewTask() {
+        route = .newTask
+        guard !isCapturing else {
+            return
+        }
+        selectedTaskID = nil
+        heartbeatMarkdown = ""
+        clarificationQuestions = []
+        selectedClarificationQuestionID = nil
+        clarificationAnswerDraft = ""
+        recordings = []
+        saveStatusMessage = nil
+        recordingStatusMessage = nil
+        extractionStatusMessage = nil
+        runStatusMessage = nil
+        clarificationStatusMessage = nil
+        errorMessage = nil
+    }
+
+    func openSettings() {
+        if route != .settings {
+            previousRouteBeforeSettings = route
+        }
+        route = .settings
+    }
+
+    func closeSettings() {
+        if let previousRouteBeforeSettings {
+            route = previousRouteBeforeSettings
+        } else {
+            route = .newTask
+        }
+    }
+
+    func permissionStatus(for permission: AppPermission) -> PermissionGrantStatus {
+        permissionService.currentStatus(for: permission)
+    }
+
+    func openPermissionSettings(for permission: AppPermission) {
+        permissionService.openSystemSettings(for: permission)
+    }
+
+    func openTask(_ taskID: String) {
+        route = .task(taskID)
+        selectedTaskID = taskID
+        clarificationAnswerDraft = ""
+        clarificationStatusMessage = nil
+        runStatusMessage = nil
+        loadSelectedTaskHeartbeat()
+        loadSelectedTaskRecordings()
+    }
+
+    func toggleNewTaskRecording() {
+        if isCapturing {
+            stopCapture()
+            if let selectedTaskID {
+                openTask(selectedTaskID)
+            }
+            return
+        }
+
+        do {
+            let created = try taskService.createTask(title: "")
+            selectedTaskID = created.id
+            reloadTasks()
+            // Keep the UI on the minimal New Task screen while recording.
+            route = .newTask
+            startCapture()
+        } catch {
+            errorMessage = "Failed to create a new task for recording."
         }
     }
 
@@ -265,30 +314,13 @@ final class MainShellStateStore {
             hasAnthropicKey: apiKeyStore.hasKey(for: .anthropic),
             hasGeminiKey: apiKeyStore.hasKey(for: .gemini)
         )
-        if selectedExecutionProviderHasSavedKey {
-            if apiKeyErrorMessage?.hasPrefix("Selected execution provider") == true {
+        if providerSetupState.hasOpenAIKey {
+            if apiKeyErrorMessage == "OpenAI API key is not saved." {
                 apiKeyErrorMessage = nil
             }
         } else {
-            apiKeyErrorMessage = "Selected execution provider \(selectedExecutionProvider.displayName) has no saved API key."
+            apiKeyErrorMessage = "OpenAI API key is not saved."
         }
-    }
-
-    var selectedExecutionProviderHasSavedKey: Bool {
-        switch selectedExecutionProvider {
-        case .openAI:
-            return providerSetupState.hasOpenAIKey
-        case .anthropic:
-            return providerSetupState.hasAnthropicKey
-        }
-    }
-
-    func selectExecutionProvider(_ provider: ExecutionProvider) {
-        selectedExecutionProvider = provider
-        executionProviderPreference.setValue(provider)
-        executionProviderSelectionStore.selectedExecutionProvider = provider
-        apiKeyStatusMessage = "Execution provider set to \(provider.displayName)."
-        apiKeyErrorMessage = nil
     }
 
     @discardableResult
@@ -304,7 +336,7 @@ final class MainShellStateStore {
             try apiKeyStore.setKey(key, for: provider)
             updateProviderSetupState(saved: true, for: provider)
             apiKeyStatusMessage = "Saved \(providerDisplayName(provider)) API key."
-            if provider == selectedExecutionProvider.apiKeyProviderIdentifier {
+            if provider == .openAI {
                 apiKeyErrorMessage = nil
             }
             return true
@@ -320,11 +352,7 @@ final class MainShellStateStore {
             try apiKeyStore.setKey(nil, for: provider)
             updateProviderSetupState(saved: false, for: provider)
             apiKeyStatusMessage = "Removed \(providerDisplayName(provider)) API key."
-            if provider == selectedExecutionProvider.apiKeyProviderIdentifier {
-                apiKeyErrorMessage = "Selected execution provider \(selectedExecutionProvider.displayName) has no saved API key."
-            } else {
-                apiKeyErrorMessage = nil
-            }
+            apiKeyErrorMessage = provider == .openAI ? "OpenAI API key is not saved." : nil
         } catch {
             apiKeyStatusMessage = nil
             apiKeyErrorMessage = "Failed to remove \(providerDisplayName(provider)) API key."
@@ -490,12 +518,12 @@ final class MainShellStateStore {
     }
 
     func selectTask(_ taskID: String?) {
-        selectedTaskID = taskID
-        clarificationAnswerDraft = ""
-        clarificationStatusMessage = nil
-        runStatusMessage = nil
-        loadSelectedTaskHeartbeat()
-        loadSelectedTaskRecordings()
+        guard let taskID else {
+            openNewTask()
+            return
+        }
+
+        openTask(taskID)
     }
 
     func loadSelectedTaskHeartbeat() {
@@ -887,7 +915,7 @@ final class MainShellStateStore {
         let inputMonitoring = permissionService.requestAccessIfNeeded(for: .inputMonitoring)
         if inputMonitoring != .granted {
             runStatusMessage = nil
-            errorMessage = "Input Monitoring permission is required to stop the agent when you take over. Enable TaskAgentMacOSApp in System Settings > Privacy & Security > Input Monitoring."
+            errorMessage = "Input Monitoring permission is required so Escape can stop the agent. Enable TaskAgentMacOSApp in System Settings > Privacy & Security > Input Monitoring."
             executionTraceRecorder.record(ExecutionTraceEntry(kind: .error, message: "Missing Input Monitoring permission."))
             permissionService.openSystemSettings(for: .inputMonitoring)
             return false
@@ -1049,27 +1077,6 @@ final class MainShellStateStore {
         case .gemini:
             return "Gemini"
         }
-    }
-}
-
-private final class ExecutionProviderPreference: @unchecked Sendable {
-    private let lock = NSLock()
-    private var value: ExecutionProvider
-
-    init(initial: ExecutionProvider) {
-        self.value = initial
-    }
-
-    func currentValue() -> ExecutionProvider {
-        lock.lock()
-        defer { lock.unlock() }
-        return value
-    }
-
-    func setValue(_ newValue: ExecutionProvider) {
-        lock.lock()
-        value = newValue
-        lock.unlock()
     }
 }
 

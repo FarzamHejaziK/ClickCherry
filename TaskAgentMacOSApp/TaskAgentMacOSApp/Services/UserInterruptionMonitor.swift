@@ -2,7 +2,7 @@ import ApplicationServices
 import Foundation
 
 protocol UserInterruptionMonitor {
-    /// Starts monitoring for user activity (mouse/keyboard). Returns `true` if monitoring started.
+    /// Starts monitoring for user interruption (Escape key). Returns `true` if monitoring started.
     func start(onUserInterruption: @escaping () -> Void) -> Bool
     func stop()
 }

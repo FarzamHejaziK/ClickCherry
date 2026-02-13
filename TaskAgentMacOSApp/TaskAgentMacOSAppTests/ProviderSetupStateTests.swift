@@ -3,7 +3,7 @@ import Testing
 
 struct ProviderSetupStateTests {
     @Test
-    func requiresGeminiAndOneCoreProvider() {
+    func requiresOpenAIAndGemini() {
         let none = ProviderSetupState(hasOpenAIKey: false, hasAnthropicKey: false, hasGeminiKey: false)
         #expect(!none.isReadyForOnboardingCompletion)
 
@@ -14,6 +14,6 @@ struct ProviderSetupStateTests {
         #expect(openAIPlusGemini.isReadyForOnboardingCompletion)
 
         let anthropicPlusGemini = ProviderSetupState(hasOpenAIKey: false, hasAnthropicKey: true, hasGeminiKey: true)
-        #expect(anthropicPlusGemini.isReadyForOnboardingCompletion)
+        #expect(!anthropicPlusGemini.isReadyForOnboardingCompletion)
     }
 }

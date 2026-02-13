@@ -158,7 +158,7 @@ Security:
 
 1. LLM provider(s) for video understanding and clarifications.
 2. Desktop automation hooks/runtime.
-3. macOS permissions: Screen Recording, Accessibility, Automation as needed.
+3. macOS permissions: Screen Recording, Accessibility, Input Monitoring (Escape-stop takeover), Microphone (voice capture during screen recording).
 
 ## Risks and Mitigations
 
@@ -224,6 +224,6 @@ Security:
 
 1. First-run setup asks users to provide model API keys.
 2. Required onboarding providers:
-   - OpenAI or Anthropic (Claude) for core task execution/reasoning
-   - Gemini for video-understanding flow
+   - OpenAI for core task execution/reasoning (v1 execution provider is OpenAI only).
+   - Gemini for video-understanding flow.
 3. Keys are stored in macOS Keychain and never written to plaintext logs.

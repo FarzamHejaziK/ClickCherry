@@ -57,11 +57,12 @@ struct ProviderSetupState: Equatable {
     var hasGeminiKey: Bool
 
     var hasCoreProvider: Bool {
-        hasOpenAIKey || hasAnthropicKey
+        // Current onboarding requires OpenAI as the execution provider.
+        hasOpenAIKey
     }
 
     var isReadyForOnboardingCompletion: Bool {
-        hasCoreProvider && hasGeminiKey
+        hasOpenAIKey && hasGeminiKey
     }
 }
 

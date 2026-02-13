@@ -4,7 +4,7 @@ description: Required Xcode app identity and signing setup for reliable macOS pe
 
 # Xcode App Target + Signing Setup (Required for Permission Testing)
 
-Use this setup whenever testing Screen Recording, Accessibility, or Automation grants.
+Use this setup whenever testing Screen Recording, Accessibility, Input Monitoring, or Microphone grants.
 
 ## Why this is required
 
@@ -51,19 +51,18 @@ This repo currently uses Swift Package Manager for development logic/tests. For 
 ## Permission walkthrough checklist
 
 1. Launch app from Xcode Run.
-2. In onboarding, click `Check Status` for Screen Recording and Accessibility once to trigger macOS prompts.
-3. In onboarding permissions step, click `Open Settings` for:
+2. In the onboarding Permissions step, click `Open Settings` for:
    - Screen Recording
+   - Microphone
    - Accessibility
-   - Automation
-4. Grant permissions in System Settings.
-5. Return to app:
-   - Click `Check Status` for Screen Recording and Accessibility.
-   - Use Automation confirmation control as needed.
-6. Confirm UI shows `Granted` for all required permissions.
-7. Quit app and run again from Xcode.
-8. Confirm permissions remain granted for the same app identity.
-9. If the app still does not appear, use `+` in the Screen Recording pane and add the built `.app` from DerivedData manually.
+   - Input Monitoring
+3. Grant permissions in System Settings.
+4. Return to the app:
+    - Status updates automatically (within ~0.5s).
+5. Confirm UI shows `Granted` for all required permissions.
+6. Quit app and run again from Xcode.
+7. Confirm permissions remain granted for the same app identity.
+8. If the app still does not appear, use `+` in the Screen Recording pane and add the built `.app` from DerivedData manually.
 
 ## If permission keeps resetting
 

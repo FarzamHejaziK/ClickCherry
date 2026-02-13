@@ -4,15 +4,43 @@ description: Active unresolved issues with concrete repro details, mitigation, a
 
 # Open Issues
 
+## Issue OI-2026-02-11-007
+- Issue ID: OI-2026-02-11-007
+- Title: ClickCherry top-bar branding is inconsistent (capsule styling or missing icon/name)
+- Status: Open
+- Severity: Medium
+- First Seen: 2026-02-11
+- Scope:
+  - Affects window top-bar branding only (titlebar UI/visual identity).
+  - Does not block core task creation/execution flows.
+- Repro Steps:
+  1. Build and run `TaskAgentMacOSApp`.
+  2. Open the main app window and inspect top bar near traffic-light controls.
+  3. Compare rendering after titlebar-branding implementation changes.
+- Observed:
+  - SwiftUI title-bar toolbar placements can show an unwanted rounded capsule around `ClickCherry`.
+  - AppKit accessory-path attempts can still fail to show icon/name in some local runs.
+- Expected:
+  - Plain icon (left) + `ClickCherry` text in top bar near traffic lights, with no capsule/border styling.
+- Current Mitigation:
+  - Issue is intentionally deferred and tracked; no further active implementation work in this step.
+  - App remains usable for core task-agent functionality while branding behavior is unresolved.
+- Next Action:
+  - Revisit with deterministic window-level titlebar integration path and verify on live runtime:
+    - install/update titlebar branding at window lifecycle boundary.
+    - verify rendering across relaunch/rebuild cycles with manual screenshots.
+  - Close only after stable no-capsule rendering is confirmed locally.
+- Owner: Codex + user validation in local Xcode runtime
+
 ## Issue OI-2026-02-09-006
 - Issue ID: OI-2026-02-09-006
 - Title: Execution tool_use loops but desktop actions fail (key injection errors and/or coordinate translation)
-- Status: Open
+- Status: Mitigated
 - Severity: High
 - First Seen: 2026-02-09
 - Scope:
   - Affects Step 4 execution agent (Anthropic computer-use tool loop).
-  - Runs show many successful Anthropic calls + `tool_use` blocks, but little/no visible desktop action occurs.
+  - As of 2026-02-13, v1 UI no longer exposes Anthropic execution provider selection (OpenAI-only), so this does not block v1 runs.
 - Repro Steps:
   1. Ensure Anthropic API key is configured.
   2. Click `Run Task` on any task.
@@ -27,17 +55,14 @@ description: Active unresolved issues with concrete repro details, mitigation, a
 - Current Mitigation:
   - Execution Trace is available in-app so failures are visible.
   - `Stop` button can cancel runaway tool loops.
-  - Shortcut + typing injection now prefer CGEvent-based injection (reduces reliance on `System Events` automation permission).
+  - Shortcut + typing injection now use CGEvent-based injection (AppleScript `System Events` path removed, so Automation permission is no longer required).
   - `scroll` and `cursor_position` actions are now supported in the tool loop (covered by unit tests). Manual live-flow verification pending.
   - Tool-loop requests now keep full text/tool history but retain only the latest screenshot image block, reducing payload growth during long runs.
   - Screenshot encoding now enforces Anthropic's 5 MB limit on base64 payload size (prevents raw-bytes-under-limit/base64-over-limit request failures).
   - Runtime terminal policy now rejects visual/UI-oriented terminal commands and directs model behavior to the `computer` tool.
+  - Execution provider selection UI is OpenAI-only, so Anthropic runs are not reachable in v1 UX.
 - Next Action:
-  - Validate coordinate translation between Anthropic screenshot coordinates and macOS `CGEvent` coordinates (Retina logical vs capture pixels and origin/space); add scaling/translation if clicks land in the wrong place.
-  - Improve shortcut/key execution to reduce reliance on AppleScript `System Events` where possible (consider CGEvent-based key events).
-  - Add “automation permission” detection guidance when AppleScript calls fail (System Events control prompt).
-  - Add guardrails: if repeated invalid tool inputs occur N times, stop and append a blocking question to `HEARTBEAT.md` instead of looping.
-  - Keep unit tests for tool input decoding (click coordinate forms, key forms) and add coverage for coordinate scaling/translation if needed.
+  - If Anthropic execution is reintroduced, validate coordinate translation between Anthropic screenshot coordinates and macOS `CGEvent` coordinates (Retina logical vs capture pixels and origin/space).
 - Owner: Codex
 
 ## Issue OI-2026-02-09-005

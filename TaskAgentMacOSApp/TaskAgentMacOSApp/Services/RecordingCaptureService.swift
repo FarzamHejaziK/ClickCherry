@@ -331,7 +331,12 @@ final class ShellRecordingCaptureService: RecordingCaptureService {
         )
         var name: CFString = "" as CFString
         var propertySize = UInt32(MemoryLayout<CFString>.size)
-        let result = AudioObjectGetPropertyData(deviceID, &address, 0, nil, &propertySize, &name)
+        let result = withUnsafeMutableBytes(of: &name) { rawBuffer -> OSStatus in
+            guard let baseAddress = rawBuffer.baseAddress else {
+                return -1
+            }
+            return AudioObjectGetPropertyData(deviceID, &address, 0, nil, &propertySize, baseAddress)
+        }
         guard result == noErr else {
             return nil
         }

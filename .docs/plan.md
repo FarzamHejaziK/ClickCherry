@@ -85,11 +85,11 @@ description: Step-by-step implementation plan with code scope, automated tests, 
 ### Code
 - Build first concrete execution runner implementing `AutomationEngine`. (Implemented)
 - Add `Run Task` trigger in task detail and wire state-store run orchestration. (Implemented)
-- Add Anthropic computer-use runner call path using `claude-opus-4-6`. (Implemented)
+- Add Anthropic computer-use runner call path using `claude-opus-4-6`. (Implemented, legacy; no longer used by v1 UI as of 2026-02-13)
 - Execute baseline app-agnostic actions from model output (open app/url, click, type, shortcuts). (Implemented)
 - On ambiguity/runtime failure, append unresolved blocking questions into `HEARTBEAT.md` `## Questions`. (Implemented)
 - Persist per-run summary artifacts under `runs/` including LLM-authored summary text. (Implemented)
-- Integrate full iterative Anthropic computer-use tool loop (`computer_20251124`) for turn-based screenshot/tool execution. (Implemented)
+- Integrate full iterative Anthropic computer-use tool loop (`computer_20251124`) for turn-based screenshot/tool execution. (Implemented, legacy; no longer used by v1 UI as of 2026-02-13)
   - In the tool-loop request format, use:
     - `tools[].type = computer_20251124`
     - `anthropic-beta: computer-use-2025-11-24`
@@ -102,15 +102,13 @@ description: Step-by-step implementation plan with code scope, automated tests, 
 - Include mouse cursor in tool-loop screenshots for visual grounding during hover/mouse tasks. (Implemented)
 - Enforce fail-closed screenshot capture when HUD exclusion is requested (never fall back to non-excluding capture for LLM screenshots). (Implemented)
 - Reduce tool-loop payload growth by keeping full text/tool history but only the latest screenshot image block in each request. (Implemented)
-- Enforce screenshot-size safety against Anthropic's base64 5 MB image limit (not raw bytes) before request send. (Implemented)
-- Enforce tool-policy boundary at runtime: reject visual/UI-oriented terminal commands and direct model to `computer`. (Implemented)
+- Enforce screenshot-size safety against a conservative base64 payload budget before request send (downscale/re-encode when required). (Implemented)
+- Enforce tool-policy boundary at runtime: reject visual/UI-oriented terminal commands and direct model to `desktop_action`. (Implemented)
 - Prepare a cleaner visual workspace before run by hiding other regular apps. (Implemented)
 - Add diagnostics screenshot log showing the exact images sent to the LLM tool loop. (Implemented)
 - Keep takeover cursor presentation unchanged (normal cursor size, no cursor-following halo overlay). (Implemented)
-- Add explicit execution-provider toggle in main-shell settings (`OpenAI` vs `Anthropic`) and route runs by selected provider (no implicit fallback). (Implemented)
-- Keep OpenAI tool-surface parity with Anthropic baseline:
-  - OpenAI Responses runner exposes both `desktop_action` and `terminal_exec`.
-  - `terminal_exec` behavior matches Anthropic baseline (PATH resolution, timeout/output payload, and visual-command policy rejection). (Implemented)
+- Execution provider is OpenAI only; remove execution-provider selection UI and always route runs through OpenAI. (Implemented)
+- OpenAI Responses runner exposes both `desktop_action` and `terminal_exec`. (Implemented)
 - Expand tool/action coverage to drag in tool-loop path. (Pending)
 - Baseline policy for this implementation increment:
   - allow run with unresolved open questions and request clarifications in run report.
@@ -150,7 +148,7 @@ description: Step-by-step implementation plan with code scope, automated tests, 
 - Confirm cursor presentation remains unchanged after run completion/cancellation (including early takeover setup failure).
 - Confirm the agent overlay is not present in the screenshots sent to the LLM (no overlay visible in agent behavior / screenshots used for navigation).
 - Validate `terminal_exec` can run unrestricted commands and open apps reliably (ex: `open -a "Google Chrome"`), and that stdout/stderr/exit code are reported back to the tool loop.
-- Validate UI-oriented terminal commands are rejected and model switches to `computer` actions.
+- Validate UI-oriented terminal commands are rejected and model switches to `desktop_action` actions.
 - Validate request payload size does not grow linearly with screenshot count during long tool loops.
 - Validate Diagnostics shows “LLM Screenshots” that match the model-visible images per turn.
 - Validate a multi-app flow where the runner opens an app and performs click/type steps.
@@ -213,8 +211,8 @@ description: Step-by-step implementation plan with code scope, automated tests, 
 - Add first-run onboarding flow before task creation.
 - Screens:
   1. Welcome
-  2. Provider setup (OpenAI or Anthropic required, Gemini required)
-  3. Permissions preflight (Screen Recording, Accessibility, Automation)
+  2. Provider setup (OpenAI required, Gemini required)
+  3. Permissions preflight (Screen Recording, Microphone, Accessibility, Input Monitoring; allow Skip to grant later)
   4. Ready state
 - Persist API keys in Keychain.
 - Add validation for missing/invalid keys before continuing.

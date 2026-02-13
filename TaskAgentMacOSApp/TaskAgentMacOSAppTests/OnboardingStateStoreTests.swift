@@ -38,9 +38,9 @@ struct OnboardingStateStoreTests {
     private func makeStore(
         currentStep: OnboardingStep = .welcome,
         hasScreenRecordingPermission: Bool = false,
+        hasMicrophonePermission: Bool = false,
         hasAccessibilityPermission: Bool = false,
         hasInputMonitoringPermission: Bool = false,
-        hasAutomationPermission: Bool = false,
         hasCompletedOnboarding: Bool = false,
         permissionService: PermissionService = StatusOnlyPermissionService()
     ) -> OnboardingStateStore {
@@ -50,9 +50,9 @@ struct OnboardingStateStoreTests {
             permissionService: permissionService,
             currentStep: currentStep,
             hasScreenRecordingPermission: hasScreenRecordingPermission,
+            hasMicrophonePermission: hasMicrophonePermission,
             hasAccessibilityPermission: hasAccessibilityPermission,
             hasInputMonitoringPermission: hasInputMonitoringPermission,
-            hasAutomationPermission: hasAutomationPermission,
             hasCompletedOnboarding: hasCompletedOnboarding
         )
     }
@@ -93,9 +93,9 @@ struct OnboardingStateStoreTests {
         let store = makeStore(
             currentStep: .permissionsPreflight,
             hasScreenRecordingPermission: true,
+            hasMicrophonePermission: true,
             hasAccessibilityPermission: false,
-            hasInputMonitoringPermission: true,
-            hasAutomationPermission: true
+            hasInputMonitoringPermission: true
         )
         #expect(!store.canContinueCurrentStep)
 
@@ -114,53 +114,21 @@ struct OnboardingStateStoreTests {
         let permissionService = StatusOnlyPermissionService(
             statuses: [
                 .screenRecording: .granted,
+                .microphone: .granted,
                 .accessibility: .granted,
                 .inputMonitoring: .granted
             ]
         )
 
-        let store = makeStore(
-            hasAutomationPermission: true,
-            permissionService: permissionService
-        )
+        let store = makeStore(permissionService: permissionService)
 
         store.refreshPermissionStatus(for: .screenRecording)
+        store.refreshPermissionStatus(for: .microphone)
         store.refreshPermissionStatus(for: .accessibility)
         store.refreshPermissionStatus(for: .inputMonitoring)
 
         #expect(store.screenRecordingStatus == .granted)
         #expect(store.accessibilityStatus == .granted)
-        #expect(store.areRequiredPermissionsGranted)
-    }
-
-    @Test
-    func automationPermissionRequiresManualConfirmationWhenStatusUnknown() {
-        let permissionService = StatusOnlyPermissionService(statuses: [.automation: .unknown])
-        let store = makeStore(permissionService: permissionService)
-
-        store.refreshPermissionStatus(for: .automation)
-        #expect(store.automationStatus == .notGranted)
-
-        store.confirmAutomationPermission(granted: true)
-        #expect(store.automationStatus == .granted)
-    }
-
-    @Test
-    func permissionTestingBypassMarksAllPermissionsGranted() {
-        let store = makeStore(
-            hasScreenRecordingPermission: false,
-            hasAccessibilityPermission: false,
-            hasInputMonitoringPermission: false,
-            hasAutomationPermission: false
-        )
-        #expect(!store.areRequiredPermissionsGranted)
-
-        store.enablePermissionTestingBypass()
-
-        #expect(store.screenRecordingStatus == .granted)
-        #expect(store.accessibilityStatus == .granted)
-        #expect(store.inputMonitoringStatus == .granted)
-        #expect(store.automationStatus == .granted)
         #expect(store.areRequiredPermissionsGranted)
     }
 
