@@ -4,34 +4,33 @@ description: Short, continuously updated plan of the immediate next implementati
 
 # Next Steps
 
-1. Step: UI/UX: Main shell root view (Tasks sidebar + New Task empty state) (active).
-2. Why now: User requested the root view to match the provided mock (sidebar has `New Task` + `Tasks`, and the New Task screen is only a record button + subtitle).
+1. Step: UI/UX: New Task recording controls (multi-display + mic + Escape-to-stop) (active).
+2. Why now: User wants `New Task` to show available displays only when multiple displays exist, allow microphone selection, and keep the UI out of the way while still being easy to stop (Escape + HUD).
 3. Code tasks:
-   - Add left sidebar navigation: `New Task`, `Tasks` list, and bottom-pinned `Settings`. (Implemented)
-   - Add New Task empty state: centered record button + subtitle and no other content. (Implemented)
-   - Wire New Task record button to create a task and start capture; on stop, navigate to the created task. (Implemented)
-   - Add provided icons (New Task, Settings, Record) as asset-catalog images and wire them into UI. (Implemented)
-   - Hide the window title text (no `MainShell - New Task` text in the top bar). (Implemented)
+   - Show display picker under `Start recording` only when multiple displays are available. (Implemented)
+   - Start capture hides the main app windows after capture begins (desktop stays clear). (Implemented)
+   - Stop capture restores the app windows and focuses the app again (Escape stop matches Stop button flow). (Implemented)
+   - Show microphone selection under `New Task` only when multiple microphone devices are available. (Implemented)
+   - Fix explicit microphone selection so recording stop succeeds (avoid `Capture audio device <id> not found`). (Implemented)
+   - Ensure the red border overlay appears on the selected display (display ordering matches `screencapture -D`). (Implemented)
+   - Add a transparent HUD during recording that says `Press Escape to stop recording`. (Implemented)
+   - Ensure the recording HUD is not captured into the saved recording output. (Implemented)
+   - Support Escape-to-stop for recording; only hide the app UI when Escape monitoring starts successfully. (Implemented)
 4. Automated tests:
-   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-center-title CODE_SIGNING_ALLOWED=NO build`
-   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-center-title-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test`
+   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-recording-esc-micfix CODE_SIGNING_ALLOWED=NO build`
+   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-recording-esc-micfix-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test`
 5. Manual tests:
-   - In Xcode Canvas, open `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift`, select:
-     - `New Task` and confirm: left sidebar shows `New Task` and `Tasks`, and right panel shows:
-       - larger title above the record icon (`Start recording`)
-        - supporting line (`Explain your task in detail.`)
-      - Confirm the main shell palette matches onboarding (accent-tinted gradients; sidebar slightly more tinted than the detail panel).
-     - `Settings` and confirm:
-       - the main Tasks sidebar is not visible while in Settings (Settings owns the left column).
-       - the Settings left menu shows `Model Setup` and `Permissions` with icons.
-       - the Back/Model Setup/Permissions icons render as icons (not blank squares).
-       - Settings uses full-height left sidebar + right content (no inset sidebar/detail “dialog box” panels).
-        - provider keys + diagnostics are visible under `Model Setup`.
-        - there is no Diagnostics section and no Refresh Saved Status button (Model Setup stays minimal).
-        - Permissions rows render under `Permissions` and `Open Settings` buttons work.
-        - there is no execution-provider segmented control. (Pending user-side confirmation)
-      - Confirm the window top bar does not show `MainShell - New Task` title text.
-6. Exit criteria: Main shell matches the requested navigation layout and the New Task screen is minimal (record CTA only).
+   - Runtime: with 2+ displays connected, open `New Task` and confirm the display picker appears and selecting `Display 1/2/...` changes the display that gets the red border overlay (including non-main displays positioned left/below the main display).
+   - Runtime: with only 1 display connected, confirm the picker is not shown.
+   - Runtime: with 2+ microphone devices available, confirm the microphone dropdown appears and selecting a non-default mic:
+     - records with microphone audio.
+     - stops cleanly and saves a `.mov` (no `Capture audio device ... not found` error).
+   - Runtime: click record on `New Task` and confirm:
+     - the app window hides immediately after capture starts (when Escape monitoring starts), even if the app window is on a secondary display.
+     - a transparent HUD appears that says `Press Escape to stop recording`.
+     - the HUD does not appear inside the saved `.mov` output.
+     - pressing Escape stops recording, restores/focuses the app, and navigates to the new task detail view.
+6. Exit criteria: `New Task` stays minimal while allowing multi-display + mic selection when needed; recording hides the app UI during capture; and pressing Escape stops recording and restores the app (same as Stop).
 
 1. Step: UI/UX: Permissions Preflight panel (modern) (pending manual confirmation).
 2. Why now: User wants the Permissions step to match the new modern onboarding style, with careful alignment and no icon focus.

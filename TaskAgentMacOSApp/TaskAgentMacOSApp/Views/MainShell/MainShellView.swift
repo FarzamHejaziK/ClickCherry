@@ -34,6 +34,20 @@ struct MainShellView: View {
             mainShellStateStore.refreshCaptureDisplays()
             mainShellStateStore.refreshCaptureAudioInputs()
         }
+        .sheet(item: $mainShellStateStore.finishedRecordingReview, onDismiss: {
+            mainShellStateStore.handleFinishedRecordingSheetDismissed()
+        }) { review in
+            RecordingFinishedDialogView(
+                recording: review.recording,
+                onRecordAgain: {
+                    mainShellStateStore.recordAgainFromFinishedRecordingDialog()
+                },
+                onExtractTask: {
+                    mainShellStateStore.extractTaskFromFinishedRecordingDialog()
+                }
+            )
+            .frame(width: 780, height: 560)
+        }
     }
 }
 

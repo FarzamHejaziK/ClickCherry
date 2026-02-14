@@ -78,6 +78,27 @@ struct DesktopScreenshotService {
         )
     }
 
+    nonisolated static func captureDisplayThumbnailCGImage(displayID: CGDirectDisplayID, maxWidth: Int = 520) throws -> CGImage {
+        let content = try loadShareableContent(onScreenOnly: true)
+        guard let display = content.displays.first(where: { $0.displayID == displayID }) else {
+            throw DesktopScreenshotServiceError.captureFailed
+        }
+
+        let filter = SCContentFilter(display: display, excludingWindows: [])
+
+        let targetWidth = Int(min(Double(maxWidth), max(1.0, Double(display.width))))
+        let aspect = display.width > 0 ? (Double(display.height) / Double(display.width)) : 0.75
+        let targetHeight = Int(max(1.0, Double(targetWidth) * max(0.25, aspect)))
+
+        let config = SCStreamConfiguration()
+        config.captureResolution = .nominal
+        config.width = size_t(targetWidth)
+        config.height = size_t(targetHeight)
+        config.showsCursor = false
+
+        return try captureImage(filter: filter, config: config)
+    }
+
     nonisolated private static func loadShareableContent(onScreenOnly: Bool) throws -> SCShareableContent {
         let semaphore = DispatchSemaphore(value: 0)
         let box = Box<Result<SCShareableContent, Error>>(.failure(DesktopScreenshotServiceError.captureFailed))

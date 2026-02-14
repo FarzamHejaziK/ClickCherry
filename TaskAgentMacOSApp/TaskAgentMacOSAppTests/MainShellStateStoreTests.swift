@@ -387,7 +387,7 @@ struct MainShellStateStoreTests {
     }
 
     @Test
-    func startAndStopCaptureUpdatesCaptureState() throws {
+    func startAndStopCaptureUpdatesCaptureState() async throws {
         let fm = FileManager.default
         let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
@@ -416,19 +416,28 @@ struct MainShellStateStoreTests {
 
         store.startCapture()
         #expect(store.isCapturing)
+        // Capture launch is off-main; wait for the mock to observe start.
+        for _ in 0..<50 {
+            if captureService.startedOutputURL != nil { break }
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
         #expect(captureService.startedOutputURL != nil)
         #expect(captureService.startedDisplayID == 1)
         #expect(captureService.startedAudioInput == .device(42))
         #expect(overlayService.shownDisplayIDs == [1])
 
         store.stopCapture()
+        for _ in 0..<100 {
+            if !store.isCapturing { break }
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
         #expect(!store.isCapturing)
         #expect(store.recordingStatusMessage == "Capture stopped.")
         #expect(overlayService.hideCallCount == 1)
     }
 
     @Test
-    func startCaptureShowsPermissionErrorWhenDenied() throws {
+    func startCaptureShowsPermissionErrorWhenDenied() async throws {
         let fm = FileManager.default
         let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
@@ -456,6 +465,11 @@ struct MainShellStateStoreTests {
         store.refreshCaptureAudioInputs()
         store.startCapture()
 
+        // Failure is surfaced async.
+        for _ in 0..<50 {
+            if store.errorMessage != nil { break }
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
         #expect(!store.isCapturing)
         #expect(store.errorMessage == "Screen Recording permission denied. Grant access in System Settings and retry.")
         #expect(overlayService.hideCallCount == 1)

@@ -176,6 +176,65 @@ struct TaskService {
         return recordingsDir.appendingPathComponent("capture-\(timestamp)-\(suffix).mov", isDirectory: false)
     }
 
+    /// Attach a recording file (captured `.mov` or imported `.mp4`) to a task.
+    /// For `.mov` (capture staging) we prefer deleting the source after copying.
+    func attachRecordingFile(taskId: String, sourceURL: URL, deleteSourceAfterCopy: Bool) throws -> RecordingRecord {
+        let workspace = workspaceURL(for: taskId)
+        guard fileManager.fileExists(atPath: workspace.path) else {
+            throw TaskServiceError.taskNotFound
+        }
+
+        let ext = sourceURL.pathExtension.lowercased()
+        guard ext == "mp4" || ext == "mov" else {
+            throw TaskServiceError.invalidRecordingFormat
+        }
+
+        let sourceValues = try sourceURL.resourceValues(forKeys: [.fileSizeKey])
+        let sourceSize = Int64(sourceValues.fileSize ?? 0)
+        let maxRecordingBytes: Int64 = 2 * 1024 * 1024 * 1024
+        guard sourceSize <= maxRecordingBytes else {
+            throw TaskServiceError.recordingTooLarge
+        }
+
+        let recordingsDir = recordingsURL(for: taskId)
+        if !fileManager.fileExists(atPath: recordingsDir.path) {
+            try fileManager.createDirectory(at: recordingsDir, withIntermediateDirectories: true)
+        }
+
+        let destinationName = "\(Int(Date().timeIntervalSince1970))-\(sourceURL.lastPathComponent)"
+        let destinationURL = recordingsDir.appendingPathComponent(destinationName, isDirectory: false)
+        try fileManager.copyItem(at: sourceURL, to: destinationURL)
+        if deleteSourceAfterCopy {
+            try? fileManager.removeItem(at: sourceURL)
+        }
+
+        let addedValues = try destinationURL.resourceValues(forKeys: [.creationDateKey, .fileSizeKey])
+        return RecordingRecord(
+            id: destinationName,
+            fileName: destinationName,
+            addedAt: addedValues.creationDate ?? Date(),
+            fileURL: destinationURL,
+            fileSizeBytes: Int64(addedValues.fileSize ?? 0)
+        )
+    }
+
+    /// Output location used for New Task recording before a task exists.
+    /// This is deleted if the user dismisses the post-recording dialog without extracting.
+    func makeStagingCaptureOutputURL() throws -> URL {
+        try createBaseDirIfNeeded()
+
+        let stagingDir = baseDir.appendingPathComponent(".staging", isDirectory: true)
+        if !fileManager.fileExists(atPath: stagingDir.path) {
+            try fileManager.createDirectory(at: stagingDir, withIntermediateDirectories: true)
+        }
+
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let timestamp = formatter.string(from: Date()).replacingOccurrences(of: ":", with: "-")
+        let suffix = UUID().uuidString.prefix(8).lowercased()
+        return stagingDir.appendingPathComponent("capture-\(timestamp)-\(suffix).mov", isDirectory: false)
+    }
+
     @discardableResult
     func saveRunSummary(taskId: String, summary: AutomationRunSummary) throws -> URL {
         let workspace = workspaceURL(for: taskId)

@@ -26,6 +26,238 @@ description: Canonical log for UI/UX plans, decisions, and implementation alignm
 ## Entries
 
 ## Entry
+- Date: 2026-02-14
+- Area: Main shell (Recording finished review dialog)
+- Change Summary:
+  - Added a top-right `Back to app` control to the recording-finished review dialog that dismisses the sheet without creating a task.
+  - Kept the existing contract: a task is created only when the user clicks `Extract task`; dismissing the sheet (including via `Back to app`) means “nothing happens” and no task is created.
+- Plan Alignment:
+  - Supports `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` Step 2 (screen recording functionality) and Step 3 (task extraction) by providing a clear non-destructive exit back to the app while keeping task creation gated on explicit extraction.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` Recording UX goals by keeping the flow minimal and ensuring non-extract dismissal is safe.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-rec-finished-back CODE_SIGNING_ALLOWED=NO build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-rec-finished-back-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - Manual tests:
+    - Runtime: finish a `New Task` recording, click `Back to app`, confirm the sheet dismisses and no task is created. (Pending user-side confirmation)
+    - Runtime: finish a `New Task` recording, click `Extract task`, confirm a task is created and extraction begins. (Pending user-side confirmation)
+  - Notes:
+  - `Back to app` is intentionally not labeled `Close` to avoid implying a destructive action; it is just a safe dismissal.
+
+## Entry
+- Date: 2026-02-14
+- Area: Main shell (Recording stop reliability)
+- Change Summary:
+  - Fixed a recording-stop failure where `Escape` could end `screencapture` with `status 15` (SIGTERM) and no output `.mov`.
+  - Updated stop behavior to allow `screencapture` to finalize the output file:
+    - send a byte + newline to stdin and close stdin,
+    - send SIGINT and wait for exit,
+    - only escalate to SIGTERM/SIGKILL if needed.
+  - Increased the post-exit output-file finalization wait to reduce false negatives.
+- Plan Alignment:
+  - Supports `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` Step 2 (screen recording functionality) by making Escape-stop reliable and preventing “no file created” failures.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` recording UX reliability goals (Escape to stop must work consistently).
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-stopstatus15 CODE_SIGNING_ALLOWED=NO build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-stopstatus15-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - Manual tests:
+    - Runtime: `New Task` -> record -> press `Escape`, confirm `.mov` is created and the recording-finished sheet appears. (Pending user-side confirmation)
+- Notes:
+  - The previous `status 15` errors were consistent with `Process.terminate()` being used too quickly; the new flow favors SIGINT finalization.
+
+## Entry
+- Date: 2026-02-14
+- Area: Main shell (Recording finished: no task until Extract + modern dialog)
+- Change Summary:
+  - Updated the post-recording dialog to remove the explicit `Close` button; users can dismiss the sheet normally to discard the recording when in `New Task`.
+  - Changed `New Task` recording flow so no task is created until the user clicks `Extract task`:
+    - the capture is written to a hidden staging file (`.staging/`),
+    - dismissing the dialog discards the staged file and creates no task,
+    - clicking `Extract task` creates the task and attaches the recording before extraction begins.
+  - Removed the Canvas preview entry for the dialog (it was being confused with a user-visible title).
+  - Refreshed the dialog styling to match the more modern “glass + accent tint” direction used in onboarding.
+  - Removed the recording filename text under the preview (not needed).
+  - Adjusted dialog padding/alignment so the header/player/footer layout reads more intentional and less cramped.
+  - Fixed Escape-stop capture reliability:
+    - stop capture now runs off the main thread (no UI freeze),
+    - capture stop now sends a byte to `screencapture` stdin to finalize cleanly on macOS versions that require “type any character to stop”.
+- Plan Alignment:
+  - Supports `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` Step 2 (screen recording functionality) and Step 3 (task extraction) by making task creation an explicit user action and by reducing accidental task creation/cleanup.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` recording UX decisions and keeps task creation explicit as part of the “review before extracting” flow.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-postrec-no-task CODE_SIGNING_ALLOWED=NO build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-postrec-no-task-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - Manual tests:
+    - Runtime: `New Task` -> record -> stop -> dismiss dialog; confirm no task is created and the staged recording is discarded. (Pending user-side confirmation)
+    - Runtime: `New Task` -> record -> stop -> click `Extract task`; confirm a new task is created and extraction runs. (Pending user-side confirmation)
+- Notes:
+  - Existing-task recordings still attach immediately to that task’s `recordings/` (dismissing the dialog does not delete those files).
+  - A preview was later reintroduced with a neutral title (`Recording Finished Dialog`) to support Canvas iteration without implying user-visible navigation text.
+
+## Entry
+- Date: 2026-02-14
+- Area: Main shell (Recording finished review dialog)
+- Change Summary:
+  - Initial implementation of a post-recording review dialog (later revised in the next entry on 2026-02-14).
+- Plan Alignment:
+  - Supports `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` Step 2 (screen recording functionality) and Step 3 (task extraction from recording) by making the “record -> review -> extract” transition explicit and single-action.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` recording UX goals by keeping the capture flow minimal while providing a clear post-recording next step.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-recording-finished-dialog CODE_SIGNING_ALLOWED=NO build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-recording-finished-dialog-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - Manual tests:
+    - Runtime: start and stop a recording and confirm the dialog appears with inline playback and the two actions. (Pending user-side confirmation)
+- Notes:
+  - Superseded by the next entry (same date) which removes `Close`, removes the Canvas preview, and delays task creation until `Extract task`.
+
+## Entry
+- Date: 2026-02-13
+- Area: Main shell (Recording multi-display: hide timing + display indexing)
+- Change Summary:
+  - Adjusted display indexing for recording to match `screencapture -D` by using AppKit screen ordering (`NSScreen`, main first) as the source of truth for:
+    - the display picker list,
+    - display thumbnails,
+    - the red border overlay,
+    - the recording Escape HUD.
+  - Started capture in a background task so the UI can immediately:
+    - show the border + HUD, and
+    - hide ClickCherry windows across all displays at the start of recording (when Escape monitoring is available).
+  - Removed “hide other running apps” behavior from recording start; recording now only hides ClickCherry windows (so the user can continue recording workflows across other apps).
+- Plan Alignment:
+  - Supports `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` Step 2 (screen recording functionality) by improving multi-display recording correctness and ensuring the “get the UI out of the way” behavior happens immediately at recording start.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` Recording UX decisions:
+    - show a red border on the selected display during active recording,
+    - keep the recording flow minimal and unobtrusive.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-recording-multidisplay-fix CODE_SIGNING_ALLOWED=NO build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-recording-multidisplay-fix-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - Manual tests:
+    - Runtime: with 2+ displays, select `Display 2`, start recording, and confirm the red border + `Press Escape to stop recording` HUD appear on the same display that is actually being recorded. (Pending user-side confirmation)
+    - Runtime: start recording while the app window is on the non-main display and confirm ClickCherry windows hide immediately on all displays. (Pending user-side confirmation)
+- Notes:
+  - This change makes display ordering consistent across “selection”, “preview thumbnails”, and “recording feedback overlays”.
+
+## Entry
+- Date: 2026-02-13
+- Area: Main shell (New Task recording hide/restore + Escape parity)
+- Change Summary:
+  - When starting a capture from `New Task`, the app now hides all normal app UI windows (not just titled windows) so the UI gets out of the way even if the window is on a non-main display. Overlay windows (red border + recording HUD) remain visible.
+  - When stopping capture, the app restores any windows it hid for the capture and re-activates the app so it pops back up.
+  - Pressing `Escape` while recording now matches the `New Task` Stop button behavior: stop capture, then open the recorded task detail view.
+- Plan Alignment:
+  - Supports `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` Step 2 (screen recording functionality) by ensuring the recording UX is consistent across multi-display layouts and the app UI is reliably removed from the recording display.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` Recording model decisions (multi-monitor behavior) and the v1 UX goal of keeping the New Task screen minimal while recording is in progress.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-recording-hide-restore CODE_SIGNING_ALLOWED=NO build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-recording-hide-restore-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - Manual tests:
+    - Runtime: with 2+ displays connected and the app window placed on a non-main display, start recording from `New Task` and confirm the app UI hides on all displays while the border + HUD remain visible. (Pending user-side confirmation)
+    - Runtime: press `Escape` to stop and confirm the app reappears focused and navigates to the new task detail view. (Pending user-side confirmation)
+- Notes:
+  - Hide/restore is tracked by window level (`< .statusBar`) so overlay windows are never hidden.
+
+## Entry
+- Date: 2026-02-13
+- Area: Main shell (Recording overlays on multi-display)
+- Change Summary:
+  - Fixed the red border overlay + recording HUD not appearing on non-main displays by creating the overlay windows without passing the `screen:` parameter to `NSWindow`/`NSPanel` initializers.
+  - Rationale: on some multi-display layouts, non-main displays have negative global coordinates; using the `screen:` initializer while passing global frames can position the overlay windows off-screen.
+- Plan Alignment:
+  - Supports `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` Step 2 (screen recording functionality) by ensuring display selection feedback (border + HUD) works on any selected display, not just the main display.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` Recording model decisions (multi-monitor behavior) by making selection and status overlays consistent across displays.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-overlay-screen-coords CODE_SIGNING_ALLOWED=NO build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-overlay-screen-coords-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - Manual tests:
+    - Runtime: with 2+ displays connected, select `Display 2` in `New Task`, start recording, and confirm both the border overlay and the `Press Escape to stop` HUD appear on the selected display. (Pending user-side confirmation)
+- Notes:
+  - This fix also applies to the `Agent is running` HUD so it can render correctly when the mouse is on a non-main display.
+
+## Entry
+- Date: 2026-02-13
+- Area: Main shell (Recording HUD)
+- Change Summary:
+  - Marked the recording hint HUD window as non-shareable (`NSWindow.sharingType = .none`) so it stays visible to the user but is not captured into the screen recording output.
+- Plan Alignment:
+  - Supports `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` Step 2 (screen recording functionality) by keeping the recording guidance visible while avoiding polluting the captured video.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` Recording model decisions by keeping capture artifacts clean and focused on the user’s actual workflow.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-recording-hud-sharing CODE_SIGNING_ALLOWED=NO build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-recording-hud-sharing-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - Manual tests:
+    - Runtime: start a New Task recording and confirm the HUD is visible while recording but does not appear in the saved `.mov`. (Pending user-side confirmation)
+- Notes:
+  - This approach keeps the UX affordance (Escape hint) while keeping recordings clean.
+
+## Entry
+- Date: 2026-02-13
+- Area: Main shell (New Task recording controls)
+- Change Summary:
+  - Restored the compact microphone dropdown look (menu-style picker) under the Screen thumbnails.
+  - Fixed microphone UI duplication so the selector renders as a single dropdown row (no extra popup button).
+  - Fixed explicit microphone device selection by temporarily switching the system default input device for the duration of the recording (recording still uses `screencapture -g`), avoiding `screencapture` finalize failures like `Capture audio device <id> not found`.
+  - Fixed display ordering inconsistencies so:
+    - Display thumbnails match the selected display.
+    - The red border overlay is shown on the same display index used by `screencapture -D` (main display is always `Display 1`).
+  - Added a transparent HUD during recording: `Recording` + `Press Escape to stop recording`.
+  - Added Escape-to-stop for recording; the app only auto-minimizes on record when Escape monitoring successfully starts (otherwise the UI stays visible so the user can stop via the button).
+- Plan Alignment:
+  - Supports `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` Step 2 (screen recording functionality) by making multi-display + mic selection reliable and by ensuring users can stop recording even when the app is minimized.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` Recording model decisions (multi-monitor behavior + Microphone support).
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-recording-esc-micfix CODE_SIGNING_ALLOWED=NO build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-recording-esc-micfix-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - Manual tests:
+    - Runtime: from `New Task`, select `Display 1/2/...` and confirm the red border appears on the selected display while recording. (Pending user-side confirmation)
+    - Runtime: with multiple microphones, select a non-default microphone and confirm stop succeeds and a `.mov` is saved (no `Capture audio device ... not found`). (Pending user-side confirmation)
+    - Runtime: start recording and confirm the transparent HUD appears and pressing Escape stops recording. (Pending user-side confirmation)
+- Notes:
+  - Explicit microphone selection uses a temporary system default input override during the recording session and restores it on stop.
+
+## Entry
+- Date: 2026-02-13
+- Area: Main shell (New Task recording)
+- Change Summary:
+  - Added a display picker to the `New Task` empty state that appears only when multiple displays are available (single-display setups show no picker).
+  - When starting a recording capture from `New Task`, the app now minimizes its main titled windows so the desktop is clear during recording (same vibe as `Run Task` minimizing the UI).
+  - Updated the display picker UI to be centered below the record button and to show live thumbnails of each display (so users can see screen contents before selecting).
+  - Added a microphone dropdown below the display picker that appears only when multiple microphone devices are detected.
+- Plan Alignment:
+  - Supports `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` Step 2 (screen recording functionality) by making multi-display capture selection explicit at the recording entry point.
+  - Supports `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` Step 1 by keeping the `New Task` page minimal while still letting users pick the target display when needed.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` Recording model decisions (multi-monitor behavior) by exposing display selection when multiple displays exist.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-newtask-displays CODE_SIGNING_ALLOWED=NO build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-newtask-displays-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - Manual tests:
+    - Runtime: with 2+ displays connected, open `New Task` and confirm the display picker appears and changes the recorded display. With only 1 display, confirm the picker is hidden. (Pending user-side confirmation)
+    - Runtime: click record on `New Task` and confirm the app window minimizes immediately after capture starts (red border remains visible). (Pending user-side confirmation)
+- Notes:
+  - The picker is intentionally hidden while capturing to avoid changing display selection mid-recording.
+  - Capture started from the in-task Recording controls does not auto-minimize (so the Start/Stop buttons remain accessible).
+  - Display thumbnails are captured via ScreenCaptureKit and may appear as placeholders until Screen Recording permission is granted.
+  - Microphone picker visibility is based on the number of detected input devices (it is hidden when only a single input device exists).
+
+## Entry
 - Date: 2026-02-13
 - Area: Settings (layout + icons)
 - Change Summary:

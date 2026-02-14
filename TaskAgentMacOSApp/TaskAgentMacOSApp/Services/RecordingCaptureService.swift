@@ -3,6 +3,7 @@ import CoreGraphics
 import AVFoundation
 import CoreAudio
 import Darwin
+import AppKit
 
 struct CaptureDisplayOption: Identifiable, Equatable {
     let id: Int
@@ -41,13 +42,19 @@ protocol RecordingCaptureService {
 
 final class ShellRecordingCaptureService: RecordingCaptureService {
     private static let startupGracePeriodNanoseconds: UInt64 = 250_000_000
-    private static let outputFinalizeWaitSeconds: TimeInterval = 2.0
+    // Finalization can lag process exit, especially on first capture or under load.
+    private static let outputFinalizeWaitSeconds: TimeInterval = 6.0
+    private static let stopSignalGraceSeconds: TimeInterval = 3.0
+    private static let stopTerminateGraceSeconds: TimeInterval = 1.0
 
     private var process: Process?
     private var standardErrorPipe: Pipe?
     private var standardOutputPipe: Pipe?
+    private var standardInputPipe: Pipe?
     private var outputURL: URL?
     private var currentArguments: [String] = []
+    private var originalDefaultInputDeviceID: AudioDeviceID?
+    private var didOverrideDefaultInputDevice: Bool = false
     private(set) var lastCaptureIncludesMicrophone: Bool = false
     private(set) var lastCaptureStartWarning: String?
 
@@ -56,11 +63,13 @@ final class ShellRecordingCaptureService: RecordingCaptureService {
     }
 
     func listDisplays() -> [CaptureDisplayOption] {
-        let count = activeDisplayCount()
-        guard count > 0 else {
+        let screens = ScreenDisplayIndexService.orderedScreensMainFirst()
+        guard !screens.isEmpty else {
             return [CaptureDisplayOption(id: 1, label: "Display 1")]
         }
-        return (1...count).map { CaptureDisplayOption(id: $0, label: "Display \($0)") }
+        return screens.enumerated().map { index, _ in
+            CaptureDisplayOption(id: index + 1, label: "Display \(index + 1)")
+        }
     }
 
     func listAudioInputs() -> [CaptureAudioInputOption] {
@@ -87,6 +96,8 @@ final class ShellRecordingCaptureService: RecordingCaptureService {
         }
         lastCaptureIncludesMicrophone = false
         lastCaptureStartWarning = nil
+        originalDefaultInputDeviceID = nil
+        didOverrideDefaultInputDevice = false
 
         if !CGPreflightScreenCaptureAccess() {
             let granted = CGRequestScreenCaptureAccess()
@@ -122,70 +133,58 @@ final class ShellRecordingCaptureService: RecordingCaptureService {
             return
         }
 
+        // `screencapture -G<id>` has proven unreliable across devices; in practice it can fail to
+        // finalize the recording file. Instead, for explicit device selection we temporarily
+        // switch the system default input device and record with `-g` (default input).
+        let needsDeviceOverride: AudioDeviceID?
         switch audioInput {
         case .none:
-            return
+            needsDeviceOverride = nil
+        case .systemDefault:
+            needsDeviceOverride = nil
         case .device(let requestedDeviceID):
-            do {
-                let run = try launchCapture(outputURL: outputURL, displayID: displayID, audioInput: .device(requestedDeviceID))
-                process = run.process
-                standardErrorPipe = run.stderrPipe
-                standardOutputPipe = run.stdoutPipe
-                self.outputURL = outputURL
-                lastCaptureIncludesMicrophone = true
-                return
-            } catch RecordingCaptureError.failedToStart(let withMicReason) {
-                let micError = withMicReason.isEmpty ? "unknown microphone capture error" : withMicReason
-                do {
-                    let run = try launchCapture(outputURL: outputURL, displayID: displayID, audioInput: .systemDefault)
-                    process = run.process
-                    standardErrorPipe = run.stderrPipe
-                    standardOutputPipe = run.stdoutPipe
-                    self.outputURL = outputURL
-                    lastCaptureIncludesMicrophone = true
-                    lastCaptureStartWarning = "Selected microphone device ID \(requestedDeviceID) was unavailable. Fell back to System Default Microphone."
-                    return
-                } catch RecordingCaptureError.failedToStart(let defaultReason) {
-                    let defaultMicError = defaultReason.isEmpty ? "unknown default-microphone error" : defaultReason
-                    do {
-                        let run = try launchCapture(outputURL: outputURL, displayID: displayID, includeMicrophone: false)
-                        process = run.process
-                        standardErrorPipe = run.stderrPipe
-                        standardOutputPipe = run.stdoutPipe
-                        self.outputURL = outputURL
-                        lastCaptureIncludesMicrophone = false
-                        lastCaptureStartWarning = "Selected microphone failed (\(micError)). Default microphone also failed (\(defaultMicError))."
-                        return
-                    } catch RecordingCaptureError.failedToStart(let noMicReason) {
-                        let fallback = noMicReason.isEmpty ? "unknown non-microphone capture error" : noMicReason
-                        throw RecordingCaptureError.failedToStart("Selected mic failed (\(micError)). Default mic failed (\(defaultMicError)). Fallback failed (\(fallback)).")
+            needsDeviceOverride = AudioDeviceID(requestedDeviceID)
+        }
+
+        if let requested = needsDeviceOverride {
+            if let currentDefault = getDefaultInputDeviceID() {
+                originalDefaultInputDeviceID = currentDefault
+                if currentDefault != requested {
+                    if setDefaultInputDeviceID(requested) {
+                        didOverrideDefaultInputDevice = true
+                    } else {
+                        lastCaptureStartWarning = "Selected microphone could not be activated; using System Default Microphone."
                     }
                 }
+            } else {
+                lastCaptureStartWarning = "Could not read system default microphone; using System Default Microphone."
             }
-        case .systemDefault:
+        }
+
+        do {
+            let run = try launchCapture(outputURL: outputURL, displayID: displayID, audioInput: .systemDefault)
+            process = run.process
+            standardErrorPipe = run.stderrPipe
+            standardOutputPipe = run.stdoutPipe
+            self.outputURL = outputURL
+            lastCaptureIncludesMicrophone = true
+        } catch {
+            // If we modified system audio input, restore it before bubbling error/fallback.
+            restoreDefaultInputDeviceIfNeeded()
             do {
-                let run = try launchCapture(outputURL: outputURL, displayID: displayID, audioInput: .systemDefault)
+                let run = try launchCapture(outputURL: outputURL, displayID: displayID, includeMicrophone: false)
                 process = run.process
                 standardErrorPipe = run.stderrPipe
                 standardOutputPipe = run.stdoutPipe
                 self.outputURL = outputURL
-                lastCaptureIncludesMicrophone = true
-                return
-            } catch RecordingCaptureError.failedToStart(let withMicReason) {
-                let micError = withMicReason.isEmpty ? "unknown microphone capture error" : withMicReason
-                do {
-                    let run = try launchCapture(outputURL: outputURL, displayID: displayID, includeMicrophone: false)
-                    process = run.process
-                    standardErrorPipe = run.stderrPipe
-                    standardOutputPipe = run.stdoutPipe
-                    self.outputURL = outputURL
-                    lastCaptureIncludesMicrophone = false
-                    lastCaptureStartWarning = "Microphone capture unavailable for this app run: \(micError)"
-                    return
-                } catch RecordingCaptureError.failedToStart(let noMicReason) {
-                    let fallback = noMicReason.isEmpty ? "unknown non-microphone capture error" : noMicReason
-                    throw RecordingCaptureError.failedToStart("Mic mode failed (\(micError)). Fallback failed (\(fallback)).")
+                lastCaptureIncludesMicrophone = false
+                if lastCaptureStartWarning == nil {
+                    lastCaptureStartWarning = "Microphone capture unavailable for this app run; recording without microphone audio."
                 }
+            } catch let error as RecordingCaptureError {
+                throw error
+            } catch {
+                throw RecordingCaptureError.failedToStart(error.localizedDescription)
             }
         }
     }
@@ -196,22 +195,44 @@ final class ShellRecordingCaptureService: RecordingCaptureService {
         }
 
         if process.isRunning {
-            // For screencapture -v, interrupt is the normal stop signal for recording finalization.
+            // `screencapture -v` can require "any character" on stdin to stop recording.
+            // Provide stdin and send a byte first so it can finalize cleanly.
+            if let input = standardInputPipe {
+                let data = Data("x\n".utf8)
+                input.fileHandleForWriting.write(data)
+                // Closing stdin helps some versions of screencapture exit the recording loop.
+                try? input.fileHandleForWriting.close()
+            }
+
+            // For `screencapture -v`, interrupt (SIGINT) is the normal stop signal for recording finalization.
+            // Important: do not immediately SIGTERM the process; doing so can exit without producing a file.
             process.interrupt()
-            Thread.sleep(forTimeInterval: 0.2)
+
+            let sigintDeadline = Date().addingTimeInterval(Self.stopSignalGraceSeconds)
+            while process.isRunning, Date() < sigintDeadline {
+                Thread.sleep(forTimeInterval: 0.05)
+            }
+
             if process.isRunning {
                 process.terminate()
-                Thread.sleep(forTimeInterval: 0.2)
+                let sigtermDeadline = Date().addingTimeInterval(Self.stopTerminateGraceSeconds)
+                while process.isRunning, Date() < sigtermDeadline {
+                    Thread.sleep(forTimeInterval: 0.05)
+                }
             }
+
             if process.isRunning {
                 kill(process.processIdentifier, SIGKILL)
             }
+
             process.waitUntilExit()
         }
         defer {
+            restoreDefaultInputDeviceIfNeeded()
             self.process = nil
             standardErrorPipe = nil
             standardOutputPipe = nil
+            standardInputPipe = nil
             outputURL = nil
             currentArguments = []
         }
@@ -222,10 +243,11 @@ final class ShellRecordingCaptureService: RecordingCaptureService {
             .filter { !$0.isEmpty }
             .joined(separator: " | ")
         if let outputURL {
-            let size = waitForOutputSize(url: outputURL, timeout: Self.outputFinalizeWaitSeconds + 3.0)
+            let size = waitForOutputSize(url: outputURL, timeout: Self.outputFinalizeWaitSeconds)
             guard size > 0 else {
                 let argText = currentArguments.joined(separator: " ")
-                let fallback = "Capture ended but no recording file was created (status \(process.terminationStatus)). Command: screencapture \(argText)"
+                let status = process.terminationStatus
+                let fallback = "Capture ended but no recording file was created (status \(status)). Command: screencapture \(argText)"
                 throw RecordingCaptureError.failedToStop(reason.isEmpty ? fallback : reason)
             }
             if isPNGFile(url: outputURL) {
@@ -244,6 +266,8 @@ final class ShellRecordingCaptureService: RecordingCaptureService {
         }
         return Int(count)
     }
+
+    // Display ordering is handled by `ScreenDisplayIndexService` to match `screencapture -D`.
 
     private func readPipe(_ pipe: Pipe?) -> String {
         guard let pipe else {
@@ -343,6 +367,61 @@ final class ShellRecordingCaptureService: RecordingCaptureService {
         return name as String
     }
 
+    private func getDefaultInputDeviceID() -> AudioDeviceID? {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultInputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+
+        var deviceID = AudioDeviceID(0)
+        var propertySize = UInt32(MemoryLayout<AudioDeviceID>.size)
+        let status = AudioObjectGetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject),
+            &address,
+            0,
+            nil,
+            &propertySize,
+            &deviceID
+        )
+        guard status == noErr, deviceID != 0 else {
+            return nil
+        }
+        return deviceID
+    }
+
+    private func setDefaultInputDeviceID(_ deviceID: AudioDeviceID) -> Bool {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultInputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+
+        var id = deviceID
+        let propertySize = UInt32(MemoryLayout<AudioDeviceID>.size)
+        let status = AudioObjectSetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject),
+            &address,
+            0,
+            nil,
+            propertySize,
+            &id
+        )
+        return status == noErr
+    }
+
+    private func restoreDefaultInputDeviceIfNeeded() {
+        guard didOverrideDefaultInputDevice, let originalDefaultInputDeviceID else {
+            originalDefaultInputDeviceID = nil
+            didOverrideDefaultInputDevice = false
+            return
+        }
+
+        _ = setDefaultInputDeviceID(originalDefaultInputDeviceID)
+        self.originalDefaultInputDeviceID = nil
+        didOverrideDefaultInputDevice = false
+    }
+
     private func isPNGFile(url: URL) -> Bool {
         guard let handle = try? FileHandle(forReadingFrom: url) else {
             return false
@@ -391,7 +470,9 @@ final class ShellRecordingCaptureService: RecordingCaptureService {
         case .systemDefault:
             args.append("-g")
         case .device(let deviceID):
-            args.append(contentsOf: ["-G", String(deviceID)])
+            // Prefer `-g` and drive explicit selection by temporarily setting system default input.
+            args.append("-g")
+            lastCaptureStartWarning = "Audio device \(deviceID) capture uses System Default Microphone (device selection is applied via temporary default input)."
         }
         args.append(contentsOf: ["-D", String(displayID), outputURL.path])
         currentArguments = args
@@ -399,8 +480,10 @@ final class ShellRecordingCaptureService: RecordingCaptureService {
 
         let stderrPipe = Pipe()
         let stdoutPipe = Pipe()
+        let stdinPipe = Pipe()
         captureProcess.standardError = stderrPipe
         captureProcess.standardOutput = stdoutPipe
+        captureProcess.standardInput = stdinPipe
 
         do {
             try captureProcess.run()
@@ -411,6 +494,7 @@ final class ShellRecordingCaptureService: RecordingCaptureService {
                 let fallback = "screencapture exited with status \(captureProcess.terminationStatus) before capture started."
                 throw RecordingCaptureError.failedToStart(reason.isEmpty ? fallback : reason)
             }
+            standardInputPipe = stdinPipe
             return (captureProcess, stderrPipe, stdoutPipe)
         } catch let error as RecordingCaptureError {
             throw error

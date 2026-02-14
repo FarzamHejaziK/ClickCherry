@@ -1,4 +1,5 @@
 import AppKit
+import CoreGraphics
 
 protocol RecordingOverlayService {
     func showBorder(displayID: Int)
@@ -32,7 +33,7 @@ final class ScreenRecordingOverlayService: RecordingOverlayService {
         }
 
         hideBorder()
-        guard let screen = screenForDisplayID(displayID) else {
+        guard let screen = ScreenDisplayIndexService.screenForScreencaptureDisplayIndex(displayID) else {
             return
         }
 
@@ -40,15 +41,19 @@ final class ScreenRecordingOverlayService: RecordingOverlayService {
             contentRect: screen.frame,
             styleMask: .borderless,
             backing: .buffered,
-            defer: false,
-            screen: screen
+            defer: false
         )
+        window.identifier = NSUserInterfaceItemIdentifier("cc.overlay.recordingBorder")
         window.isOpaque = false
         window.backgroundColor = .clear
         window.hasShadow = false
         window.ignoresMouseEvents = true
+        // Keep visible even if the app deactivates while other apps are used during recording.
+        window.hidesOnDeactivate = false
+        // Keep visible to the user but do not include in recording output.
+        window.sharingType = .none
         window.level = .statusBar
-        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
+        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
         window.contentView = BorderView(frame: NSRect(origin: .zero, size: screen.frame.size))
         window.orderFrontRegardless()
         overlayWindow = window
@@ -65,31 +70,5 @@ final class ScreenRecordingOverlayService: RecordingOverlayService {
         overlayWindow = nil
     }
 
-    private func screenForDisplayID(_ displayID: Int) -> NSScreen? {
-        NSScreen.screens.first { screen in
-            guard let raw = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber else {
-                return false
-            }
-            let screenID = CGDirectDisplayID(raw.uint32Value)
-            let expected = displayIDFromScreenID(screenID)
-            return expected == displayID
-        }
-    }
-
-    private func displayIDFromScreenID(_ screenID: CGDirectDisplayID) -> Int? {
-        var count: UInt32 = 0
-        guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else {
-            return nil
-        }
-
-        var displays = [CGDirectDisplayID](repeating: 0, count: Int(count))
-        guard CGGetActiveDisplayList(count, &displays, &count) == .success else {
-            return nil
-        }
-
-        for (index, activeID) in displays.enumerated() where activeID == screenID {
-            return index + 1
-        }
-        return nil
-    }
+    // Screen indexing is handled by `ScreenDisplayIndexService`.
 }

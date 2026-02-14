@@ -4,6 +4,93 @@ description: Active unresolved issues with concrete repro details, mitigation, a
 
 # Open Issues
 
+## Issue OI-2026-02-14-010
+- Issue ID: OI-2026-02-14-010
+- Title: Escape-stop can end capture with status 15 and no output file (screencapture terminated too aggressively)
+- Status: Mitigated
+- Severity: High
+- First Seen: 2026-02-14
+- Scope:
+  - Affects `New Task` recording stop when using `Escape` (and Stop button if it shares the same stop path).
+  - Causes the app to show `Failed to stop capture: Capture ended but no recording file was created (status 15)`.
+- Repro Steps:
+  1. Start a new recording from `New Task`.
+  2. Press `Escape` to stop.
+- Observed:
+  - Recording stops but no `.mov` is created.
+  - Error message shows termination `status 15` (SIGTERM).
+- Expected:
+  - `Escape` stop finalizes the recording and produces a `.mov` reliably.
+- Current Mitigation:
+  - Adjusted stop logic to favor graceful stop:
+    - send a byte + newline to `screencapture` stdin and close stdin,
+    - send SIGINT and wait before escalating,
+    - only SIGTERM/SIGKILL if SIGINT does not stop the process in time.
+  - Increased output-file finalization wait to reduce false “no file created” errors under load.
+- Next Action:
+  - User-side runtime validation:
+    - `New Task` -> record -> press `Escape` -> confirm a `.mov` is created and the recording-finished sheet appears.
+    - repeat with a very short recording (< 1s) and confirm it still produces output.
+- Owner: Codex + user validation in local runtime
+
+## Issue OI-2026-02-13-009
+- Issue ID: OI-2026-02-13-009
+- Title: New Task recording does not reliably hide/restore app UI on non-main display
+- Status: Mitigated
+- Severity: Medium
+- First Seen: 2026-02-13
+- Scope:
+  - Affects the `New Task` recording experience (the app UI should get out of the way during capture and return afterward).
+  - Most noticeable on multi-display setups when the app window is on a non-main display at capture start.
+- Repro Steps:
+  1. Connect 2+ displays.
+  2. Move the ClickCherry app window onto the non-main display.
+  3. In `New Task`, start recording (any selected display).
+  4. Press `Escape` to stop recording.
+- Observed:
+  - The app UI did not consistently hide when recording started.
+  - After stopping via `Escape`, the app did not always pop back up like the Stop button flow.
+- Expected:
+  - Starting capture hides the app UI windows across all displays (overlays remain visible).
+  - Stopping via `Escape` behaves like Stop: capture stops and the app returns focused (and for `New Task` it should navigate to the new task detail view).
+- Current Mitigation:
+  - Window hide behavior now targets all normal app UI windows (by window level), not just titled windows.
+  - Capture launch is started off the main thread so overlay + hide commands render immediately at recording start (reduces cases where the window remains visible during the first moments of capture).
+  - Capture stop restores any windows hidden for capture and re-activates the app.
+  - `Escape` stop on the `New Task` route now navigates to the newly created task detail view (same as the Stop button behavior).
+- Next Action:
+  - User-side runtime validation:
+    - start recording from `New Task` while the app window is on the non-main display and confirm the UI hides.
+    - press `Escape` to stop and confirm the app reappears focused and navigates to the task detail view.
+- Owner: Codex + user validation in local runtime
+
+## Issue OI-2026-02-13-008
+- Issue ID: OI-2026-02-13-008
+- Title: Recording overlays (border + Escape HUD) do not appear on non-main display
+- Status: Mitigated
+- Severity: Medium
+- First Seen: 2026-02-13
+- Scope:
+  - Affects New Task screen recording feedback overlays (red border + `Press Escape to stop` HUD).
+  - Multi-display setups where the non-main display has a negative global origin (e.g., monitor positioned left/below the main display).
+- Repro Steps:
+  1. Connect 2+ displays.
+  2. In `New Task`, select `Display 2` (non-main).
+  3. Start recording.
+- Observed:
+  - No visible red border overlay and no recording HUD on the selected display.
+- Expected:
+  - Red border overlay and recording HUD appear on the selected display.
+- Current Mitigation:
+  - Overlay windows are now created without passing a `screen:` argument to `NSWindow`/`NSPanel` initializers so their frames are interpreted in global screen coordinates.
+  - Display indexing for overlays and display thumbnails now uses AppKit screen ordering (`NSScreen`, main first) to align with `screencapture -D` numbering.
+  - Build/tests pass; runtime confirmation pending.
+- Next Action:
+  - User-side runtime validation on a multi-display setup:
+    - select `Display 2` and start recording; confirm border + HUD appear on that display.
+    - confirm `Display 1` behavior remains unchanged.
+- Owner: Codex + user validation in local runtime
+
 ## Issue OI-2026-02-11-007
 - Issue ID: OI-2026-02-11-007
 - Title: ClickCherry top-bar branding is inconsistent (capsule styling or missing icon/name)
@@ -144,7 +231,7 @@ description: Active unresolved issues with concrete repro details, mitigation, a
 ## Issue OI-2026-02-07-001
 - Issue ID: OI-2026-02-07-001
 - Title: Explicit microphone device selection fails and falls back to system default mic
-- Status: Open
+- Status: Mitigated
 - Severity: Medium
 - First Seen: 2026-02-07
 - Scope:
@@ -155,16 +242,17 @@ description: Active unresolved issues with concrete repro details, mitigation, a
   2. Choose any explicit microphone from the `Microphone` picker (not `System Default Microphone`).
   3. Click `Start Capture`, then `Stop Capture`.
 - Observed:
-  - App reports selected mic is unavailable and falls back to default mic.
-  - In some attempts, `screencapture` reports device lookup failure.
+  - Previously: selecting an explicit mic could cause `screencapture` finalize failures such as `Capture audio device <id> not found`, resulting in failed stop and/or missing output file.
 - Expected:
   - Selected explicit microphone should be used directly when available.
   - No fallback warning when the selected device is valid.
 - Current Mitigation:
-  - Use `System Default Microphone`; recording remains functional.
+  - Implementation now mitigates by temporarily switching the system default input device for the duration of the recording session, while recording still uses `screencapture -g`.
+  - This avoids relying on `screencapture -G<id>`, which was unreliable across devices.
 - Next Action:
-  - Keep mitigation (`System Default Microphone`) while Step 4 execution-agent baseline ships.
-  - Resume mic diagnostics after Step 4 baseline is stable.
+  - User-side runtime validation:
+    - Choose a non-default mic in `New Task`, start recording, then stop recording.
+    - Confirm a `.mov` is saved and no `Capture audio device ... not found` error appears.
 - Owner: Codex + user validation in local Xcode runtime
 
 # Closed Issues

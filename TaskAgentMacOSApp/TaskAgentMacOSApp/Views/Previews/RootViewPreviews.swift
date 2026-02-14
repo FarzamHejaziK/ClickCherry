@@ -128,4 +128,20 @@ private enum PreviewOnboardingFactory {
         .frame(width: 1100, height: 720)
 }
 
+#Preview("Recording Finished Dialog") {
+    let recording = RecordingRecord(
+        id: UUID().uuidString,
+        fileName: "ClickCherry-Recording-Example.mov",
+        addedAt: Date(),
+        fileURL: URL(fileURLWithPath: "/tmp/clickcherry-preview-example.mov"),
+        fileSizeBytes: 123_456_789
+    )
+    return RecordingFinishedDialogView(
+        recording: recording,
+        onRecordAgain: {},
+        onExtractTask: {}
+    )
+    .frame(width: 780, height: 560)
+}
+
 #endif

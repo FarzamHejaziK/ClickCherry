@@ -1,13 +1,13 @@
 import AppKit
+import CoreGraphics
 
-protocol AgentControlOverlayService {
-    func showAgentInControl()
-    func hideAgentInControl()
-    /// If non-nil, callers may exclude this window from screenshots (e.g. for LLM tool-loop captures).
-    func windowNumberForScreenshotExclusion() -> Int?
+protocol RecordingControlOverlayService {
+    func showRecordingHint(displayID: Int?)
+    func hideRecordingHint()
 }
 
-final class HUDWindowAgentControlOverlayService: AgentControlOverlayService {
+/// Click-through HUD shown during recording so the user can stop via Escape even when the app is minimized.
+final class HUDWindowRecordingControlOverlayService: RecordingControlOverlayService {
     private final class HUDPanel: NSPanel {
         override var canBecomeKey: Bool { false }
         override var canBecomeMain: Bool { false }
@@ -16,17 +16,17 @@ final class HUDWindowAgentControlOverlayService: AgentControlOverlayService {
     private var overlayWindow: HUDPanel?
     private var activationObserver: NSObjectProtocol?
 
-    func showAgentInControl() {
+    func showRecordingHint(displayID: Int?) {
         guard Thread.isMainThread else {
             DispatchQueue.main.async { [weak self] in
-                self?.showAgentInControl()
+                self?.showRecordingHint(displayID: displayID)
             }
             return
         }
 
-        let targetScreen = preferredScreen()
-        let size = NSSize(width: 360, height: 84)
-        let frame = centeredFrame(size: size, on: targetScreen.visibleFrame)
+        let targetScreen = preferredScreen(displayID: displayID)
+        let size = NSSize(width: 340, height: 74)
+        let frame = topCenteredFrame(size: size, on: targetScreen.visibleFrame, yOffsetFromTop: 86)
 
         if let window = overlayWindow {
             window.setFrame(frame, display: true)
@@ -41,12 +41,14 @@ final class HUDWindowAgentControlOverlayService: AgentControlOverlayService {
             backing: .buffered,
             defer: false
         )
+        window.identifier = NSUserInterfaceItemIdentifier("cc.overlay.recordingHintHUD")
         window.isOpaque = false
         window.backgroundColor = .clear
         window.alphaValue = 1.0
         window.hasShadow = true
         window.ignoresMouseEvents = true
-        // Keep above normal app windows while still click-through and non-activating.
+        // Ensure the hint is visible to the user but not captured into the recording.
+        window.sharingType = .none
         window.level = .statusBar
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
         window.hidesOnDeactivate = false
@@ -61,10 +63,10 @@ final class HUDWindowAgentControlOverlayService: AgentControlOverlayService {
         ensureActivationObserver()
     }
 
-    func hideAgentInControl() {
+    func hideRecordingHint() {
         guard Thread.isMainThread else {
             DispatchQueue.main.async { [weak self] in
-                self?.hideAgentInControl()
+                self?.hideRecordingHint()
             }
             return
         }
@@ -78,18 +80,6 @@ final class HUDWindowAgentControlOverlayService: AgentControlOverlayService {
         }
     }
 
-    func windowNumberForScreenshotExclusion() -> Int? {
-        if Thread.isMainThread {
-            return overlayWindow?.windowNumber
-        }
-
-        var value: Int?
-        DispatchQueue.main.sync {
-            value = overlayWindow?.windowNumber
-        }
-        return value
-    }
-
     private func ensureActivationObserver() {
         guard activationObserver == nil else { return }
         activationObserver = NSWorkspace.shared.notificationCenter.addObserver(
@@ -101,10 +91,10 @@ final class HUDWindowAgentControlOverlayService: AgentControlOverlayService {
         }
     }
 
-    private func centeredFrame(size: NSSize, on container: NSRect) -> NSRect {
+    private func topCenteredFrame(size: NSSize, on container: NSRect, yOffsetFromTop: CGFloat) -> NSRect {
         NSRect(
             x: container.midX - size.width / 2.0,
-            y: container.midY - size.height / 2.0,
+            y: container.maxY - yOffsetFromTop - size.height,
             width: size.width,
             height: size.height
         )
@@ -118,24 +108,24 @@ final class HUDWindowAgentControlOverlayService: AgentControlOverlayService {
         root.wantsLayer = true
         root.layer?.cornerRadius = 14
         root.layer?.masksToBounds = true
-        root.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.35).cgColor
+        root.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.30).cgColor
         root.layer?.borderColor = NSColor.white.withAlphaComponent(0.14).cgColor
         root.layer?.borderWidth = 1
 
-        let spinner = NSProgressIndicator()
-        spinner.style = .spinning
-        spinner.controlSize = .small
-        spinner.startAnimation(nil)
+        let dot = NSView(frame: NSRect(x: 0, y: 0, width: 10, height: 10))
+        dot.wantsLayer = true
+        dot.layer?.backgroundColor = NSColor.systemRed.cgColor
+        dot.layer?.cornerRadius = 5
 
-        let title = NSTextField(labelWithString: "Agent is running")
-        title.font = NSFont.systemFont(ofSize: 18, weight: .bold)
+        let title = NSTextField(labelWithString: "Recording")
+        title.font = NSFont.systemFont(ofSize: 17, weight: .bold)
         title.textColor = .white
 
-        let subtitle = NSTextField(labelWithString: "Press Escape to stop")
-        subtitle.font = NSFont.systemFont(ofSize: 13, weight: .medium)
+        let subtitle = NSTextField(labelWithString: "Press Escape to stop recording")
+        subtitle.font = NSFont.systemFont(ofSize: 12.5, weight: .medium)
         subtitle.textColor = NSColor.white.withAlphaComponent(0.85)
 
-        let header = NSStackView(views: [spinner, title])
+        let header = NSStackView(views: [dot, title])
         header.orientation = .horizontal
         header.alignment = .centerY
         header.spacing = 10
@@ -155,16 +145,14 @@ final class HUDWindowAgentControlOverlayService: AgentControlOverlayService {
         return root
     }
 
-    private func preferredScreen() -> NSScreen {
-        let screens = NSScreen.screens
-        let mouseLocation = NSEvent.mouseLocation
-        if let screen = screens.first(where: { $0.frame.contains(mouseLocation) }) {
-            return screen
+    private func preferredScreen(displayID: Int?) -> NSScreen {
+        if let displayID, let match = ScreenDisplayIndexService.screenForScreencaptureDisplayIndex(displayID) {
+            return match
         }
-        if let screen = NSScreen.main {
-            return screen
+        if let main = NSScreen.main {
+            return main
         }
         // There is always at least one screen.
-        return screens[0]
+        return NSScreen.screens[0]
     }
 }
