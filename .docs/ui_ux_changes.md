@@ -27,6 +27,27 @@ description: Canonical log for UI/UX plans, decisions, and implementation alignm
 
 ## Entry
 - Date: 2026-02-14
+- Area: Main shell (Recording finished: Extract task loading + delayed task creation)
+- Change Summary:
+  - When the user clicks `Extract task` in the post-recording review dialog, the dialog now shows a loading state (spinner + disabled controls) while extraction is running.
+  - For `New Task` staged recordings, the app now creates the task only after extraction returns a valid result (so the task is created with an extracted title and a populated `HEARTBEAT.md`, not before extraction completes).
+  - Normalized extracted output so the first line after `# Task` is a plain title (not `Title: ...`) to keep task-list titles clean.
+  - Prevented dismissing the review sheet while extraction is in progress to avoid half-created tasks or staged-file races.
+- Plan Alignment:
+  - Supports `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` Step 2 (screen recording) and Step 3 (task extraction) by making extraction feedback explicit and ensuring task creation happens only after validated extraction output exists.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` UX principles: keep flows explicit, avoid accidental task creation, and keep UI responsive during long work.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-extract-spinner CODE_SIGNING_ALLOWED=NO build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-extract-spinner-tests2 -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - Manual tests:
+    - Runtime: finish a `New Task` recording -> click `Extract task` -> confirm spinner shows and buttons are disabled until extraction completes; confirm task appears only after extraction finishes. (Pending user-side confirmation)
+- Notes:
+  - If extraction returns `TaskDetected: false`, no task is created and the dialog remains available so the user can `Record again` or dismiss.
+
+## Entry
+- Date: 2026-02-14
 - Area: Main shell (Recording finished review dialog)
 - Change Summary:
   - Added a top-right `Back to app` control to the recording-finished review dialog that dismisses the sheet without creating a task.
@@ -42,7 +63,7 @@ description: Canonical log for UI/UX plans, decisions, and implementation alignm
   - Manual tests:
     - Runtime: finish a `New Task` recording, click `Back to app`, confirm the sheet dismisses and no task is created. (Pending user-side confirmation)
     - Runtime: finish a `New Task` recording, click `Extract task`, confirm a task is created and extraction begins. (Pending user-side confirmation)
-  - Notes:
+- Notes:
   - `Back to app` is intentionally not labeled `Close` to avoid implying a destructive action; it is just a safe dismissal.
 
 ## Entry

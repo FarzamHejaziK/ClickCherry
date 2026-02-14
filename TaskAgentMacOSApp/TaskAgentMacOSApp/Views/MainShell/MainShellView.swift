@@ -39,6 +39,9 @@ struct MainShellView: View {
         }) { review in
             RecordingFinishedDialogView(
                 recording: review.recording,
+                isExtracting: mainShellStateStore.isExtractingTask && mainShellStateStore.extractingRecordingID == review.recording.id,
+                statusMessage: mainShellStateStore.extractionStatusMessage,
+                errorMessage: mainShellStateStore.errorMessage,
                 onRecordAgain: {
                     mainShellStateStore.recordAgainFromFinishedRecordingDialog()
                 },
@@ -47,6 +50,7 @@ struct MainShellView: View {
                 }
             )
             .frame(width: 780, height: 560)
+            .interactiveDismissDisabled(mainShellStateStore.isExtractingTask && mainShellStateStore.extractingRecordingID == review.recording.id)
         }
     }
 }

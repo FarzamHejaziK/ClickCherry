@@ -83,6 +83,49 @@ private final class MockStoreLLMClient: LLMClient {
     }
 }
 
+private final class BlockingStoreLLMClient: LLMClient {
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<String, Error>?
+    private var shouldThrowNotConfigured = false
+
+    func setNotConfigured(_ value: Bool) {
+        lock.lock()
+        shouldThrowNotConfigured = value
+        lock.unlock()
+    }
+
+    func analyzeVideo(at url: URL, prompt: String, model: String) async throws -> String {
+        lock.lock()
+        let throwNotConfigured = shouldThrowNotConfigured
+        lock.unlock()
+        if throwNotConfigured {
+            throw LLMClientError.notConfigured
+        }
+
+        return try await withCheckedThrowingContinuation { (cont: CheckedContinuation<String, Error>) in
+            lock.lock()
+            continuation = cont
+            lock.unlock()
+        }
+    }
+
+    func finish(with output: String) {
+        lock.lock()
+        let cont = continuation
+        continuation = nil
+        lock.unlock()
+        cont?.resume(returning: output)
+    }
+
+    func fail(with error: Error) {
+        lock.lock()
+        let cont = continuation
+        continuation = nil
+        lock.unlock()
+        cont?.resume(throwing: error)
+    }
+}
+
 private final class MockAPIKeyStore: APIKeyStore {
     private var values: [ProviderIdentifier: String]
 
@@ -702,6 +745,105 @@ struct MainShellStateStoreTests {
             store.extractionStatusMessage ==
             "No actionable task detected. HEARTBEAT.md was not changed (gemini-3-pro, v2)."
         )
+    }
+
+    @Test
+    func extractFromFinishedRecordingCreatesTaskOnlyAfterExtractionReturns() async throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let promptsRoot = tempRoot.appendingPathComponent("prompts", isDirectory: true)
+        let promptDir = promptsRoot.appendingPathComponent("task_extraction", isDirectory: true)
+        try fm.createDirectory(at: promptDir, withIntermediateDirectories: true)
+        try """
+        version: v2
+        llm: gemini-3-pro
+        """.write(
+            to: promptDir.appendingPathComponent("config.yaml", isDirectory: false),
+            atomically: true,
+            encoding: .utf8
+        )
+        try "Prompt body".write(
+            to: promptDir.appendingPathComponent("prompt.md", isDirectory: false),
+            atomically: true,
+            encoding: .utf8
+        )
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+
+        let stagedURL = tempRoot.appendingPathComponent("staged.mov", isDirectory: false)
+        try Data("mov".utf8).write(to: stagedURL)
+        let staged = RecordingRecord(
+            id: stagedURL.lastPathComponent,
+            fileName: stagedURL.lastPathComponent,
+            addedAt: Date(),
+            fileURL: stagedURL,
+            fileSizeBytes: 3
+        )
+
+        let llm = BlockingStoreLLMClient()
+        let extractionService = TaskExtractionService(
+            fileManager: fm,
+            promptCatalog: PromptCatalogService(promptsRootURL: promptsRoot, fileManager: fm),
+            llmClient: llm
+        )
+        let store = MainShellStateStore(
+            taskService: taskService,
+            taskExtractionService: extractionService,
+            apiKeyStore: MockAPIKeyStore(),
+            captureService: MockRecordingCaptureService(),
+            overlayService: MockRecordingOverlayService()
+        )
+
+        store.finishedRecordingReview = FinishedRecordingReview(recording: staged, mode: .newTaskStaging)
+        store.extractTaskFromFinishedRecordingDialog()
+
+        for _ in 0..<100 {
+            if store.isExtractingTask { break }
+            await Task.yield()
+        }
+        #expect(store.isExtractingTask)
+
+        let workspacesBefore = try fm.contentsOfDirectory(at: tempRoot, includingPropertiesForKeys: nil)
+            .filter { $0.hasDirectoryPath && $0.lastPathComponent.hasPrefix("workspace-") }
+        #expect(workspacesBefore.isEmpty)
+
+        llm.finish(with: """
+        # Task
+        TaskDetected: true
+        Status: TASK_FOUND
+        NoTaskReason: NONE
+        Title: Extracted Title
+        Goal: Do something.
+
+        ## Questions
+        - None.
+        """)
+
+        for _ in 0..<200 {
+            if store.selectedTaskID != nil { break }
+            await Task.yield()
+        }
+
+        #expect(store.selectedTaskID != nil)
+        #expect(store.finishedRecordingReview == nil)
+
+        let workspacesAfter = try fm.contentsOfDirectory(at: tempRoot, includingPropertiesForKeys: nil)
+            .filter { $0.hasDirectoryPath && $0.lastPathComponent.hasPrefix("workspace-") }
+        #expect(workspacesAfter.count == 1)
+
+        let createdTaskId = try #require(store.selectedTaskID)
+        let heartbeat = try taskService.readHeartbeat(taskId: createdTaskId)
+        #expect(heartbeat.contains("# Task"))
+        #expect(heartbeat.contains("Extracted Title"))
+        // Title line is normalized to a plain title for task-list parsing.
+        #expect(heartbeat.contains("\nExtracted Title\n"))
     }
 
     @Test

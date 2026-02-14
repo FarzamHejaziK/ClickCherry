@@ -138,6 +138,9 @@ private enum PreviewOnboardingFactory {
     )
     return RecordingFinishedDialogView(
         recording: recording,
+        isExtracting: false,
+        statusMessage: nil,
+        errorMessage: nil,
         onRecordAgain: {},
         onExtractTask: {}
     )

@@ -8,6 +8,29 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-14
+- Step: UI/UX: Extract task shows loading and delays task creation until extraction completes
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/RecordingFinishedDialogView.swift` to show an extracting/loading state (spinner + disabled controls) after `Extract task` is clicked.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift` so `New Task` staged recordings create a task only after extraction returns a valid task result:
+    - if `TaskDetected: false`, no task is created.
+    - extracted title is used for `createTask(...)`.
+    - extracted `HEARTBEAT.md` is written before navigating to the created task.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/MainShellView.swift` to pass extraction state into the dialog and to disable interactive dismiss while extracting.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift` with a unit test ensuring the task is created only after extraction completes.
+  - Updated docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-extract-spinner CODE_SIGNING_ALLOWED=NO build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-extract-spinner-tests2 -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - Runtime: `New Task` -> record -> stop -> click `Extract task`, confirm loading UI appears until extraction finishes and the task only appears after extraction completes. (Pending user-side confirmation)
+- Result:
+  - Complete (pending user-side manual confirmation).
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-14
 - Step: UI polish: Recording-finished dialog adds `Back to app` dismissal
 - Changes made:
   - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/RecordingFinishedDialogView.swift` to add a top-right `Back to app` control that dismisses the review sheet.
@@ -181,21 +204,6 @@ description: Running implementation log of completed work, test evidence, blocke
   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-overlay-screen-coords-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
 - Manual tests run:
   - Runtime: select `Display 2` in `New Task`, start recording, and confirm border + HUD appear on the selected display. (Pending user-side confirmation)
-- Result:
-  - Complete (pending user-side manual confirmation).
-- Issues/blockers:
-  - None.
-
-## Entry
-- Date: 2026-02-13
-- Step: UI/UX: Recording HUD should not appear inside recording output (incremental)
-- Changes made:
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/RecordingControlOverlayService.swift` to mark the recording hint HUD window as non-shareable (`NSWindow.sharingType = .none`) so the `Press Escape to stop` hint is visible while recording but not captured into the saved `.mov`.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-recording-hud-sharing CODE_SIGNING_ALLOWED=NO build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-recording-hud-sharing-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
-- Manual tests run:
-  - Runtime: start a New Task recording and confirm the HUD is visible while recording but does not appear in the saved `.mov`. (Pending user-side confirmation)
 - Result:
   - Complete (pending user-side manual confirmation).
 - Issues/blockers:

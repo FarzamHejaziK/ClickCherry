@@ -3000,3 +3000,18 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - Complete (pending user-side manual confirmation).
 - Issues/blockers:
   - None.
+
+## Entry
+- Date: 2026-02-13
+- Step: UI/UX: Recording HUD should not appear inside recording output (incremental)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/RecordingControlOverlayService.swift` to mark the recording hint HUD window as non-shareable (`NSWindow.sharingType = .none`) so the `Press Escape to stop` hint is visible while recording but not captured into the saved `.mov`.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-recording-hud-sharing CODE_SIGNING_ALLOWED=NO build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-recording-hud-sharing-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - Runtime: start a New Task recording and confirm the HUD is visible while recording but does not appear in the saved `.mov`. (Pending user-side confirmation)
+- Result:
+  - Complete (pending user-side manual confirmation).
+- Issues/blockers:
+  - None.

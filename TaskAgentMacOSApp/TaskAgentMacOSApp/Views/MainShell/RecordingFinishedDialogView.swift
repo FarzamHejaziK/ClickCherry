@@ -3,6 +3,9 @@ import SwiftUI
 
 struct RecordingFinishedDialogView: View {
     let recording: RecordingRecord
+    let isExtracting: Bool
+    let statusMessage: String?
+    let errorMessage: String?
     let onRecordAgain: () -> Void
     let onExtractTask: () -> Void
 
@@ -62,9 +65,28 @@ struct RecordingFinishedDialogView: View {
                 Text("Recording ready")
                     .font(.system(size: 20, weight: .semibold))
 
-                Text("Extract task to create a new task from this recording.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
+                if isExtracting {
+                    Text("Extracting task from this recording…")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("Extract task to create a new task from this recording.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+
+                if let statusMessage, isExtracting {
+                    Text(statusMessage)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                if let errorMessage, !errorMessage.isEmpty {
+                    Text(errorMessage)
+                        .font(.caption)
+                        .foregroundStyle(.red.opacity(0.9))
+                        .lineLimit(3)
+                }
             }
 
             Spacer(minLength: 0)
@@ -91,6 +113,8 @@ struct RecordingFinishedDialogView: View {
                 )
             }
             .buttonStyle(.plain)
+            .disabled(isExtracting)
+            .opacity(isExtracting ? 0.5 : 1.0)
         }
     }
 
@@ -118,6 +142,21 @@ struct RecordingFinishedDialogView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+
+            if isExtracting {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color.black.opacity(0.22))
+                    .overlay(
+                        VStack(spacing: 10) {
+                            ProgressView()
+                                .progressViewStyle(.circular)
+                                .controlSize(.large)
+                            Text("Extracting…")
+                                .font(.callout.weight(.semibold))
+                                .foregroundStyle(.primary.opacity(0.95))
+                        }
+                    )
+            }
         }
     }
 
@@ -129,16 +168,22 @@ struct RecordingFinishedDialogView: View {
                 Label("Record again", systemImage: "arrow.counterclockwise")
             }
             .buttonStyle(.bordered)
+            .disabled(isExtracting)
 
             Spacer(minLength: 0)
 
             Button {
                 onExtractTask()
             } label: {
-                Label("Extract task", systemImage: "sparkles")
+                if isExtracting {
+                    Label("Extracting…", systemImage: "sparkles")
+                } else {
+                    Label("Extract task", systemImage: "sparkles")
+                }
             }
             .buttonStyle(.borderedProminent)
             .keyboardShortcut(.defaultAction)
+            .disabled(isExtracting)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
