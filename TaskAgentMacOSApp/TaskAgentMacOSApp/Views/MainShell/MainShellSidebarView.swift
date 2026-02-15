@@ -89,10 +89,10 @@ struct MainShellSidebarView: View {
             ZStack {
                 VisualEffectView(material: .sidebar, blendingMode: .withinWindow)
 
-                // Slightly stronger tint than the detail panel to match the reference sidebar look.
+                // Sidebar tint: keep it subtle so it doesn't overpower the main content column.
                 LinearGradient(
                     colors: [
-                        Color.accentColor.opacity(0.16),
+                        Color.accentColor.opacity(0.05),
                         Color.clear
                     ],
                     startPoint: .topLeading,
@@ -101,7 +101,7 @@ struct MainShellSidebarView: View {
 
                 LinearGradient(
                     colors: [
-                        Color.accentColor.opacity(0.10),
+                        Color.accentColor.opacity(0.03),
                         Color.clear
                     ],
                     startPoint: .leading,

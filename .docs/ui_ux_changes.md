@@ -64,6 +64,53 @@ description: Canonical log for UI/UX plans, decisions, and implementation alignm
 
 ## Entry
 - Date: 2026-02-15
+- Area: Global theme (AccentColor)
+- Change Summary:
+  - Changed the global `AccentColor` asset to a wine/cherry red so the app’s accent-tinted backdrops are reddish (matching the ClickCherry logo) instead of bluish.
+- Plan Alignment:
+  - Supports `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` UI polish goals by aligning the app’s palette with brand identity.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` branding identity and avoids introducing a separate theme system; the app continues to use `Color.accentColor` consistently.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-accentwine -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - Manual tests:
+    - Pending user-side confirmation: relaunch and confirm the background tint reads wine/cherry (not blue) in onboarding + main shell.
+
+## Entry
+- Date: 2026-02-15
+- Area: Main shell (Sidebar tint)
+- Change Summary:
+  - Reduced the sidebar’s accent gradient strength so the left column doesn’t overpower the main content column.
+  - Reduced the global backdrop’s left-bias radial tint so the overall window reads more balanced.
+- Plan Alignment:
+  - Supports `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` UI polish goals.
+- Design Decision Alignment:
+  - Keeps the existing design language (accent-tinted glass) while improving visual balance per `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` UX principles.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-sidebar-tint -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - Manual tests:
+    - Pending user-side confirmation: confirm the sidebar tint is closer to the right column and no longer reads “solid red”.
+
+## Entry
+- Date: 2026-02-15
+- Area: Global UI (Primary action buttons)
+- Change Summary:
+  - Unified primary action button styling (Task Save, Settings Update/Save, onboarding Continue/Finish, Extract task) so they look consistent across pages.
+  - Reduced primary-action emphasis by replacing `.borderedProminent` with a custom glass+tint button style.
+- Plan Alignment:
+  - Supports `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` UI polish and consistency goals across main shell and onboarding.
+- Design Decision Alignment:
+  - Preserves the app’s glass material language per `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` and prevents “shouty” buttons that dominate the layout.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-primarybutton -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - Manual tests:
+    - Pending user-side confirmation: compare Task Save vs Settings Update/Save and confirm they match and are less intense.
+
+## Entry
+- Date: 2026-02-15
 - Area: Sidebar (Task list actions)
 - Change Summary:
   - Added a right-click context menu to each task in the sidebar task list:

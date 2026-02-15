@@ -9,7 +9,7 @@ struct MainShellBackdropView: View {
 
             LinearGradient(
                 colors: [
-                    Color.accentColor.opacity(0.18),
+                    Color.accentColor.opacity(0.10),
                     Color.clear
                 ],
                 startPoint: .leading,
@@ -18,7 +18,7 @@ struct MainShellBackdropView: View {
 
             LinearGradient(
                 colors: [
-                    Color.accentColor.opacity(0.12),
+                    Color.accentColor.opacity(0.08),
                     Color.clear
                 ],
                 startPoint: .topLeading,
@@ -27,10 +27,10 @@ struct MainShellBackdropView: View {
 
             RadialGradient(
                 colors: [
-                    Color.accentColor.opacity(0.16),
+                    Color.accentColor.opacity(0.10),
                     Color.clear
                 ],
-                center: UnitPoint(x: 0.22, y: 0.22),
+                center: UnitPoint(x: 0.42, y: 0.22),
                 startRadius: 0,
                 endRadius: 520
             )
@@ -49,4 +49,3 @@ struct MainShellBackdropView: View {
         .ignoresSafeArea()
     }
 }
-

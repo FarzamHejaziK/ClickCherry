@@ -96,7 +96,7 @@ private struct ProviderKeyEntryRowView: View {
                 )
 
                 Button(saved ? "Update" : "Save", action: onSave)
-                    .buttonStyle(.borderedProminent)
+                    .ccPrimaryActionButton()
                     .frame(width: Self.buttonWidth)
                     .disabled(trimmedKeyInput.isEmpty)
             }

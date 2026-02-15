@@ -34,10 +34,10 @@ struct OnboardingFooterBar: View {
 
                     if isLastStep {
                         Button("Finish Setup", action: onFinish)
-                            .buttonStyle(.borderedProminent)
+                            .ccPrimaryActionButton()
                     } else {
                         Button("Continue", action: onContinue)
-                            .buttonStyle(.borderedProminent)
+                            .ccPrimaryActionButton()
                             .disabled(!canContinue)
                     }
                 }
@@ -240,4 +240,3 @@ struct OnboardingHeroView: View {
         .accessibilityHidden(true)
     }
 }
-

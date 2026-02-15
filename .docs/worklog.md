@@ -8,6 +8,46 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-15
+- Step: UI polish: Unify primary action buttons (less intense)
+- Changes made:
+  - Replaced `.borderedProminent` primary actions with a shared custom glass+tint primary action style:
+    - Added `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/PrimaryActionButtonStyle.swift`.
+    - Updated primary action call sites:
+      - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/TaskDetailPageView.swift`
+      - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/ProviderKeyEntryPanelView.swift`
+      - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/OnboardingSharedViews.swift`
+      - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/RecordingFinishedDialogView.swift`
+  - Updated docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-primarybutton CODE_SIGNING_ALLOWED=NO test -only-testing:TaskAgentMacOSAppTests` (pass).
+- Manual tests run:
+  - Pending user-side confirmation.
+- Result:
+  - Complete (pending user-side manual confirmation).
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-15
+- Step: UI polish: Reduce sidebar red tint (match right column)
+- Changes made:
+  - Reduced the left-column accent tint strength to better match the subtler right-column theme:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/MainShellSidebarView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/MainShellBackdropView.swift`
+  - Updated docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-sidebar-tint -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - Pending user-side confirmation.
+- Result:
+  - Complete (pending user-side manual confirmation).
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-15
 - Step: Feature: Persist per-task run logs (Runs survive relaunch)
 - Changes made:
   - Persisted structured run logs under each task workspace `runs/` directory and load them on task open:
@@ -51,6 +91,23 @@ description: Running implementation log of completed work, test evidence, blocke
     - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
 - Automated tests run:
   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-agentborder-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - Pending user-side confirmation.
+- Result:
+  - Complete (pending user-side manual confirmation).
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-15
+- Step: UI polish: Switch accent palette to wine/cherry red (match logo)
+- Changes made:
+  - Set the app’s `AccentColor` asset to a wine/cherry red for both light and dark appearances:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AccentColor.colorset/Contents.json`
+  - Updated docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-accentwine -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
 - Manual tests run:
   - Pending user-side confirmation.
 - Result:
@@ -176,65 +233,6 @@ description: Running implementation log of completed work, test evidence, blocke
   - Runtime: run a task twice and confirm `Run 1/Run 2` appear and each shows a unified log stream. (Pending user-side confirmation)
 - Result:
   - Complete (pending user-side manual confirmation).
-- Issues/blockers:
-  - None.
-
-## Entry
-- Date: 2026-02-15
-- Step: UI polish: Task Detail copy + centered layout
-- Changes made:
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/TaskDetailPageView.swift`:
-    - hero copy to better explain what a run is and explicitly mention "agentic" (shortened + multiline).
-    - run screen picker copy to explain what the screen selection means (shortened + multiline).
-    - centered content on wide/fullscreen windows (max-width + margins).
-  - Updated docs:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-taskdetail-runcopy-agentic CODE_SIGNING_ALLOWED=NO build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-taskdetail-runcopy-agentic-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-taskdetail-screen-copy CODE_SIGNING_ALLOWED=NO build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-taskdetail-screen-copy-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-taskdetail-copy-shorten CODE_SIGNING_ALLOWED=NO build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-taskdetail-copy-shorten-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-taskdetail-centered-content CODE_SIGNING_ALLOWED=NO build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-taskdetail-centered-content-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
-- Manual tests run:
-  - N/A (copy-only).
-- Result:
-  - Complete.
-- Issues/blockers:
-  - None.
-
-## Entry
-- Date: 2026-02-15
-- Step: Dev UX: Add multi-size + resizable SwiftUI Canvas previews
-- Changes made:
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift`:
-    - switched size previews from `.frame(width:height:)` wrappers to `#Preview(..., traits: .fixedLayout(...))` so Canvas shows multiple distinct window sizes cleanly,
-    - added `Full HD` variants for `New Task`, `Settings`, and `Task Detail`,
-    - added `Resizable` variants (use Xcode Canvas "Preview in Window" to resize and inspect responsive layout).
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-preview-sizes CODE_SIGNING_ALLOWED=NO build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-preview-sizes-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
-- Manual tests run:
-  - Canvas: open `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift` and confirm multiple named previews appear with different sizes. (Pending user-side confirmation)
-- Result:
-  - Complete (pending user-side manual confirmation).
-- Issues/blockers:
-  - None.
-
-## Entry
-- Date: 2026-02-15
-- Step: Bugfix: Prevent Canvas crash from titlebar accessory install
-- Changes made:
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Titlebar/WindowTitlebarBranding.swift` to skip installing the titlebar accessory controller when running under Xcode previews (`XCODE_RUNNING_FOR_PREVIEWS=1`), avoiding an AppKit assertion in `NSWindow.titlebarAccessoryViewControllers`.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-preview-crashfix CODE_SIGNING_ALLOWED=NO build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-preview-crashfix-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
-- Manual tests run:
-  - Canvas: open previews and confirm they render without crashing. (Pending user-side confirmation)
-- Result:
-  - Complete (pending user-side manual confirmation)
 - Issues/blockers:
   - None.
 

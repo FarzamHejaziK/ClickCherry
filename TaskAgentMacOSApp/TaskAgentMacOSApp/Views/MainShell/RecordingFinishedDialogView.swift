@@ -181,7 +181,7 @@ struct RecordingFinishedDialogView: View {
                     Label("Extract task", systemImage: "sparkles")
                 }
             }
-            .buttonStyle(.borderedProminent)
+            .ccPrimaryActionButton()
             .keyboardShortcut(.defaultAction)
             .disabled(isExtracting)
         }

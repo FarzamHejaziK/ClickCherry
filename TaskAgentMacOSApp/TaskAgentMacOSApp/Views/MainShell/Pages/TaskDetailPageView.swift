@@ -127,7 +127,7 @@ struct TaskDetailView: View {
                         } label: {
                             Label("Save", systemImage: "checkmark")
                         }
-                        .buttonStyle(.borderedProminent)
+                        .ccPrimaryActionButton()
                     }
                     .contentShape(Rectangle())
                 }
