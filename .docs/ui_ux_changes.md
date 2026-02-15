@@ -26,6 +26,143 @@ description: Canonical log for UI/UX plans, decisions, and implementation alignm
 ## Entries
 
 ## Entry
+- Date: 2026-02-15
+- Area: Task Detail (Runs)
+- Change Summary:
+  - Persisted agent run logs per task so the `Runs` section survives app relaunch:
+    - each run now writes a structured log file under the task workspace `runs/` folder,
+    - reopening a task loads and renders the previously recorded run logs.
+  - Ensured run history is task-scoped (switching tasks clears/loads the correct run history rather than keeping an in-memory global list).
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` and `/Users/farzamh/code-git-local/task-agent-macos/.docs/PRD.md` requirements for per-run observability and run history.
+- Design Decision Alignment:
+  - Follows `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` "Status + Observability" guidance: per-run logs should be available after the run (and across relaunch).
+  - Preserves the "no screenshots saved" constraint: run log persistence stores only textual event lines and metadata (no image artifacts).
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-runpersist-tests2 -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - Manual tests:
+    - Pending user-side confirmation: run a task, quit app, relaunch, reopen task, confirm `Runs` still shows the previous run log.
+
+## Entry
+- Date: 2026-02-15
+- Area: Agent run (In-progress indicator)
+- Change Summary:
+  - Added a red border overlay on the selected display while an agent run is active.
+  - Ensured the red border is excluded from the agent's screenshots by excluding the overlay window from ScreenCaptureKit capture.
+  - The border is removed immediately when the run finishes or is cancelled (Stop button or Escape).
+- Plan Alignment:
+  - Supports `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` run UX and observability goals by giving clear "agent is acting" feedback without adding new screens.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` safety/control expectations: visible indicator when autonomous actions are happening.
+  - Preserves the requirement that overlays must not leak into the agent's screenshot context.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-agentborder-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - Manual tests:
+    - Pending user-side confirmation: start a run and confirm the red border appears only on the selected display and disappears on completion/cancel; confirm the model does not "see" the border in screenshots (no red frame in captured images).
+
+## Entry
+- Date: 2026-02-15
+- Area: Sidebar (Task list actions)
+- Change Summary:
+  - Added a right-click context menu to each task in the sidebar task list:
+    - `Pin to top` / `Unpin`
+    - `Delete` (with confirmation)
+  - Pinned tasks sort above unpinned tasks in the sidebar list (persisted via UserDefaults).
+- Plan Alignment:
+  - Supports `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` Step 4 by improving task lifecycle management (organize and remove tasks) without adding extra screens.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` by keeping management actions contextual (right-click) and avoiding additional UI chrome in the primary navigation.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" CODE_SIGNING_ALLOWED=NO build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSAppTests -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - Manual tests:
+    - Runtime: right-click a task and confirm `Pin to top` / `Delete` work and pinned tasks stay at the top after relaunch. (Pending user-side confirmation)
+- Notes:
+  - Deletion is destructive and deletes the full task workspace directory on disk.
+
+## Entry
+- Date: 2026-02-15
+- Area: Task detail (Run history + unified run logs)
+- Change Summary:
+  - Refactored Task Detail so the `Task` accordion contains only the task editor and `Save`.
+  - Added per-run accordions under the Task editor: `Run 1`, `Run 2`, ... each rendering a single sequential “log file” view (no separate `Run details`/`LLM calls` sections).
+  - Removed screenshot observability from the UI and stopped retaining screenshots in app logs (screenshots are still captured transiently for the agent to operate, but are not stored or shown).
+- Plan Alignment:
+  - Supports `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` Step 4 by surfacing agent execution observability while keeping the task editor focused and uncluttered.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` by:
+    - keeping the Task Detail page centered and “glass” styled,
+    - presenting runs as expandable artifacts (similar mental model to editable task spec),
+    - avoiding unexpected UI sub-navigation and reducing cognitive load.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" CODE_SIGNING_ALLOWED=NO build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSAppTests -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - Manual tests:
+    - Runtime: run a task twice and confirm `Run 1/Run 2` appear and each shows a single unified log stream. (Pending user-side confirmation)
+- Notes:
+  - This supersedes the earlier “Run details / LLM calls / LLM screenshots” section split (those categories are intentionally removed from Task Detail).
+
+## Entry
+- Date: 2026-02-14
+- Area: Task detail (Run: screen picker + per-run details)
+- Change Summary:
+  - Added a run screen picker under the `Run task` hero (matches the New Task display picker style) so users can choose which display the agent should operate on.
+  - Removed the Task Detail `Recordings` dropdown/section (recording controls are no longer shown on Task Detail).
+  - Added per-run details under the Task editor as collapsible sections:
+    - `Run details` (execution trace)
+    - `LLM calls`
+    - `LLM screenshots`
+- Plan Alignment:
+  - Supports `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` Step 4 (execution agent) by making the run target display explicit and surfacing step-level observability directly in the task page.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` observability goals (show per-run logs and artifacts) and keeps the Task Detail page focused (remove secondary recording UI from this page).
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-taskdetail-runlogs-displaypicker CODE_SIGNING_ALLOWED=NO build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-taskdetail-runlogs-displaypicker-tests3 -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - Manual tests:
+    - Runtime: open a task, choose `Display 2`, click `Run task`, and confirm clicks/typing occur on the selected display (not only the main display). (Pending user-side confirmation)
+    - Canvas: open `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift` and select `Task Detail - Created Task`; confirm `Run details` / `LLM calls` / `LLM screenshots` sections render. (Pending user-side confirmation)
+- Notes:
+  - Screenshot capture and coordinate mapping now include the selected display’s global origin so tool coordinates map to the correct monitor in multi-display setups.
+  - Removed the Task selector dropdown from the top of Task Detail; the task spec itself is now a collapsible section (like Run details / LLM calls) so users can open/close the Task editor.
+  - Updated the Run hero description copy to explain what a run is and explicitly mention "agentic" (shortened + multiline).
+  - Added copy under the run screen picker to explain what the screen selection means (shortened + multiline).
+  - Centered Task Detail content on wide/fullscreen windows (adds max-width + margins to avoid edge-to-edge stretching).
+
+## Entry
+- Date: 2026-02-14
+- Area: Task detail (Run + editable HEARTBEAT redesign)
+- Change Summary:
+  - Redesigned the Task Detail page into a modern layout:
+    - a hero “Run task” header with a large play button (toggle to stop while running),
+    - a `Task` dropdown pill to switch tasks,
+    - a glass-card HEARTBEAT editor with aligned `Reload` / `Save`,
+    - Clarifications + Recordings moved into collapsible glass sections.
+- Plan Alignment:
+  - Supports `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` Step 4 (execution agent) by making “Run Task” the primary affordance and keeping the task spec front-and-center.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` UX principles: keep core actions obvious, keep UI modern/minimal, and avoid clutter while preserving access to secondary tools.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-taskdetail-redesign CODE_SIGNING_ALLOWED=NO build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-taskdetail-redesign-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - Manual tests:
+    - Canvas: open `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift` and select `Task Detail - Created Task`. (Pending user-side confirmation)
+- Notes:
+  - The task dropdown is implemented as a `Menu` so it stays compact and native-feeling.
+  - Follow-up tuning:
+    - Removed “take over” language under Run to keep copy neutral.
+    - Hid the default `Menu` indicator and rendered a single explicit chevron to avoid double dropdown icons.
+    - Removed `HEARTBEAT.md` + workspace labels from the editor to reduce noise.
+    - Removed `Reload` from the editor header (Save-only).
+    - Removed the Clarifications section from Task Detail (for now).
+
+## Entry
 - Date: 2026-02-14
 - Area: Main shell (Recording finished: Extract task loading + delayed task creation)
 - Change Summary:

@@ -8,7 +8,7 @@ Required files per prompt folder:
 
 Required keys in `config.yaml`:
 - `version` - prompt version string (for example `v1`).
-- `llm` - target model/provider label (for example `gemini-3-pro`).
+- `llm` - target model/provider label (for example `gemini-3-flash`).
 
 Example:
 - `Prompts/task_extraction/prompt.md`

@@ -119,20 +119,6 @@ private final class OpenAIMockDesktopExecutor: DesktopActionExecutor {
     }
 }
 
-private final class RoutingMockAutomationEngine: AutomationEngine {
-    private(set) var runCallCount = 0
-    let result: AutomationRunResult
-
-    init(result: AutomationRunResult) {
-        self.result = result
-    }
-
-    func run(taskMarkdown: String) async -> AutomationRunResult {
-        runCallCount += 1
-        return result
-    }
-}
-
 @Suite(.serialized)
 @MainActor
 struct OpenAIComputerUseRunnerTests {
@@ -247,6 +233,8 @@ struct OpenAIComputerUseRunnerTests {
                     captureHeightPx: 800,
                     coordinateSpaceWidthPx: 1280,
                     coordinateSpaceHeightPx: 800,
+                    coordinateSpaceOriginX: 0,
+                    coordinateSpaceOriginY: 0,
                     mediaType: "image/png",
                     base64Data: data.base64EncodedString(),
                     byteCount: data.count
@@ -323,6 +311,8 @@ struct OpenAIComputerUseRunnerTests {
                     captureHeightPx: 1440,
                     coordinateSpaceWidthPx: 2560,
                     coordinateSpaceHeightPx: 1440,
+                    coordinateSpaceOriginX: 0,
+                    coordinateSpaceOriginY: 0,
                     mediaType: "image/jpeg",
                     base64Data: data.base64EncodedString(),
                     byteCount: data.count
@@ -409,6 +399,8 @@ struct OpenAIComputerUseRunnerTests {
                     captureHeightPx: 800,
                     coordinateSpaceWidthPx: 1280,
                     coordinateSpaceHeightPx: 800,
+                    coordinateSpaceOriginX: 0,
+                    coordinateSpaceOriginY: 0,
                     mediaType: "image/png",
                     base64Data: data.base64EncodedString(),
                     byteCount: data.count
@@ -493,6 +485,8 @@ struct OpenAIComputerUseRunnerTests {
                     captureHeightPx: 800,
                     coordinateSpaceWidthPx: 1280,
                     coordinateSpaceHeightPx: 800,
+                    coordinateSpaceOriginX: 0,
+                    coordinateSpaceOriginY: 0,
                     mediaType: "image/png",
                     base64Data: data.base64EncodedString(),
                     byteCount: data.count
@@ -577,6 +571,8 @@ struct OpenAIComputerUseRunnerTests {
                     captureHeightPx: 800,
                     coordinateSpaceWidthPx: 1280,
                     coordinateSpaceHeightPx: 800,
+                    coordinateSpaceOriginX: 0,
+                    coordinateSpaceOriginY: 0,
                     mediaType: "image/png",
                     base64Data: data.base64EncodedString(),
                     byteCount: data.count
@@ -587,112 +583,6 @@ struct OpenAIComputerUseRunnerTests {
         let result = try await runner.runToolLoop(taskMarkdown: "# Task", executor: OpenAIMockDesktopExecutor())
         #expect(result.outcome == .success)
         #expect(result.executedSteps.contains(where: { $0.contains("Terminal exec: true") }))
-    }
-
-    @Test
-    func providerRoutingUsesSelectedOpenAIWhenConfigured() async {
-        let keyStore = OpenAIStubAPIKeyStore(values: [.openAI: "openai-key", .anthropic: "anthropic-key"])
-        let openAI = RoutingMockAutomationEngine(
-            result: AutomationRunResult(
-                outcome: .success,
-                executedSteps: ["openai-step"],
-                generatedQuestions: [],
-                errorMessage: nil,
-                llmSummary: nil
-            )
-        )
-        let anthropic = RoutingMockAutomationEngine(
-            result: AutomationRunResult(
-                outcome: .success,
-                executedSteps: ["anthropic-step"],
-                generatedQuestions: [],
-                errorMessage: nil,
-                llmSummary: nil
-            )
-        )
-
-        let router = ProviderRoutingAutomationEngine(
-            apiKeyStore: keyStore,
-            openAIEngine: openAI,
-            anthropicEngine: anthropic,
-            preferredProvider: { .openAI }
-        )
-
-        let result = await router.run(taskMarkdown: "# Task")
-        #expect(result.executedSteps == ["openai-step"])
-        #expect(openAI.runCallCount == 1)
-        #expect(anthropic.runCallCount == 0)
-    }
-
-    @Test
-    func providerRoutingUsesSelectedAnthropicWhenConfigured() async {
-        let keyStore = OpenAIStubAPIKeyStore(values: [.openAI: "openai-key", .anthropic: "anthropic-key"])
-        let openAI = RoutingMockAutomationEngine(
-            result: AutomationRunResult(
-                outcome: .success,
-                executedSteps: ["openai-step"],
-                generatedQuestions: [],
-                errorMessage: nil,
-                llmSummary: nil
-            )
-        )
-        let anthropic = RoutingMockAutomationEngine(
-            result: AutomationRunResult(
-                outcome: .success,
-                executedSteps: ["anthropic-step"],
-                generatedQuestions: [],
-                errorMessage: nil,
-                llmSummary: nil
-            )
-        )
-
-        let router = ProviderRoutingAutomationEngine(
-            apiKeyStore: keyStore,
-            openAIEngine: openAI,
-            anthropicEngine: anthropic,
-            preferredProvider: { .anthropic }
-        )
-
-        let result = await router.run(taskMarkdown: "# Task")
-        #expect(result.executedSteps == ["anthropic-step"])
-        #expect(openAI.runCallCount == 0)
-        #expect(anthropic.runCallCount == 1)
-    }
-
-    @Test
-    func providerRoutingFailsWhenSelectedProviderKeyMissing() async {
-        let keyStore = OpenAIStubAPIKeyStore(values: [.anthropic: "anthropic-key"])
-        let openAI = RoutingMockAutomationEngine(
-            result: AutomationRunResult(
-                outcome: .success,
-                executedSteps: ["openai-step"],
-                generatedQuestions: [],
-                errorMessage: nil,
-                llmSummary: nil
-            )
-        )
-        let anthropic = RoutingMockAutomationEngine(
-            result: AutomationRunResult(
-                outcome: .success,
-                executedSteps: ["anthropic-step"],
-                generatedQuestions: [],
-                errorMessage: nil,
-                llmSummary: nil
-            )
-        )
-
-        let router = ProviderRoutingAutomationEngine(
-            apiKeyStore: keyStore,
-            openAIEngine: openAI,
-            anthropicEngine: anthropic,
-            preferredProvider: { .openAI }
-        )
-
-        let result = await router.run(taskMarkdown: "# Task")
-        #expect(result.outcome == .failed)
-        #expect(result.errorMessage?.contains("Selected execution provider is OpenAI") == true)
-        #expect(openAI.runCallCount == 0)
-        #expect(anthropic.runCallCount == 0)
     }
 
     private static func response(url: URL, code: Int) -> HTTPURLResponse {

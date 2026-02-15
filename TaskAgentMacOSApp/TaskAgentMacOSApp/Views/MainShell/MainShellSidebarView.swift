@@ -45,6 +45,25 @@ struct MainShellSidebarView: View {
                                         mainShellStateStore.openTask(task.id)
                                     }
                                 )
+                                .contextMenu {
+                                    Button {
+                                        mainShellStateStore.togglePinned(taskID: task.id)
+                                    } label: {
+                                        if mainShellStateStore.isTaskPinned(task.id) {
+                                            Label("Unpin", systemImage: "pin.slash")
+                                        } else {
+                                            Label("Pin to top", systemImage: "pin")
+                                        }
+                                    }
+
+                                    Divider()
+
+                                    Button(role: .destructive) {
+                                        mainShellStateStore.requestDeleteTask(taskID: task.id)
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
+                                }
                             }
                         }
                         .padding(.horizontal, 8)
@@ -89,6 +108,19 @@ struct MainShellSidebarView: View {
                     endPoint: .trailing
                 )
             }
+        }
+        .alert(
+            "Delete task?",
+            isPresented: $mainShellStateStore.isShowingDeleteTaskAlert
+        ) {
+            Button("Cancel", role: .cancel) {
+                mainShellStateStore.cancelDeleteTask()
+            }
+            Button("Delete", role: .destructive) {
+                mainShellStateStore.confirmDeleteTask()
+            }
+        } message: {
+            Text("This will permanently delete the task workspace and its files.")
         }
     }
 }

@@ -1,2 +1,2 @@
 version: v2
-llm: gemini-3-pro
+llm: gemini-3-flash

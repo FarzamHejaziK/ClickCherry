@@ -219,4 +219,73 @@ struct TaskServiceTests {
         #expect(markdown.contains("## LLM Summary"))
         #expect(markdown.contains("## Generated Questions"))
     }
+
+    @Test
+    func saveAndListAgentRunLogsRoundTrips() throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let task = try taskService.createTask(title: "Run log task")
+
+        let started = Date(timeIntervalSince1970: 1_700_000_000)
+        let finished = started.addingTimeInterval(2)
+        let run = AgentRunRecord(
+            id: UUID(uuidString: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")!,
+            startedAt: started,
+            finishedAt: finished,
+            outcome: .success,
+            displayIndex: 2,
+            events: [
+                AgentRunEvent(
+                    id: UUID(uuidString: "11111111-2222-3333-4444-555555555555")!,
+                    timestamp: started,
+                    kind: .info,
+                    message: "Run started"
+                ),
+                AgentRunEvent(
+                    id: UUID(uuidString: "66666666-7777-8888-9999-000000000000")!,
+                    timestamp: finished,
+                    kind: .completion,
+                    message: "Run finished"
+                )
+            ]
+        )
+
+        let url = try taskService.saveAgentRunLog(taskId: task.id, run: run)
+        #expect(fm.fileExists(atPath: url.path))
+
+        let listed = try taskService.listAgentRunLogs(taskId: task.id)
+        #expect(listed.count == 1)
+        #expect(listed[0] == run)
+    }
+
+    @Test
+    func deleteTaskRemovesWorkspace() throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+
+        let task = try taskService.createTask(title: "Delete me")
+        #expect(fm.fileExists(atPath: task.workspace.root.path))
+
+        try taskService.deleteTask(taskId: task.id)
+        #expect(!fm.fileExists(atPath: task.workspace.root.path))
+
+        let listed = try taskService.listTasks()
+        #expect(listed.isEmpty)
+    }
 }

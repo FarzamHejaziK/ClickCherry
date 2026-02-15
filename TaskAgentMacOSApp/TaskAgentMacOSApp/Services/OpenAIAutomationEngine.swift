@@ -38,6 +38,8 @@ struct OpenAICapturedScreenshot {
     var captureHeightPx: Int
     var coordinateSpaceWidthPx: Int
     var coordinateSpaceHeightPx: Int
+    var coordinateSpaceOriginX: Int
+    var coordinateSpaceOriginY: Int
     var mediaType: String
     var base64Data: String
     var byteCount: Int
@@ -187,6 +189,8 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
     private var toolDisplayHeightPx: Int = 0
     private var coordinateSpaceWidthPx: Int = 0
     private var coordinateSpaceHeightPx: Int = 0
+    private var coordinateSpaceOriginX: Int = 0
+    private var coordinateSpaceOriginY: Int = 0
 
     init(
         apiKeyStore: any APIKeyStore,
@@ -237,6 +241,8 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
         toolDisplayHeightPx = initialScreenshot.height
         coordinateSpaceWidthPx = initialScreenshot.coordinateSpaceWidthPx
         coordinateSpaceHeightPx = initialScreenshot.coordinateSpaceHeightPx
+        coordinateSpaceOriginX = initialScreenshot.coordinateSpaceOriginX
+        coordinateSpaceOriginY = initialScreenshot.coordinateSpaceOriginY
 
         if initialScreenshot.width > 0, initialScreenshot.height > 0 {
             coordinateScaleX = Double(initialScreenshot.coordinateSpaceWidthPx) / Double(initialScreenshot.width)
@@ -247,10 +253,6 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
         }
 
         recordTrace(kind: .info, "Execution started (model=\(promptTemplate.config.llm), tools=desktop_action,terminal_exec).")
-        recordTrace(
-            kind: .info,
-            "Captured initial screenshot (\(initialScreenshot.width)x\(initialScreenshot.height), \(initialScreenshot.mediaType), raw=\(initialScreenshot.byteCount) bytes, base64=\(initialScreenshot.base64Data.utf8.count) bytes; capture=\(initialScreenshot.captureWidthPx)x\(initialScreenshot.captureHeightPx) coordSpace=\(initialScreenshot.coordinateSpaceWidthPx)x\(initialScreenshot.coordinateSpaceHeightPx))."
-        )
 
         let renderedPrompt = renderPrompt(
             promptTemplate.prompt,
@@ -1127,10 +1129,14 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
     }
 
     private func mapToToolCoordinates(x: Int, y: Int) -> (x: Int, y: Int) {
+        // Incoming cursor coordinates are in global screen space; convert to local display space.
+        let localX = x - coordinateSpaceOriginX
+        let localY = y - coordinateSpaceOriginY
+
         let invScaleX = coordinateScaleX == 0 ? 1.0 : coordinateScaleX
         let invScaleY = coordinateScaleY == 0 ? 1.0 : coordinateScaleY
-        let scaledX = Int((Double(x) / invScaleX).rounded())
-        let scaledY = Int((Double(y) / invScaleY).rounded())
+        let scaledX = Int((Double(localX) / invScaleX).rounded())
+        let scaledY = Int((Double(localY) / invScaleY).rounded())
 
         if toolDisplayWidthPx > 0, toolDisplayHeightPx > 0 {
             return (
@@ -1155,10 +1161,11 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
                     "Clamped tool coordinates from (\(scaledX), \(scaledY)) to (\(clampedX), \(clampedY)) for coordSpace=\(coordinateSpaceWidthPx)x\(coordinateSpaceHeightPx)."
                 )
             }
-            return (clampedX, clampedY)
+            // Convert from local display space to global space so CGEvent injection targets the correct monitor.
+            return (clampedX + coordinateSpaceOriginX, clampedY + coordinateSpaceOriginY)
         }
 
-        return (scaledX, scaledY)
+        return (scaledX + coordinateSpaceOriginX, scaledY + coordinateSpaceOriginY)
     }
 
     private func firstStringValue(from object: [String: OpenAIJSONValue], keys: [String]) -> String? {
@@ -1574,22 +1581,21 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
 
     private func captureScreenshotForLLM(source: LLMScreenshotSource) throws -> OpenAICapturedScreenshot {
         let screenshot = try screenshotProvider()
-        if let encodedData = Data(base64Encoded: screenshot.base64Data) {
-            screenshotLogSink?(
-                LLMScreenshotLogEntry(
-                    source: source,
-                    mediaType: screenshot.mediaType,
-                    width: screenshot.width,
-                    height: screenshot.height,
-                    captureWidthPx: screenshot.captureWidthPx,
-                    captureHeightPx: screenshot.captureHeightPx,
-                    coordinateSpaceWidthPx: screenshot.coordinateSpaceWidthPx,
-                    coordinateSpaceHeightPx: screenshot.coordinateSpaceHeightPx,
-                    rawByteCount: screenshot.byteCount,
-                    base64ByteCount: screenshot.base64Data.utf8.count,
-                    imageData: encodedData
-                )
-            )
+        // Never retain screenshots in memory logs unless an explicit sink is provided.
+        if screenshotLogSink != nil, let encodedData = Data(base64Encoded: screenshot.base64Data) {
+            screenshotLogSink?(LLMScreenshotLogEntry(
+                source: source,
+                mediaType: screenshot.mediaType,
+                width: screenshot.width,
+                height: screenshot.height,
+                captureWidthPx: screenshot.captureWidthPx,
+                captureHeightPx: screenshot.captureHeightPx,
+                coordinateSpaceWidthPx: screenshot.coordinateSpaceWidthPx,
+                coordinateSpaceHeightPx: screenshot.coordinateSpaceHeightPx,
+                rawByteCount: screenshot.byteCount,
+                base64ByteCount: screenshot.base64Data.utf8.count,
+                imageData: encodedData
+            ))
         }
         return screenshot
     }
@@ -1710,21 +1716,79 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
     }
 
     nonisolated private static func captureMainDisplayScreenshot() throws -> OpenAICapturedScreenshot {
-        try captureMainDisplayScreenshot(excludingWindowNumber: nil)
+        try captureMainDisplayScreenshot(excludingWindowNumbers: [])
     }
 
     nonisolated static func captureMainDisplayScreenshot(excludingWindowNumber: Int?) throws -> OpenAICapturedScreenshot {
-        let screenshot = try AnthropicComputerUseRunner.captureMainDisplayScreenshot(excludingWindowNumber: excludingWindowNumber)
+        try captureMainDisplayScreenshot(excludingWindowNumbers: excludingWindowNumber.flatMap { [$0] } ?? [])
+    }
+
+    nonisolated static func captureMainDisplayScreenshot(excludingWindowNumbers: [Int]) throws -> OpenAICapturedScreenshot {
+        let mainDisplayID = CGMainDisplayID()
+        let bounds = CGDisplayBounds(mainDisplayID)
+        let coordSpaceW = max(1, Int(bounds.width.rounded()))
+        let coordSpaceH = max(1, Int(bounds.height.rounded()))
+        let originX = Int(bounds.origin.x.rounded())
+        let originY = Int(bounds.origin.y.rounded())
+
+        let capture: DesktopScreenshotCapture
+        do {
+            capture = try DesktopScreenshotService.captureMainDisplayPNG(excludingWindowNumbers: excludingWindowNumbers)
+        } catch {
+            throw OpenAIExecutionPlannerError.screenshotCaptureFailed
+        }
+
+        let data = capture.pngData
         return OpenAICapturedScreenshot(
-            width: screenshot.width,
-            height: screenshot.height,
-            captureWidthPx: screenshot.captureWidthPx,
-            captureHeightPx: screenshot.captureHeightPx,
-            coordinateSpaceWidthPx: screenshot.coordinateSpaceWidthPx,
-            coordinateSpaceHeightPx: screenshot.coordinateSpaceHeightPx,
-            mediaType: screenshot.mediaType,
-            base64Data: screenshot.base64Data,
-            byteCount: screenshot.byteCount
+            width: capture.width,
+            height: capture.height,
+            captureWidthPx: capture.width,
+            captureHeightPx: capture.height,
+            coordinateSpaceWidthPx: coordSpaceW,
+            coordinateSpaceHeightPx: coordSpaceH,
+            coordinateSpaceOriginX: originX,
+            coordinateSpaceOriginY: originY,
+            mediaType: "image/png",
+            base64Data: data.base64EncodedString(),
+            byteCount: data.count
+        )
+    }
+
+    nonisolated static func captureDisplayScreenshot(displayIndex: Int, excludingWindowNumber: Int?) throws -> OpenAICapturedScreenshot {
+        try captureDisplayScreenshot(displayIndex: displayIndex, excludingWindowNumbers: excludingWindowNumber.flatMap { [$0] } ?? [])
+    }
+
+    nonisolated static func captureDisplayScreenshot(displayIndex: Int, excludingWindowNumbers: [Int]) throws -> OpenAICapturedScreenshot {
+        guard let displayID = ScreenDisplayIndexService.cgDisplayIDForScreencaptureDisplayIndex(displayIndex) else {
+            throw OpenAIExecutionPlannerError.screenshotCaptureFailed
+        }
+
+        let bounds = CGDisplayBounds(displayID)
+        let coordSpaceW = max(1, Int(bounds.width.rounded()))
+        let coordSpaceH = max(1, Int(bounds.height.rounded()))
+        let originX = Int(bounds.origin.x.rounded())
+        let originY = Int(bounds.origin.y.rounded())
+
+        let capture: DesktopScreenshotCapture
+        do {
+            capture = try DesktopScreenshotService.captureDisplayPNG(displayID: displayID, excludingWindowNumbers: excludingWindowNumbers)
+        } catch {
+            throw OpenAIExecutionPlannerError.screenshotCaptureFailed
+        }
+
+        let data = capture.pngData
+        return OpenAICapturedScreenshot(
+            width: capture.width,
+            height: capture.height,
+            captureWidthPx: capture.width,
+            captureHeightPx: capture.height,
+            coordinateSpaceWidthPx: coordSpaceW,
+            coordinateSpaceHeightPx: coordSpaceH,
+            coordinateSpaceOriginX: originX,
+            coordinateSpaceOriginY: originY,
+            mediaType: "image/png",
+            base64Data: data.base64EncodedString(),
+            byteCount: data.count
         )
     }
 }

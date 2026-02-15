@@ -4,7 +4,7 @@ protocol LLMClient {
     func analyzeVideo(at url: URL, prompt: String, model: String) async throws -> String
 }
 
-enum AutomationRunOutcome: Equatable {
+enum AutomationRunOutcome: String, Equatable, Codable, Sendable {
     case success
     case needsClarification
     case failed
@@ -53,11 +53,9 @@ struct UnconfiguredLLMClient: LLMClient {
 
 struct ProviderSetupState: Equatable {
     var hasOpenAIKey: Bool
-    var hasAnthropicKey: Bool
     var hasGeminiKey: Bool
 
     var hasCoreProvider: Bool {
-        // Current onboarding requires OpenAI as the execution provider.
         hasOpenAIKey
     }
 
@@ -66,32 +64,8 @@ struct ProviderSetupState: Equatable {
     }
 }
 
-enum ExecutionProvider: String, CaseIterable, Equatable, Sendable {
-    case openAI
-    case anthropic
-
-    var displayName: String {
-        switch self {
-        case .openAI:
-            return "OpenAI"
-        case .anthropic:
-            return "Anthropic"
-        }
-    }
-
-    var apiKeyProviderIdentifier: ProviderIdentifier {
-        switch self {
-        case .openAI:
-            return .openAI
-        case .anthropic:
-            return .anthropic
-        }
-    }
-}
-
 enum LLMProvider: String, Equatable, Sendable {
     case openAI
-    case anthropic
     case gemini
 }
 

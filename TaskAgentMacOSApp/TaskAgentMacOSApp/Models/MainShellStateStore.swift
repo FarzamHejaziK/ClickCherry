@@ -21,6 +21,28 @@ final class MainShellStateStore {
         let mode: CaptureWindowHideMode
     }
 
+    private final class LockedBox<Value>: @unchecked Sendable {
+        private let lock = NSLock()
+        private var _value: Value
+
+        init(_ value: Value) {
+            self._value = value
+        }
+
+        var value: Value {
+            get {
+                lock.lock()
+                defer { lock.unlock() }
+                return _value
+            }
+            set {
+                lock.lock()
+                _value = newValue
+                lock.unlock()
+            }
+        }
+    }
+
     private let taskService: TaskService
     private let taskExtractionService: TaskExtractionService
     private let heartbeatQuestionService: HeartbeatQuestionService
@@ -35,9 +57,10 @@ final class MainShellStateStore {
     private let agentCursorPresentationService: any AgentCursorPresentationService
     private let prepareDesktopForRun: @MainActor () -> Int
     private let llmCallRecorder: LLMCallRecorder
-    private let llmScreenshotRecorder: LLMScreenshotRecorder
     private let executionTraceRecorder: ExecutionTraceRecorder
+    private let userDefaults: UserDefaults
     private var runTaskHandle: Task<Void, Never>?
+    @ObservationIgnored private var runScreenshotDisplayIndexBox: LockedBox<Int>
     @ObservationIgnored private var previousRouteBeforeSettings: MainShellRoute?
     @ObservationIgnored private var captureHiddenWindows: [CaptureHiddenWindow] = []
     @ObservationIgnored private var capturePreviouslyKeyWindow: NSWindow?
@@ -45,6 +68,8 @@ final class MainShellStateStore {
     @ObservationIgnored private var captureOutputMode: FinishedRecordingReview.Mode?
     @ObservationIgnored private var lastPresentedFinishedRecordingReview: FinishedRecordingReview?
     @ObservationIgnored private var finishedRecordingDidCreateTask: Bool = false
+    @ObservationIgnored private var activeRunID: UUID?
+    @ObservationIgnored private var pinnedTaskIDs: Set<String> = []
 
     var tasks: [TaskRecord]
     var selectedTaskID: String?
@@ -60,6 +85,7 @@ final class MainShellStateStore {
     var availableCaptureAudioInputs: [CaptureAudioInputOption]
     var selectedCaptureDisplayID: Int?
     var selectedCaptureAudioInputID: String?
+    var selectedRunDisplayID: Int?
     var isCapturing: Bool
     var captureStartedAt: Date?
     var isExtractingTask: Bool
@@ -75,8 +101,8 @@ final class MainShellStateStore {
     var errorMessage: String?
     var finishedRecordingReview: FinishedRecordingReview?
     var llmCallLog: [LLMCallLogEntry]
-    var llmScreenshotLog: [LLMScreenshotLogEntry]
     var executionTrace: [ExecutionTraceEntry]
+    var runHistory: [AgentRunRecord]
     var isCapturingDiagnosticScreenshot: Bool
     var diagnosticScreenshotStatusMessage: String?
     var diagnosticTraceStatusMessage: String?
@@ -84,12 +110,16 @@ final class MainShellStateStore {
     var lastDiagnosticScreenshotWidth: Int?
     var lastDiagnosticScreenshotHeight: Int?
 
+    var isShowingDeleteTaskAlert: Bool
+    var pendingDeleteTaskID: String?
+
     init(
         taskService: TaskService = TaskService(),
         taskExtractionService: TaskExtractionService? = nil,
         heartbeatQuestionService: HeartbeatQuestionService = HeartbeatQuestionService(),
         automationEngine: (any AutomationEngine)? = nil,
         apiKeyStore: any APIKeyStore = KeychainAPIKeyStore(),
+        userDefaults: UserDefaults = .standard,
         permissionService: any PermissionService = MacPermissionService(),
         captureService: any RecordingCaptureService = ShellRecordingCaptureService(),
         overlayService: any RecordingOverlayService = ScreenRecordingOverlayService(),
@@ -99,9 +129,10 @@ final class MainShellStateStore {
         agentCursorPresentationService: any AgentCursorPresentationService = AccessibilityAgentCursorPresentationService(),
         prepareDesktopForRun: @escaping @MainActor () -> Int = MainShellStateStore.prepareDesktopByHidingRunningApps
     ) {
+        self.userDefaults = userDefaults
         let callRecorder = LLMCallRecorder(maxEntries: 200)
-        let screenshotRecorder = LLMScreenshotRecorder(maxEntries: 120)
         let traceRecorder = ExecutionTraceRecorder(maxEntries: 400)
+        let runDisplayIndexBox = LockedBox<Int>(1)
         self.taskService = taskService
         self.apiKeyStore = apiKeyStore
         self.permissionService = permissionService
@@ -109,20 +140,22 @@ final class MainShellStateStore {
             llmClient: GeminiVideoLLMClient(apiKeyStore: apiKeyStore)
         )
         self.heartbeatQuestionService = heartbeatQuestionService
+        self.runScreenshotDisplayIndexBox = runDisplayIndexBox
         let openAIRunner = OpenAIComputerUseRunner(
             apiKeyStore: apiKeyStore,
             callLogSink: { entry in
                 callRecorder.record(entry)
             },
-            screenshotLogSink: { entry in
-                screenshotRecorder.record(entry)
-            },
             traceSink: { entry in
                 traceRecorder.record(entry)
             },
             screenshotProvider: {
-                let excludedWindowNumber = agentControlOverlayService.windowNumberForScreenshotExclusion()
-                return try OpenAIComputerUseRunner.captureMainDisplayScreenshot(excludingWindowNumber: excludedWindowNumber)
+                let displayIndex = runDisplayIndexBox.value
+                let excludedWindowNumbers = [
+                    agentControlOverlayService.windowNumberForScreenshotExclusion(),
+                    overlayService.windowNumberForScreenshotExclusion()
+                ].compactMap { $0 }
+                return try OpenAIComputerUseRunner.captureDisplayScreenshot(displayIndex: displayIndex, excludingWindowNumbers: excludedWindowNumbers)
             }
         )
 
@@ -135,7 +168,6 @@ final class MainShellStateStore {
         self.agentCursorPresentationService = agentCursorPresentationService
         self.prepareDesktopForRun = prepareDesktopForRun
         self.llmCallRecorder = callRecorder
-        self.llmScreenshotRecorder = screenshotRecorder
         self.executionTraceRecorder = traceRecorder
         self.runTaskHandle = nil
         self.tasks = []
@@ -143,7 +175,6 @@ final class MainShellStateStore {
         self.route = .newTask
         self.providerSetupState = ProviderSetupState(
             hasOpenAIKey: apiKeyStore.hasKey(for: .openAI),
-            hasAnthropicKey: apiKeyStore.hasKey(for: .anthropic),
             hasGeminiKey: apiKeyStore.hasKey(for: .gemini)
         )
         self.newTaskTitle = ""
@@ -156,6 +187,7 @@ final class MainShellStateStore {
         self.availableCaptureAudioInputs = []
         self.selectedCaptureDisplayID = nil
         self.selectedCaptureAudioInputID = nil
+        self.selectedRunDisplayID = nil
         self.isCapturing = false
         self.captureStartedAt = nil
         self.isExtractingTask = false
@@ -171,30 +203,30 @@ final class MainShellStateStore {
         self.errorMessage = nil
         self.finishedRecordingReview = nil
         self.llmCallLog = []
-        self.llmScreenshotLog = []
         self.executionTrace = []
+        self.runHistory = []
         self.isCapturingDiagnosticScreenshot = false
         self.diagnosticScreenshotStatusMessage = nil
         self.diagnosticTraceStatusMessage = nil
         self.lastDiagnosticScreenshotPNGData = nil
         self.lastDiagnosticScreenshotWidth = nil
         self.lastDiagnosticScreenshotHeight = nil
+        self.isShowingDeleteTaskAlert = false
+        self.pendingDeleteTaskID = nil
 
-        callRecorder.onRecord = { [weak self] _ in
+        self.pinnedTaskIDs = Self.loadPinnedTaskIDs(from: userDefaults)
+
+        callRecorder.onRecord = { [weak self] entry in
             DispatchQueue.main.async {
                 self?.llmCallLog = callRecorder.snapshot()
+                self?.appendLLMCallEventToActiveRun(entry)
             }
         }
 
-        screenshotRecorder.onRecord = { [weak self] _ in
-            DispatchQueue.main.async {
-                self?.llmScreenshotLog = screenshotRecorder.snapshot()
-            }
-        }
-
-        traceRecorder.onRecord = { [weak self] _ in
+        traceRecorder.onRecord = { [weak self] entry in
             DispatchQueue.main.async {
                 self?.executionTrace = traceRecorder.snapshot()
+                self?.appendTraceEventToActiveRun(entry)
             }
         }
     }
@@ -228,7 +260,8 @@ final class MainShellStateStore {
 
     func reloadTasks() {
         do {
-            tasks = try taskService.listTasks()
+            let loaded = try taskService.listTasks()
+            tasks = sortTasksPinnedFirst(loaded)
             if let selectedTaskID, tasks.contains(where: { $0.id == selectedTaskID }) == false {
                 self.selectedTaskID = nil
                 if case .task = route {
@@ -237,6 +270,7 @@ final class MainShellStateStore {
             }
             loadSelectedTaskHeartbeat()
             loadSelectedTaskRecordings()
+            loadSelectedTaskRunHistory()
             refreshCaptureDisplays()
             refreshCaptureAudioInputs()
             errorMessage = nil
@@ -268,6 +302,7 @@ final class MainShellStateStore {
         selectedClarificationQuestionID = nil
         clarificationAnswerDraft = ""
         recordings = []
+        runHistory = []
         saveStatusMessage = nil
         recordingStatusMessage = nil
         extractionStatusMessage = nil
@@ -307,6 +342,7 @@ final class MainShellStateStore {
         runStatusMessage = nil
         loadSelectedTaskHeartbeat()
         loadSelectedTaskRecordings()
+        loadSelectedTaskRunHistory()
     }
 
     func toggleNewTaskRecording() {
@@ -325,7 +361,6 @@ final class MainShellStateStore {
     func refreshProviderKeysState() {
         providerSetupState = ProviderSetupState(
             hasOpenAIKey: apiKeyStore.hasKey(for: .openAI),
-            hasAnthropicKey: apiKeyStore.hasKey(for: .anthropic),
             hasGeminiKey: apiKeyStore.hasKey(for: .gemini)
         )
         if providerSetupState.hasOpenAIKey {
@@ -334,6 +369,58 @@ final class MainShellStateStore {
             }
         } else {
             apiKeyErrorMessage = "OpenAI API key is not saved."
+        }
+    }
+
+    func isTaskPinned(_ taskID: String) -> Bool {
+        pinnedTaskIDs.contains(taskID)
+    }
+
+    func togglePinned(taskID: String) {
+        if pinnedTaskIDs.contains(taskID) {
+            pinnedTaskIDs.remove(taskID)
+        } else {
+            pinnedTaskIDs.insert(taskID)
+        }
+        persistPinnedTaskIDs()
+        tasks = sortTasksPinnedFirst(tasks)
+    }
+
+    func requestDeleteTask(taskID: String) {
+        pendingDeleteTaskID = taskID
+        isShowingDeleteTaskAlert = true
+    }
+
+    func cancelDeleteTask() {
+        isShowingDeleteTaskAlert = false
+        pendingDeleteTaskID = nil
+    }
+
+    func confirmDeleteTask() {
+        guard let taskID = pendingDeleteTaskID else {
+            cancelDeleteTask()
+            return
+        }
+
+        // Capture selection before `reloadTasks()` potentially clears it.
+        let wasOpenTask =
+            selectedTaskID == taskID ||
+            route == .task(taskID)
+
+        do {
+            try taskService.deleteTask(taskId: taskID)
+            pinnedTaskIDs.remove(taskID)
+            persistPinnedTaskIDs()
+            cancelDeleteTask()
+            reloadTasks()
+            if wasOpenTask {
+                openNewTask()
+            }
+            errorMessage = nil
+        } catch {
+            // Keep the alert dismissed but surface a message.
+            cancelDeleteTask()
+            errorMessage = "Failed to delete task."
         }
     }
 
@@ -361,6 +448,27 @@ final class MainShellStateStore {
         }
     }
 
+    private static let pinnedTasksUserDefaultsKey = "tasks.pinned.ids"
+
+    private static func loadPinnedTaskIDs(from defaults: UserDefaults) -> Set<String> {
+        let raw = defaults.array(forKey: pinnedTasksUserDefaultsKey) as? [String] ?? []
+        return Set(raw.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty })
+    }
+
+    private func persistPinnedTaskIDs() {
+        let ordered = pinnedTaskIDs.sorted()
+        userDefaults.set(ordered, forKey: Self.pinnedTasksUserDefaultsKey)
+    }
+
+    private func sortTasksPinnedFirst(_ input: [TaskRecord]) -> [TaskRecord] {
+        // Stable, predictable ordering:
+        // 1) pinned tasks first (most-recent createdAt first within pinned)
+        // 2) then unpinned tasks (most-recent createdAt first)
+        let pinned = input.filter { pinnedTaskIDs.contains($0.id) }.sorted(by: { $0.createdAt > $1.createdAt })
+        let unpinned = input.filter { !pinnedTaskIDs.contains($0.id) }.sorted(by: { $0.createdAt > $1.createdAt })
+        return pinned + unpinned
+    }
+
     func clearProviderKey(for provider: ProviderIdentifier) {
         do {
             try apiKeyStore.setKey(nil, for: provider)
@@ -376,11 +484,6 @@ final class MainShellStateStore {
     func clearLLMCallLog() {
         llmCallRecorder.clear()
         llmCallLog = []
-    }
-
-    func clearLLMScreenshotLog() {
-        llmScreenshotRecorder.clear()
-        llmScreenshotLog = []
     }
 
     func clearExecutionTrace() {
@@ -576,14 +679,36 @@ final class MainShellStateStore {
         }
     }
 
+    func loadSelectedTaskRunHistory() {
+        guard let selectedTaskID else {
+            runHistory = []
+            return
+        }
+
+        do {
+            runHistory = try taskService.listAgentRunLogs(taskId: selectedTaskID)
+        } catch {
+            runHistory = []
+            // Don't hard-fail the whole page if history is malformed.
+        }
+    }
+
     func refreshCaptureDisplays() {
         let displays = captureService.listDisplays()
         availableCaptureDisplays = displays
         if let selectedCaptureDisplayID,
            displays.contains(where: { $0.id == selectedCaptureDisplayID }) {
-            return
+            // Keep selection.
+        } else {
+            selectedCaptureDisplayID = displays.first?.id
         }
-        selectedCaptureDisplayID = displays.first?.id
+
+        if let selectedRunDisplayID,
+           displays.contains(where: { $0.id == selectedRunDisplayID }) {
+            // Keep selection.
+        } else {
+            selectedRunDisplayID = displays.first?.id
+        }
     }
 
     func refreshCaptureAudioInputs() {
@@ -753,6 +878,20 @@ final class MainShellStateStore {
             return
         }
 
+        // Ensure the runner uses the selected display for screenshots/tool coordinates.
+        refreshCaptureDisplays()
+        let runDisplayIndex = selectedRunDisplayID ?? availableCaptureDisplays.first?.id ?? 1
+        runScreenshotDisplayIndexBox.value = runDisplayIndex
+
+        // Show a red border on the selected display while the agent is running.
+        // The overlay window is excluded from the agent's screenshots via ScreenCaptureKit window exclusion.
+        overlayService.showBorder(displayID: runDisplayIndex)
+
+        beginRun(displayIndex: runDisplayIndex)
+        executionTraceRecorder.record(
+            ExecutionTraceEntry(kind: .info, message: "Run display set to Display \(runDisplayIndex).")
+        )
+
         let hiddenAppsCount = prepareDesktopForRun()
         executionTraceRecorder.record(
             ExecutionTraceEntry(kind: .info, message: "Prepared screen by hiding \(hiddenAppsCount) running app(s).")
@@ -776,6 +915,7 @@ final class MainShellStateStore {
         }
         if !didStartMonitor {
             agentControlOverlayService.hideAgentInControl()
+            overlayService.hideBorder()
             if !agentCursorPresentationService.deactivateTakeoverCursor() {
                 executionTraceRecorder.record(ExecutionTraceEntry(kind: .error, message: "Failed to deactivate takeover cursor presentation after monitor startup failed."))
             }
@@ -811,6 +951,17 @@ final class MainShellStateStore {
             return
         }
 
+        refreshCaptureDisplays()
+        let runDisplayIndex = selectedRunDisplayID ?? availableCaptureDisplays.first?.id ?? 1
+        runScreenshotDisplayIndexBox.value = runDisplayIndex
+
+        await MainActor.run {
+            beginRun(displayIndex: runDisplayIndex)
+        }
+        executionTraceRecorder.record(
+            ExecutionTraceEntry(kind: .info, message: "Run display set to Display \(runDisplayIndex).")
+        )
+
         let hiddenAppsCount = prepareDesktopForRun()
         executionTraceRecorder.record(
             ExecutionTraceEntry(kind: .info, message: "Prepared screen by hiding \(hiddenAppsCount) running app(s).")
@@ -832,6 +983,7 @@ final class MainShellStateStore {
             return
         }
         agentControlOverlayService.hideAgentInControl()
+        overlayService.hideBorder()
         userInterruptionMonitor.stop()
         if !agentCursorPresentationService.deactivateTakeoverCursor() {
             executionTraceRecorder.record(ExecutionTraceEntry(kind: .error, message: "Failed to deactivate takeover cursor presentation after cancellation request."))
@@ -848,6 +1000,7 @@ final class MainShellStateStore {
         }
 
         agentControlOverlayService.hideAgentInControl()
+        overlayService.hideBorder()
         userInterruptionMonitor.stop()
         if !agentCursorPresentationService.deactivateTakeoverCursor() {
             executionTraceRecorder.record(ExecutionTraceEntry(kind: .error, message: "Failed to deactivate takeover cursor presentation after run completion."))
@@ -901,6 +1054,17 @@ final class MainShellStateStore {
         if result.outcome != .cancelled, let resultError = result.errorMessage, !resultError.isEmpty {
             errorMessage = resultError
         }
+
+        if let finished = finishActiveRun(outcome: result.outcome) {
+            do {
+                _ = try taskService.saveAgentRunLog(taskId: taskId, run: finished)
+            } catch {
+                // Keep the run visible in-memory even if persistence fails.
+                if errorMessage == nil {
+                    errorMessage = "Task run finished but failed to persist run log."
+                }
+            }
+        }
     }
 
     private func handleUserInterruptionDuringRun() {
@@ -909,6 +1073,7 @@ final class MainShellStateStore {
         }
 
         agentControlOverlayService.hideAgentInControl()
+        overlayService.hideBorder()
         userInterruptionMonitor.stop()
         if !agentCursorPresentationService.deactivateTakeoverCursor() {
             executionTraceRecorder.record(ExecutionTraceEntry(kind: .error, message: "Failed to deactivate takeover cursor presentation after Escape takeover."))
@@ -916,6 +1081,84 @@ final class MainShellStateStore {
         runStatusMessage = "Cancelling (Escape pressed)..."
         executionTraceRecorder.record(ExecutionTraceEntry(kind: .cancelled, message: "Escape pressed; cancelling run."))
         runTaskHandle?.cancel()
+    }
+
+    private func beginRun(displayIndex: Int) {
+        let run = AgentRunRecord(startedAt: Date(), displayIndex: displayIndex)
+        runHistory.insert(run, at: 0)
+        activeRunID = run.id
+    }
+
+    private func finishActiveRun(outcome: AutomationRunOutcome) -> AgentRunRecord? {
+        guard let activeRunID else { return nil }
+        guard let idx = runHistory.firstIndex(where: { $0.id == activeRunID }) else {
+            self.activeRunID = nil
+            return nil
+        }
+        runHistory[idx].finishedAt = Date()
+        runHistory[idx].outcome = outcome
+        let finished = runHistory[idx]
+        self.activeRunID = nil
+        return finished
+    }
+
+    private func shouldSuppressRunLogLine(_ message: String) -> Bool {
+        let lower = message.lowercased()
+        // The agent still captures screenshots for operation, but we do not retain or log them.
+        if lower.contains("screenshot") { return true }
+        if lower.contains("screen shot") { return true }
+        if lower.contains("screencapture") { return true }
+        if lower.contains("captured initial") && lower.contains("image") { return true }
+        return false
+    }
+
+    private func appendTraceEventToActiveRun(_ entry: ExecutionTraceEntry) {
+        guard let activeRunID else { return }
+        guard !shouldSuppressRunLogLine(entry.message) else { return }
+
+        let kind: AgentRunEvent.Kind
+        switch entry.kind {
+        case .info:
+            kind = .info
+        case .llmResponse:
+            kind = .llm
+        case .toolUse:
+            kind = .tool
+        case .localAction:
+            kind = .action
+        case .completion:
+            kind = .completion
+        case .cancelled:
+            kind = .cancelled
+        case .error:
+            kind = .error
+        }
+
+        guard let idx = runHistory.firstIndex(where: { $0.id == activeRunID }) else { return }
+        runHistory[idx].events.append(
+            AgentRunEvent(timestamp: entry.timestamp, kind: kind, message: entry.message)
+        )
+    }
+
+    private func appendLLMCallEventToActiveRun(_ entry: LLMCallLogEntry) {
+        guard let activeRunID else { return }
+
+        let ok = entry.outcome == .success
+        let status = ok ? "OK" : "FAIL"
+        var suffix: [String] = []
+        if let httpStatus = entry.httpStatus {
+            suffix.append("HTTP \(httpStatus)")
+        }
+        if entry.attempt > 1 {
+            suffix.append("attempt \(entry.attempt)")
+        }
+        let extra = suffix.isEmpty ? "" : " (\(suffix.joined(separator: ", ")))"
+        let message = "\(entry.provider.rawValue)/\(entry.operation.rawValue) \(status) \(entry.durationMs)ms\(extra)"
+
+        guard let idx = runHistory.firstIndex(where: { $0.id == activeRunID }) else { return }
+        runHistory[idx].events.append(
+            AgentRunEvent(timestamp: entry.finishedAt, kind: .llm, message: message)
+        )
     }
 
     private func ensureExecutionPermissions() -> Bool {
@@ -1535,8 +1778,6 @@ final class MainShellStateStore {
         switch provider {
         case .openAI:
             providerSetupState.hasOpenAIKey = saved
-        case .anthropic:
-            providerSetupState.hasAnthropicKey = saved
         case .gemini:
             providerSetupState.hasGeminiKey = saved
         }
@@ -1546,8 +1787,6 @@ final class MainShellStateStore {
         switch provider {
         case .openAI:
             return "OpenAI"
-        case .anthropic:
-            return "Anthropic"
         case .gemini:
             return "Gemini"
         }

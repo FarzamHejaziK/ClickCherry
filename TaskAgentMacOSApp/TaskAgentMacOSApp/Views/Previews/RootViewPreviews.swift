@@ -2,9 +2,9 @@ import SwiftUI
 
 #if DEBUG
 
-#Preview("RootView") {
-    RootView()
-        .frame(width: 1100, height: 720)
+private enum PreviewFrames {
+    static let `default` = CGSize(width: 1100, height: 720)
+    static let recordingDialog = CGSize(width: 780, height: 560)
 }
 
 private final class PreviewAPIKeyStore: APIKeyStore {
@@ -66,7 +66,7 @@ private enum PreviewOnboardingFactory {
     static func store(
         currentStep: OnboardingStep = .welcome,
         hasCompletedOnboarding: Bool = false,
-        providerSetupState: ProviderSetupState = ProviderSetupState(hasOpenAIKey: false, hasAnthropicKey: false, hasGeminiKey: false),
+        providerSetupState: ProviderSetupState = ProviderSetupState(hasOpenAIKey: false, hasGeminiKey: false),
         permissionStatuses: PreviewPermissionStatuses = PreviewPermissionStatuses()
     ) -> OnboardingStateStore {
         OnboardingStateStore(
@@ -84,51 +84,193 @@ private enum PreviewOnboardingFactory {
     }
 }
 
-#Preview("Startup - Welcome") {
-    RootView(onboardingStateStore: PreviewOnboardingFactory.store(currentStep: .welcome, hasCompletedOnboarding: false))
-        .frame(width: 1100, height: 720)
-}
+private enum PreviewMainShellFactory {
+    static func newTaskStore() -> MainShellStateStore {
+        let store = MainShellStateStore()
+        store.openNewTask()
+        return store
+    }
 
-#Preview("Startup - Provider Setup") {
-    RootView(onboardingStateStore: PreviewOnboardingFactory.store(currentStep: .providerSetup, hasCompletedOnboarding: false))
-        .frame(width: 1100, height: 720)
-}
+    static func settingsStore() -> MainShellStateStore {
+        let store = MainShellStateStore()
+        store.openSettings()
+        return store
+    }
 
-#Preview("Startup - Permissions") {
-    RootView(onboardingStateStore: PreviewOnboardingFactory.store(currentStep: .permissionsPreflight, hasCompletedOnboarding: false))
-        .frame(width: 1100, height: 720)
-}
+    static func taskDetailStore() -> MainShellStateStore {
+        let fm = FileManager.default
+        let baseDir = fm.temporaryDirectory.appendingPathComponent("clickcherry-preview-\(UUID().uuidString)", isDirectory: true)
+        try? fm.createDirectory(at: baseDir, withIntermediateDirectories: true)
 
-#Preview("Startup - Ready") {
-    RootView(onboardingStateStore: PreviewOnboardingFactory.store(
-        currentStep: .ready,
-        hasCompletedOnboarding: false,
-        providerSetupState: ProviderSetupState(hasOpenAIKey: true, hasAnthropicKey: false, hasGeminiKey: true),
-        permissionStatuses: PreviewPermissionStatuses(
-            screenRecording: .granted,
-            microphone: .granted,
-            accessibility: .granted,
-            inputMonitoring: .granted
+        let taskService = TaskService(
+            baseDir: baseDir,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
         )
-    ))
-    .frame(width: 1100, height: 720)
+        let store = MainShellStateStore(
+            taskService: taskService,
+            apiKeyStore: PreviewAPIKeyStore()
+        )
+
+        if let task = try? taskService.createTask(title: "Submit Expense Reimbursement") {
+            let heartbeat = """
+            # Task
+            Submit Expense Reimbursement
+
+            Goal: Submit a reimbursement request in the company portal for a recent receipt.
+
+            AppsObserved:
+            - Google Chrome
+
+            HardConstraints:
+            - Do not submit if any required fields are missing.
+            - Do not upload the wrong receipt.
+
+            SuccessCriteria:
+            - A reimbursement request is submitted and a confirmation page/ID is shown.
+
+            ## Questions
+            - [required] Which portal URL should I use?
+            - [required] Which cost center should be used?
+            """
+            try? taskService.saveHeartbeat(taskId: task.id, markdown: heartbeat)
+
+            store.reloadTasks()
+            store.openTask(task.id)
+
+            store.availableCaptureDisplays = [
+                CaptureDisplayOption(id: 1, label: "Display 1"),
+                CaptureDisplayOption(id: 2, label: "Display 2")
+            ]
+            store.selectedRunDisplayID = 1
+            let now = Date()
+            store.runHistory = [
+                AgentRunRecord(
+                    startedAt: now.addingTimeInterval(-120),
+                    finishedAt: now.addingTimeInterval(-105),
+                    outcome: .success,
+                    displayIndex: 1,
+                    events: [
+                        AgentRunEvent(timestamp: now.addingTimeInterval(-119), kind: .info, message: "Run requested."),
+                        AgentRunEvent(timestamp: now.addingTimeInterval(-118), kind: .llm, message: "openAI/execution OK 842ms (HTTP 200)"),
+                        AgentRunEvent(timestamp: now.addingTimeInterval(-116), kind: .tool, message: "desktop_action.left_click (x=418, y=322)"),
+                        AgentRunEvent(timestamp: now.addingTimeInterval(-115), kind: .action, message: "Click at (418, 322)"),
+                        AgentRunEvent(timestamp: now.addingTimeInterval(-110), kind: .completion, message: "Run complete.")
+                    ]
+                ),
+                AgentRunRecord(
+                    startedAt: now.addingTimeInterval(-40),
+                    finishedAt: now.addingTimeInterval(-22),
+                    outcome: .cancelled,
+                    displayIndex: 2,
+                    events: [
+                        AgentRunEvent(timestamp: now.addingTimeInterval(-39), kind: .info, message: "Run requested."),
+                        AgentRunEvent(timestamp: now.addingTimeInterval(-36), kind: .llm, message: "openAI/execution OK 611ms (HTTP 200)"),
+                        AgentRunEvent(timestamp: now.addingTimeInterval(-34), kind: .tool, message: "desktop_action.type (text=...)"),
+                        AgentRunEvent(timestamp: now.addingTimeInterval(-33), kind: .action, message: "Typed into focused field."),
+                        AgentRunEvent(timestamp: now.addingTimeInterval(-23), kind: .cancelled, message: "Escape pressed; cancelling run.")
+                    ]
+                )
+            ]
+        }
+
+        return store
+    }
 }
 
-#Preview("New Task") {
-    let store = MainShellStateStore()
-    store.openNewTask()
-    return MainShellView(mainShellStateStore: store)
-        .frame(width: 1100, height: 720)
+private struct PreviewRootView: View {
+    let onboardingStateStore: OnboardingStateStore?
+
+    var body: some View {
+        Group {
+            if let onboardingStateStore {
+                RootView(onboardingStateStore: onboardingStateStore)
+            } else {
+                RootView()
+            }
+        }
+    }
 }
 
-#Preview("Settings") {
-    let store = MainShellStateStore()
-    store.openSettings()
-    return MainShellView(mainShellStateStore: store)
-        .frame(width: 1100, height: 720)
+private struct PreviewMainShellView: View {
+    let store: MainShellStateStore
+
+    var body: some View {
+        MainShellView(mainShellStateStore: store)
+    }
 }
 
-#Preview("Recording Finished Dialog") {
+#Preview(
+    "RootView (Default)",
+    traits: .fixedLayout(width: PreviewFrames.default.width, height: PreviewFrames.default.height)
+) {
+    PreviewRootView(onboardingStateStore: nil)
+}
+
+#Preview(
+    "Onboarding - Welcome",
+    traits: .fixedLayout(width: PreviewFrames.default.width, height: PreviewFrames.default.height)
+) {
+    PreviewRootView(
+        onboardingStateStore: PreviewOnboardingFactory.store(currentStep: .welcome, hasCompletedOnboarding: false)
+    )
+}
+
+#Preview(
+    "Onboarding - Provider Setup",
+    traits: .fixedLayout(width: PreviewFrames.default.width, height: PreviewFrames.default.height)
+) {
+    PreviewRootView(
+        onboardingStateStore: PreviewOnboardingFactory.store(currentStep: .providerSetup, hasCompletedOnboarding: false)
+    )
+}
+
+#Preview(
+    "Onboarding - Permissions",
+    traits: .fixedLayout(width: PreviewFrames.default.width, height: PreviewFrames.default.height)
+) {
+    PreviewRootView(
+        onboardingStateStore: PreviewOnboardingFactory.store(currentStep: .permissionsPreflight, hasCompletedOnboarding: false)
+    )
+}
+
+#Preview(
+    "Onboarding - Ready",
+    traits: .fixedLayout(width: PreviewFrames.default.width, height: PreviewFrames.default.height)
+) {
+    PreviewRootView(
+        onboardingStateStore: PreviewOnboardingFactory.store(
+            currentStep: .ready,
+            hasCompletedOnboarding: false,
+            providerSetupState: ProviderSetupState(hasOpenAIKey: true, hasGeminiKey: true),
+            permissionStatuses: PreviewPermissionStatuses(
+                screenRecording: .granted,
+                microphone: .granted,
+                accessibility: .granted,
+                inputMonitoring: .granted
+            )
+        )
+    )
+}
+
+#Preview(
+    "New Task (Default)",
+    traits: .fixedLayout(width: PreviewFrames.default.width, height: PreviewFrames.default.height)
+) {
+    PreviewMainShellView(store: PreviewMainShellFactory.newTaskStore())
+}
+
+#Preview(
+    "Settings (Default)",
+    traits: .fixedLayout(width: PreviewFrames.default.width, height: PreviewFrames.default.height)
+) {
+    PreviewMainShellView(store: PreviewMainShellFactory.settingsStore())
+}
+
+#Preview(
+    "Recording Finished Dialog",
+    traits: .fixedLayout(width: PreviewFrames.recordingDialog.width, height: PreviewFrames.recordingDialog.height)
+) {
     let recording = RecordingRecord(
         id: UUID().uuidString,
         fileName: "ClickCherry-Recording-Example.mov",
@@ -144,7 +286,13 @@ private enum PreviewOnboardingFactory {
         onRecordAgain: {},
         onExtractTask: {}
     )
-    .frame(width: 780, height: 560)
+}
+
+#Preview(
+    "Task Detail - Created Task (Default)",
+    traits: .fixedLayout(width: PreviewFrames.default.width, height: PreviewFrames.default.height)
+) {
+    PreviewMainShellView(store: PreviewMainShellFactory.taskDetailStore())
 }
 
 #endif

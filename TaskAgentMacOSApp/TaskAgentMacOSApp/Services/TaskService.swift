@@ -11,6 +11,7 @@ struct TaskService {
     private let fileManager: FileManager
     private let workspaceService: WorkspaceService
     private let baseDir: URL
+    private let agentRunLogService: AgentRunLogService
 
     init(
         baseDir: URL = TaskService.defaultBaseDirectory(),
@@ -20,6 +21,7 @@ struct TaskService {
         self.baseDir = baseDir
         self.fileManager = fileManager
         self.workspaceService = workspaceService
+        self.agentRunLogService = AgentRunLogService(fileManager: fileManager)
     }
 
     func createTask(title: String) throws -> TaskRecord {
@@ -71,6 +73,14 @@ struct TaskService {
         }
 
         return tasks.sorted(by: { $0.createdAt > $1.createdAt })
+    }
+
+    func deleteTask(taskId: String) throws {
+        let workspace = workspaceURL(for: taskId)
+        guard fileManager.fileExists(atPath: workspace.path) else {
+            throw TaskServiceError.taskNotFound
+        }
+        try fileManager.removeItem(at: workspace)
     }
 
     func readHeartbeat(taskId: String) throws -> String {
@@ -298,6 +308,27 @@ struct TaskService {
         }
     }
 
+    @discardableResult
+    func saveAgentRunLog(taskId: String, run: AgentRunRecord) throws -> URL {
+        let workspace = workspaceURL(for: taskId)
+        guard fileManager.fileExists(atPath: workspace.path) else {
+            throw TaskServiceError.taskNotFound
+        }
+
+        let runsDir = workspace.appendingPathComponent("runs", isDirectory: true)
+        return try agentRunLogService.persist(run: run, runsDir: runsDir)
+    }
+
+    func listAgentRunLogs(taskId: String) throws -> [AgentRunRecord] {
+        let workspace = workspaceURL(for: taskId)
+        guard fileManager.fileExists(atPath: workspace.path) else {
+            throw TaskServiceError.taskNotFound
+        }
+
+        let runsDir = workspace.appendingPathComponent("runs", isDirectory: true)
+        return try agentRunLogService.listRuns(runsDir: runsDir)
+    }
+
     private func readTaskTitle(from heartbeatFile: URL) throws -> String {
         let markdown = try String(contentsOf: heartbeatFile, encoding: .utf8)
         let lines = markdown.components(separatedBy: .newlines)
@@ -361,5 +392,92 @@ struct TaskService {
         case .cancelled:
             return "CANCELLED"
         }
+    }
+}
+
+private struct AgentRunLogFileV1: Codable {
+    var version: Int
+    var run: AgentRunRecord
+}
+
+private struct AgentRunLogService {
+    private let fileManager: FileManager
+
+    init(fileManager: FileManager) {
+        self.fileManager = fileManager
+    }
+
+    @discardableResult
+    func persist(run: AgentRunRecord, runsDir: URL) throws -> URL {
+        if !fileManager.fileExists(atPath: runsDir.path) {
+            try fileManager.createDirectory(at: runsDir, withIntermediateDirectories: true)
+        }
+
+        let timestamp = Self.isoTimestamp(for: run.startedAt).replacingOccurrences(of: ":", with: "-")
+        let suffix = run.id.uuidString.prefix(8).lowercased()
+        let fileURL = runsDir.appendingPathComponent("agent-run-\(timestamp)-\(suffix).json", isDirectory: false)
+
+        let payload = AgentRunLogFileV1(version: 1, run: run)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.dateEncodingStrategy = .custom { date, encoder in
+            var container = encoder.singleValueContainer()
+            try container.encode(Self.isoTimestamp(for: date))
+        }
+
+        do {
+            let data = try encoder.encode(payload)
+            try data.write(to: fileURL, options: [.atomic])
+            return fileURL
+        } catch {
+            throw TaskServiceError.runPersistenceFailed
+        }
+    }
+
+    func listRuns(runsDir: URL) throws -> [AgentRunRecord] {
+        guard fileManager.fileExists(atPath: runsDir.path) else {
+            return []
+        }
+
+        let urls = try fileManager.contentsOfDirectory(
+            at: runsDir,
+            includingPropertiesForKeys: [.creationDateKey],
+            options: [.skipsHiddenFiles]
+        )
+
+        let candidates = urls.filter { $0.lastPathComponent.hasPrefix("agent-run-") && $0.pathExtension.lowercased() == "json" }
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let str = try container.decode(String.self)
+            if let date = Self.parseISO(str) {
+                return date
+            }
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Invalid ISO8601 date: \(str)")
+        }
+
+        var runs: [AgentRunRecord] = []
+        for url in candidates {
+            guard let data = try? Data(contentsOf: url) else { continue }
+            if let decoded = try? decoder.decode(AgentRunLogFileV1.self, from: data) {
+                runs.append(decoded.run)
+            }
+        }
+
+        // Newest first in the UI.
+        return runs.sorted(by: { $0.startedAt > $1.startedAt })
+    }
+
+    private static func isoTimestamp(for date: Date) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.string(from: date)
+    }
+
+    private static func parseISO(_ value: String) -> Date? {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.date(from: value) ?? ISO8601DateFormatter().date(from: value)
     }
 }

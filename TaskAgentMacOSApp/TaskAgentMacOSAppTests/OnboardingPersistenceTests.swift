@@ -74,7 +74,7 @@ struct OnboardingPersistenceTests {
 
     @Test
     func initializesProviderStateFromKeyStore() {
-        let keyStore = InMemoryAPIKeyStore(keys: [.anthropic: "anthropic-key", .gemini: "gemini-key"])
+        let keyStore = InMemoryAPIKeyStore(keys: [.openAI: "openai-key", .gemini: "gemini-key"])
         let completionStore = InMemoryOnboardingCompletionStore(hasCompletedOnboarding: false)
 
         let store = OnboardingStateStore(
@@ -83,8 +83,7 @@ struct OnboardingPersistenceTests {
             permissionService: MockPermissionService()
         )
 
-        #expect(!store.providerSetupState.hasOpenAIKey)
-        #expect(store.providerSetupState.hasAnthropicKey)
+        #expect(store.providerSetupState.hasOpenAIKey)
         #expect(store.providerSetupState.hasGeminiKey)
     }
 

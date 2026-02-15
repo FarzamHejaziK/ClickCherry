@@ -37,5 +37,23 @@ enum ScreenDisplayIndexService {
         }
         return CGDirectDisplayID(raw.uint32Value)
     }
-}
 
+    /// `CGDirectDisplayID` for a 1-based `screencapture -D` display index.
+    static func cgDisplayIDForScreencaptureDisplayIndex(_ displayIndex: Int) -> CGDirectDisplayID? {
+        guard let screen = screenForScreencaptureDisplayIndex(displayIndex) else {
+            return nil
+        }
+        return cgDisplayID(for: screen)
+    }
+
+    /// Best-effort reverse lookup of a 1-based `screencapture -D` display index for a display id.
+    static func screencaptureDisplayIndex(for displayID: CGDirectDisplayID) -> Int? {
+        let ordered = orderedScreensMainFirst()
+        for (idx, screen) in ordered.enumerated() {
+            if let id = cgDisplayID(for: screen), id == displayID {
+                return idx + 1
+            }
+        }
+        return nil
+    }
+}

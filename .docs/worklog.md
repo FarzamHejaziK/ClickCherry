@@ -7,205 +7,234 @@ description: Running implementation log of completed work, test evidence, blocke
 > Previous archived entries are in `/Users/farzamh/code-git-local/task-agent-macos/.docs/legacy_worklog.md`.
 
 ## Entry
-- Date: 2026-02-14
-- Step: UI/UX: Extract task shows loading and delays task creation until extraction completes
+- Date: 2026-02-15
+- Step: Feature: Persist per-task run logs (Runs survive relaunch)
 - Changes made:
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/RecordingFinishedDialogView.swift` to show an extracting/loading state (spinner + disabled controls) after `Extract task` is clicked.
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift` so `New Task` staged recordings create a task only after extraction returns a valid task result:
-    - if `TaskDetected: false`, no task is created.
-    - extracted title is used for `createTask(...)`.
-    - extracted `HEARTBEAT.md` is written before navigating to the created task.
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/MainShellView.swift` to pass extraction state into the dialog and to disable interactive dismiss while extracting.
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift` with a unit test ensuring the task is created only after extraction completes.
+  - Persisted structured run logs under each task workspace `runs/` directory and load them on task open:
+    - Added `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/AgentRunModels.swift`.
+    - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/Protocols.swift` so `AutomationRunOutcome` is `Codable` for run-log persistence.
+    - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/TaskService.swift`:
+      - `saveAgentRunLog(taskId:run:)` writes `agent-run-*.json`
+      - `listAgentRunLogs(taskId:)` loads persisted logs (newest first)
+    - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`:
+      - load run history per task (`loadSelectedTaskRunHistory()`),
+      - clear run history on `New Task`,
+      - persist the finished run log at the end of each run.
+  - Updated tests:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/TaskServiceTests.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
   - Updated docs:
     - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
 - Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-extract-spinner CODE_SIGNING_ALLOWED=NO build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-extract-spinner-tests2 -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-runpersist4 CODE_SIGNING_ALLOWED=NO build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-runpersist-tests2 -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
 - Manual tests run:
-  - Runtime: `New Task` -> record -> stop -> click `Extract task`, confirm loading UI appears until extraction finishes and the task only appears after extraction completes. (Pending user-side confirmation)
+  - Pending user-side confirmation.
 - Result:
   - Complete (pending user-side manual confirmation).
 - Issues/blockers:
   - None.
 
 ## Entry
-- Date: 2026-02-14
-- Step: UI polish: Recording-finished dialog adds `Back to app` dismissal
+- Date: 2026-02-15
+- Step: UI/UX: Show red border during agent runs (excluded from screenshots)
 - Changes made:
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/RecordingFinishedDialogView.swift` to add a top-right `Back to app` control that dismisses the review sheet.
-  - Confirmed behavior contract remains unchanged: only clicking `Extract task` creates a task; dismissing the sheet does not create a task.
+  - Reused the existing border overlay implementation to display a red border on the selected display while the agent is running, and hide it on completion/cancel:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
+  - Added support for excluding multiple overlay windows from agent screenshots (agent HUD + red border overlay):
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/DesktopScreenshotService.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomationEngine.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/RecordingOverlayService.swift`
+  - Updated unit tests to assert the run border shows/hides during cancel/failure paths:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
   - Updated docs:
     - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
 - Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-rec-finished-back CODE_SIGNING_ALLOWED=NO build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-rec-finished-back-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-agentborder-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
 - Manual tests run:
-  - Runtime: finish a `New Task` recording, click `Back to app`, confirm the sheet dismisses and no task is created. (Pending user-side confirmation)
+  - Pending user-side confirmation.
 - Result:
   - Complete (pending user-side manual confirmation).
 - Issues/blockers:
   - None.
 
 ## Entry
-- Date: 2026-02-14
-- Step: Bugfix: Escape-stop recording should not end with status 15/no file
+- Date: 2026-02-15
+- Step: Bugfix: Deleting the currently-open task returns to a clean New Task state
 - Changes made:
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/RecordingCaptureService.swift` stop logic to avoid prematurely sending SIGTERM to `screencapture`:
-    - write a byte + newline to stdin and close stdin,
-    - send SIGINT and wait before escalating,
-    - only escalate to SIGTERM/SIGKILL if needed.
-  - Increased post-exit output-file finalization wait to reduce false “no file created” errors.
-  - Updated docs:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
+  - Fixed delete-task flow to always reset the UI when deleting the currently-open task (selection is captured before `reloadTasks()` clears it):
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
+  - Added unit test coverage for deleting the selected task:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
 - Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-stopstatus15 CODE_SIGNING_ALLOWED=NO build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-stopstatus15-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-pin-delete CODE_SIGNING_ALLOWED=NO test -only-testing:TaskAgentMacOSAppTests` (pass).
 - Manual tests run:
-  - Runtime: `New Task` -> record -> press `Escape`, confirm `.mov` is created and the recording-finished sheet appears. (Pending user-side confirmation)
+  - Pending user-side confirmation.
 - Result:
   - Complete (pending user-side manual confirmation).
 - Issues/blockers:
   - None.
 
 ## Entry
-- Date: 2026-02-14
-- Step: UI/UX: New Task does not create task until `Extract task` (recording staging + dialog polish)
+- Date: 2026-02-15
+- Step: Runtime: Remove Anthropic provider; use OpenAI for agentic runs and Gemini 3 Flash for extraction
 - Changes made:
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift` so `New Task` recording no longer creates a task at record start; the recording is staged and a task is created only when the user clicks `Extract task`.
-  - Added `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/FinishedRecordingReview.swift` to track whether a finished recording is staged (new task) or attached (existing task) for correct dismissal behavior.
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/TaskService.swift` with:
-    - `makeStagingCaptureOutputURL()` (hidden staging directory),
-    - `attachRecordingFile(...)` to attach staged `.mov` recordings to the newly created task.
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/RecordingFinishedDialogView.swift` to remove the `Close` button and refresh styling to match onboarding’s glass+tint direction.
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/MainShellView.swift` to present the new review model and to discard staged recordings when the sheet is dismissed without action.
-  - Removed the Canvas preview entry for the dialog from `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift`.
+  - Removed Anthropic provider support end-to-end (execution engine + tests + provider selection plumbing):
+    - Deleted `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AnthropicAutomationEngine.swift`.
+    - Deleted `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/ProviderRoutingAutomationEngine.swift`.
+    - Deleted `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/AnthropicAutomationEngineTests.swift`.
+    - Deleted `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/AnthropicComputerUseRunnerTests.swift`.
+    - Updated provider/key models so only `OpenAI` and `Gemini` remain:
+      - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/Protocols.swift`
+      - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OnboardingPersistence.swift`
+      - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/OnboardingStateStore.swift`
+      - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
+  - Restored the shared desktop action executor types (moved out of the deleted Anthropic file):
+    - Added `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/DesktopActionExecutor.swift`.
+  - Removed OpenAI screenshot capture dependency on Anthropic helpers:
+    - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomationEngine.swift` to capture screenshots directly via `DesktopScreenshotService`.
+  - Switched task-extraction model configuration from Gemini Pro to Gemini Flash:
+    - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/task_extraction/config.yaml` to `llm: gemini-3-flash` (mapped to `gemini-3-flash-preview` at runtime).
+    - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/GeminiVideoLLMClient.swift` to map `gemini-3-flash` -> `gemini-3-flash-preview`.
   - Updated docs:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/PRD.md`
 - Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-postrec-no-task CODE_SIGNING_ALLOWED=NO build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-postrec-no-task-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" CODE_SIGNING_ALLOWED=NO build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSAppTests -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
 - Manual tests run:
-  - Runtime: `New Task` -> record -> stop -> dismiss dialog; confirm no task is created. (Pending user-side confirmation)
-  - Runtime: `New Task` -> record -> stop -> click `Extract task`; confirm a task is created and extraction begins. (Pending user-side confirmation)
+  - N/A.
 - Result:
-  - Complete (pending user-side manual confirmation).
+  - Complete.
 - Issues/blockers:
   - None.
 
 ## Entry
-- Date: 2026-02-14
-- Step: Bugfix: Escape-stop capture should not freeze UI and must finalize reliably
+- Date: 2026-02-15
+- Step: UI: Sidebar task context menu (Pin to top + Delete)
 - Changes made:
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/RecordingCaptureService.swift` to provide stdin to `screencapture` and write a byte on stop (some versions require “type any character to stop screen recording”).
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift` so stop capture runs off the main thread and UI remains responsive during recording finalization.
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift` to account for async stop.
-  - Updated docs:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-stop-stdin-fix CODE_SIGNING_ALLOWED=NO build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-stop-stdin-fix-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
-- Manual tests run:
-  - Runtime: start recording, press `Escape`, confirm app remains responsive and the recording finishes without `type any character...` error. (Pending user-side confirmation)
-- Result:
-  - Complete (pending user-side manual confirmation).
-- Issues/blockers:
-  - None.
-
-## Entry
-- Date: 2026-02-14
-- Step: UI polish: Recording-finished dialog spacing + remove filename line
-- Changes made:
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/RecordingFinishedDialogView.swift`:
-    - removed the filename text under the video preview,
-    - adjusted padding/alignment so header/player/footer spacing is more consistent.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/MainShellSidebarView.swift`:
+    - added right-click context menu for tasks with `Pin to top` / `Unpin` and `Delete` actions,
+    - added delete confirmation alert.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`:
+    - added persisted pinned-task IDs (UserDefaults) and pinned-first sorting,
+    - added delete-task flow (request/confirm/cancel).
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/TaskService.swift`:
+    - added `deleteTask(taskId:)` to remove a task workspace from disk.
+  - Updated tests:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/TaskServiceTests.swift`
   - Updated docs:
     - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
 - Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-dialog-layout CODE_SIGNING_ALLOWED=NO build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-dialog-layout-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" CODE_SIGNING_ALLOWED=NO build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSAppTests -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
 - Manual tests run:
-  - Canvas: open `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift` and select `Recording Finished Dialog`. (Pending user-side confirmation)
+  - Runtime: right-click a task, `Pin to top`, confirm it moves to the top; `Delete`, confirm prompt and task disappears. (Pending user-side confirmation)
 - Result:
   - Complete (pending user-side manual confirmation).
 - Issues/blockers:
   - None.
 
 ## Entry
-- Date: 2026-02-14
-- Step: UI/UX: Post-recording review dialog (inline playback + next actions)
+- Date: 2026-02-15
+- Step: UI polish: Show date + time for run headers
 - Changes made:
-  - Initial implementation of a post-recording review dialog (later revised in the entry above on 2026-02-14 to remove `Close`, remove the Canvas preview, and avoid creating a task until `Extract task`).
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/TaskDetailPageView.swift` so each `Run N` header shows the full date and time (not just time-of-day).
 - Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-recording-finished-dialog CODE_SIGNING_ALLOWED=NO build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-recording-finished-dialog-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" CODE_SIGNING_ALLOWED=NO build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSAppTests -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
 - Manual tests run:
-  - Runtime: start and stop a recording and confirm the review dialog appears, playback works, and `Record again`/`Extract task` actions trigger. (Pending user-side confirmation)
+  - N/A.
+- Result:
+  - Complete.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-15
+- Step: UI: Task Detail per-run accordions with unified run logs (no screenshot retention)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/TaskDetailPageView.swift`:
+    - `Task` accordion now contains only the task editor + `Save`.
+    - Added per-run accordions under the task editor: `Run 1`, `Run 2`, ... each showing a single sequential log stream.
+    - Removed the `Run details` / `LLM calls` / `LLM screenshots` sub-sections from Task Detail.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`:
+    - Added in-memory `runHistory` with per-run unified events.
+    - Appends trace + LLM call events into the active run while a run is in progress.
+    - Removed screenshot log retention from the app state (no screenshot log sink is wired; run logs suppress screenshot-related lines).
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomationEngine.swift` and `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AnthropicAutomationEngine.swift`:
+    - Avoid recording screenshot-capture trace lines.
+    - Avoid decoding/retaining screenshot bytes unless an explicit screenshot log sink is provided.
+  - Updated previews:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift` now seeds `runHistory` for Canvas.
+  - Updated docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" CODE_SIGNING_ALLOWED=NO build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSAppTests -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - Runtime: run a task twice and confirm `Run 1/Run 2` appear and each shows a unified log stream. (Pending user-side confirmation)
 - Result:
   - Complete (pending user-side manual confirmation).
 - Issues/blockers:
   - None.
 
 ## Entry
-- Date: 2026-02-13
-- Step: Bugfix: Recording start hides ClickCherry windows immediately + overlays match recorded display (multi-display)
+- Date: 2026-02-15
+- Step: UI polish: Task Detail copy + centered layout
 - Changes made:
-  - Added `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/ScreenDisplayIndexService.swift` to unify display ordering across:
-    - `screencapture -D` display indexing,
-    - overlay placement (border + Escape HUD),
-    - display thumbnails in the picker.
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/RecordingCaptureService.swift` display listing to use AppKit screen ordering (`NSScreen`, main first) so the UI’s `Display 1/2/...` matches `screencapture -D`.
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/RecordingOverlayService.swift` and `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/RecordingControlOverlayService.swift` to map display indexes via `NSScreen` ordering (same numbering as capture).
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/NewTaskPageView.swift` thumbnails to use the same ordered screens as recording selection and overlays.
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift` to:
-    - start recording capture on a background task (so overlay + hide commands render immediately),
-    - hide ClickCherry windows at recording start when Escape monitoring is available,
-    - stop hiding other running apps during recording start (recording only hides ClickCherry windows).
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift` to account for async capture start.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/TaskDetailPageView.swift`:
+    - hero copy to better explain what a run is and explicitly mention "agentic" (shortened + multiline).
+    - run screen picker copy to explain what the screen selection means (shortened + multiline).
+    - centered content on wide/fullscreen windows (max-width + margins).
+  - Updated docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
 - Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-recording-multidisplay-fix CODE_SIGNING_ALLOWED=NO build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-recording-multidisplay-fix-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-taskdetail-runcopy-agentic CODE_SIGNING_ALLOWED=NO build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-taskdetail-runcopy-agentic-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-taskdetail-screen-copy CODE_SIGNING_ALLOWED=NO build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-taskdetail-screen-copy-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-taskdetail-copy-shorten CODE_SIGNING_ALLOWED=NO build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-taskdetail-copy-shorten-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-taskdetail-centered-content CODE_SIGNING_ALLOWED=NO build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-taskdetail-centered-content-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
 - Manual tests run:
-  - Runtime: with 2+ displays, select `Display 2`, start recording, and confirm the red border + recording HUD appear on the recorded display. (Pending user-side confirmation)
-  - Runtime: start recording with the app window on the non-main display and confirm the app UI hides immediately across all displays. (Pending user-side confirmation)
+  - N/A (copy-only).
+- Result:
+  - Complete.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-15
+- Step: Dev UX: Add multi-size + resizable SwiftUI Canvas previews
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift`:
+    - switched size previews from `.frame(width:height:)` wrappers to `#Preview(..., traits: .fixedLayout(...))` so Canvas shows multiple distinct window sizes cleanly,
+    - added `Full HD` variants for `New Task`, `Settings`, and `Task Detail`,
+    - added `Resizable` variants (use Xcode Canvas "Preview in Window" to resize and inspect responsive layout).
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-preview-sizes CODE_SIGNING_ALLOWED=NO build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-preview-sizes-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - Canvas: open `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift` and confirm multiple named previews appear with different sizes. (Pending user-side confirmation)
 - Result:
   - Complete (pending user-side manual confirmation).
 - Issues/blockers:
   - None.
 
 ## Entry
-- Date: 2026-02-13
-- Step: Bugfix: New Task capture should hide app UI on any display and restore on Escape (incremental)
+- Date: 2026-02-15
+- Step: Bugfix: Prevent Canvas crash from titlebar accessory install
 - Changes made:
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift` so starting capture from `New Task` hides all normal app UI windows (not just titled windows), ensuring the UI disappears even when the window is on a non-main display.
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift` so stopping capture restores any windows hidden for capture and re-activates the app (the UI pops back up).
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift` so pressing `Escape` while recording matches the `New Task` Stop behavior: stop capture and open the new task detail view.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Titlebar/WindowTitlebarBranding.swift` to skip installing the titlebar accessory controller when running under Xcode previews (`XCODE_RUNNING_FOR_PREVIEWS=1`), avoiding an AppKit assertion in `NSWindow.titlebarAccessoryViewControllers`.
 - Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-recording-hide-restore CODE_SIGNING_ALLOWED=NO build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-recording-hide-restore-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-preview-crashfix CODE_SIGNING_ALLOWED=NO build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-preview-crashfix-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
 - Manual tests run:
-  - Runtime: with 2+ displays, move the app window to the non-main display and start recording from `New Task`; confirm the app UI hides on all displays while the border + HUD remain visible. (Pending user-side confirmation)
-  - Runtime: press `Escape` to stop and confirm the app reappears focused and navigates to the new task detail view. (Pending user-side confirmation)
+  - Canvas: open previews and confirm they render without crashing. (Pending user-side confirmation)
 - Result:
-  - Complete (pending user-side manual confirmation).
-- Issues/blockers:
-  - None.
-
-## Entry
-- Date: 2026-02-13
-- Step: Bugfix: Recording overlays should work on non-main displays (incremental)
-- Changes made:
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/RecordingOverlayService.swift` to create the border overlay window using global coordinates (removed `screen:` argument) so it appears on displays whose frames have negative origins.
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/RecordingControlOverlayService.swift` to create the recording hint HUD using global coordinates (removed `screen:` argument) so it appears on the selected non-main display.
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AgentControlOverlayService.swift` similarly, since it uses the same overlay-window placement pattern.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-overlay-screen-coords CODE_SIGNING_ALLOWED=NO build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-overlay-screen-coords-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
-- Manual tests run:
-  - Runtime: select `Display 2` in `New Task`, start recording, and confirm border + HUD appear on the selected display. (Pending user-side confirmation)
-- Result:
-  - Complete (pending user-side manual confirmation).
+  - Complete (pending user-side manual confirmation)
 - Issues/blockers:
   - None.
 

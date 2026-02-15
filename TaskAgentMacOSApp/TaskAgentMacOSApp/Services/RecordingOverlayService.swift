@@ -4,6 +4,7 @@ import CoreGraphics
 protocol RecordingOverlayService {
     func showBorder(displayID: Int)
     func hideBorder()
+    func windowNumberForScreenshotExclusion() -> Int?
 }
 
 final class ScreenRecordingOverlayService: RecordingOverlayService {
@@ -23,6 +24,7 @@ final class ScreenRecordingOverlayService: RecordingOverlayService {
     }
 
     private var overlayWindow: NSWindow?
+    private var overlayWindowNumber: Int?
 
     func showBorder(displayID: Int) {
         guard Thread.isMainThread else {
@@ -57,6 +59,7 @@ final class ScreenRecordingOverlayService: RecordingOverlayService {
         window.contentView = BorderView(frame: NSRect(origin: .zero, size: screen.frame.size))
         window.orderFrontRegardless()
         overlayWindow = window
+        overlayWindowNumber = window.windowNumber
     }
 
     func hideBorder() {
@@ -68,6 +71,12 @@ final class ScreenRecordingOverlayService: RecordingOverlayService {
         }
         overlayWindow?.orderOut(nil)
         overlayWindow = nil
+        overlayWindowNumber = nil
+    }
+
+    func windowNumberForScreenshotExclusion() -> Int? {
+        // Use the cached window number so this method is safe off-main-thread.
+        overlayWindowNumber
     }
 
     // Screen indexing is handled by `ScreenDisplayIndexService`.

@@ -300,6 +300,9 @@ final class GeminiVideoLLMClient: LLMClient {
         if normalized.lowercased() == "gemini-3-pro" {
             return "gemini-3-pro-preview"
         }
+        if normalized.lowercased() == "gemini-3-flash" {
+            return "gemini-3-flash-preview"
+        }
         return normalized
     }
 

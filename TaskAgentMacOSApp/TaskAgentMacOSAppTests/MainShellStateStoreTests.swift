@@ -57,6 +57,7 @@ private final class MockRecordingCaptureService: RecordingCaptureService {
 private final class MockRecordingOverlayService: RecordingOverlayService {
     var shownDisplayIDs: [Int] = []
     var hideCallCount = 0
+    var windowNumber: Int? = nil
 
     func showBorder(displayID: Int) {
         shownDisplayIDs.append(displayID)
@@ -64,6 +65,10 @@ private final class MockRecordingOverlayService: RecordingOverlayService {
 
     func hideBorder() {
         hideCallCount += 1
+    }
+
+    func windowNumberForScreenshotExclusion() -> Int? {
+        windowNumber
     }
 }
 
@@ -920,11 +925,164 @@ struct MainShellStateStoreTests {
             overlayService: MockRecordingOverlayService()
         )
 
-        let saved = store.saveProviderKey("   ", for: .anthropic)
+        let saved = store.saveProviderKey("   ", for: .openAI)
         #expect(!saved)
-        #expect(!store.providerSetupState.hasAnthropicKey)
+        #expect(!store.providerSetupState.hasOpenAIKey)
         #expect(store.apiKeyStatusMessage == nil)
         #expect(store.apiKeyErrorMessage == "API key cannot be empty.")
+    }
+
+    @Test
+    func pinningTaskShowsPinnedOnTop() throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let suiteName = "MainShellStateStoreTests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+
+        let store = MainShellStateStore(
+            taskService: taskService,
+            apiKeyStore: MockAPIKeyStore(),
+            userDefaults: defaults,
+            captureService: MockRecordingCaptureService(),
+            overlayService: MockRecordingOverlayService()
+        )
+
+        let a = try taskService.createTask(title: "Task A")
+        // Ensure a different createdAt ordering.
+        Thread.sleep(forTimeInterval: 0.01)
+        let b = try taskService.createTask(title: "Task B")
+
+        store.reloadTasks()
+        #expect(store.tasks.first?.id == b.id)
+
+        store.togglePinned(taskID: a.id)
+        store.reloadTasks()
+        #expect(store.tasks.first?.id == a.id)
+    }
+
+    @Test
+    func deletingPinnedTaskUnpinsAndRemovesIt() throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let suiteName = "MainShellStateStoreTests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+
+        let store = MainShellStateStore(
+            taskService: taskService,
+            apiKeyStore: MockAPIKeyStore(),
+            userDefaults: defaults,
+            captureService: MockRecordingCaptureService(),
+            overlayService: MockRecordingOverlayService()
+        )
+
+        let task = try taskService.createTask(title: "Task A")
+        store.reloadTasks()
+        store.togglePinned(taskID: task.id)
+        #expect(store.isTaskPinned(task.id))
+
+        store.requestDeleteTask(taskID: task.id)
+        store.confirmDeleteTask()
+
+        store.reloadTasks()
+        #expect(!store.tasks.contains(where: { $0.id == task.id }))
+        #expect(!store.isTaskPinned(task.id))
+    }
+
+    @Test
+    func deletingSelectedTaskReturnsToNewTaskAndClearsState() throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+
+        let store = MainShellStateStore(
+            taskService: taskService,
+            apiKeyStore: MockAPIKeyStore(),
+            captureService: MockRecordingCaptureService(),
+            overlayService: MockRecordingOverlayService()
+        )
+
+        let task = try taskService.createTask(title: "Task A")
+        store.reloadTasks()
+        store.openTask(task.id)
+        #expect(store.route == .task(task.id))
+        #expect(store.selectedTaskID == task.id)
+        #expect(!store.heartbeatMarkdown.isEmpty)
+
+        store.requestDeleteTask(taskID: task.id)
+        store.confirmDeleteTask()
+
+        #expect(store.route == .newTask)
+        #expect(store.selectedTaskID == nil)
+        #expect(store.heartbeatMarkdown.isEmpty)
+    }
+
+    @Test
+    func reopeningTaskLoadsPersistedRunHistory() throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let task = try taskService.createTask(title: "Persisted run history task")
+
+        let started = Date(timeIntervalSince1970: 1_700_000_123)
+        let run = AgentRunRecord(
+            id: UUID(uuidString: "bbbbbbbb-cccc-dddd-eeee-ffffffffffff")!,
+            startedAt: started,
+            finishedAt: started.addingTimeInterval(1),
+            outcome: .failed,
+            displayIndex: 1,
+            events: [
+                AgentRunEvent(
+                    id: UUID(uuidString: "aaaaaaaa-1111-2222-3333-444444444444")!,
+                    timestamp: started,
+                    kind: .error,
+                    message: "Something went wrong"
+                )
+            ]
+        )
+        _ = try taskService.saveAgentRunLog(taskId: task.id, run: run)
+
+        let store = MainShellStateStore(
+            taskService: taskService,
+            apiKeyStore: MockAPIKeyStore(),
+            captureService: MockRecordingCaptureService(),
+            overlayService: MockRecordingOverlayService()
+        )
+
+        store.reloadTasks()
+        store.openTask(task.id)
+        #expect(store.runHistory == [run])
     }
 
     @Test
@@ -966,7 +1124,9 @@ struct MainShellStateStoreTests {
         #expect(store.errorMessage == nil)
         #expect(engine.receivedMarkdowns.count == 1)
         let runFiles = try fm.contentsOfDirectory(at: task.workspace.runsDir, includingPropertiesForKeys: nil)
-        #expect(runFiles.count == 1)
+        // A run writes a human-readable summary plus a persisted structured run log.
+        #expect(runFiles.contains(where: { $0.pathExtension.lowercased() == "md" }))
+        #expect(runFiles.contains(where: { $0.pathExtension.lowercased() == "json" }))
     }
 
     @Test
@@ -1070,6 +1230,7 @@ struct MainShellStateStoreTests {
 
         let engine = BlockingAutomationEngine()
         let overlay = MockAgentControlOverlayService()
+        let borderOverlay = MockRecordingOverlayService()
         let monitor = MockUserInterruptionMonitor()
         let cursorPresentation = MockAgentCursorPresentationService()
 
@@ -1079,7 +1240,7 @@ struct MainShellStateStoreTests {
             apiKeyStore: MockAPIKeyStore(),
             permissionService: AlwaysGrantedPermissionService(),
             captureService: MockRecordingCaptureService(),
-            overlayService: MockRecordingOverlayService(),
+            overlayService: borderOverlay,
             agentControlOverlayService: overlay,
             userInterruptionMonitor: monitor,
             agentCursorPresentationService: cursorPresentation
@@ -1091,6 +1252,7 @@ struct MainShellStateStoreTests {
         store.startRunTaskNow()
         #expect(store.isRunningTask == true)
         #expect(overlay.showCount == 1)
+        #expect(borderOverlay.shownDisplayIDs == [1])
         #expect(monitor.startCount == 1)
         #expect(cursorPresentation.activateCount == 1)
 
@@ -1099,6 +1261,7 @@ struct MainShellStateStoreTests {
 
         #expect(store.runStatusMessage == "Cancelling (Escape pressed)...")
         #expect(overlay.hideCount >= 1)
+        #expect(borderOverlay.hideCallCount >= 1)
         #expect(monitor.stopCount >= 1)
         #expect(cursorPresentation.deactivateCount >= 1)
 
@@ -1136,6 +1299,7 @@ struct MainShellStateStoreTests {
 
         let engine = BlockingAutomationEngine()
         let overlay = MockAgentControlOverlayService()
+        let borderOverlay = MockRecordingOverlayService()
         let monitor = MockUserInterruptionMonitor()
         monitor.shouldStartSucceed = false
         let cursorPresentation = MockAgentCursorPresentationService()
@@ -1146,7 +1310,7 @@ struct MainShellStateStoreTests {
             apiKeyStore: MockAPIKeyStore(),
             permissionService: AlwaysGrantedPermissionService(),
             captureService: MockRecordingCaptureService(),
-            overlayService: MockRecordingOverlayService(),
+            overlayService: borderOverlay,
             agentControlOverlayService: overlay,
             userInterruptionMonitor: monitor,
             agentCursorPresentationService: cursorPresentation
@@ -1158,6 +1322,8 @@ struct MainShellStateStoreTests {
 
         #expect(store.isRunningTask == false)
         #expect(cursorPresentation.activateCount == 1)
+        #expect(borderOverlay.shownDisplayIDs == [1])
+        #expect(borderOverlay.hideCallCount == 1)
         #expect(cursorPresentation.deactivateCount == 1)
         #expect(overlay.showCount == 1)
         #expect(overlay.hideCount == 1)

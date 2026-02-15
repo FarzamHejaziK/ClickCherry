@@ -1,6 +1,6 @@
 # Agent Instructions
 
-- At the beginning of any task, read all the docs in `.docs/` first, except `.docs/legacy_worklog.md` unless historical context is required.
+- Reading docs: do not bulk-read `.docs/` by default. Read only the `.docs/*` files needed for the current request, at the time they become relevant. Avoid reading `.docs/legacy_worklog.md` unless historical context is required.
 - Testing strategy: at each incremental implementation step, verify with both automated code-based tests and manual tests before marking the step complete.
 - Follow the `.docs/` update contract below for file ownership and maintenance rules.
 - Never push changes (run `git push`) unless the user explicitly requests it in the current thread.

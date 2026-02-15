@@ -79,7 +79,6 @@ struct OnboardingStateStoreTests {
 
         store.providerSetupState = ProviderSetupState(
             hasOpenAIKey: true,
-            hasAnthropicKey: false,
             hasGeminiKey: true
         )
 

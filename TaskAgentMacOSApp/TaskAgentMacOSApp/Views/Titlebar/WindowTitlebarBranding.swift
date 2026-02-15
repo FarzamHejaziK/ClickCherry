@@ -32,6 +32,12 @@ struct WindowTitlebarBrandInstaller: NSViewRepresentable {
             window.titleVisibility = .hidden
             window.title = ""
 
+            // Xcode Canvas preview injection can assert/crash when touching some titlebar APIs.
+            // The brand accessory is nice-to-have; skipping it in previews keeps Canvas stable.
+            if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1" {
+                return
+            }
+
             if let existingAccessory = window.titlebarAccessoryViewControllers.first(where: { $0 is ClickCherryTitlebarAccessoryController }) as? ClickCherryTitlebarAccessoryController {
                 accessory = existingAccessory
                 existingAccessory.updateBrandView()

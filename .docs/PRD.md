@@ -149,6 +149,8 @@ Security:
 1. Frontend: SwiftUI app.
 2. Runtime: native execution engine in app process for v1.
 3. LLM layer: direct provider HTTP calls from Swift (provider adapters).
+   - Execution (agentic runs): OpenAI.
+   - Recording understanding (task extraction): Gemini (`gemini-3-flash-preview`).
 4. Scheduler: in-app scheduler for "while-open" jobs.
 5. Automation layer:
    - v1: app-agnostic desktop action execution for common workflows.

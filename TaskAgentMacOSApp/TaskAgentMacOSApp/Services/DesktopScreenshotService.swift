@@ -24,15 +24,19 @@ struct DesktopScreenshotService {
     }
 
     nonisolated static func captureMainDisplayPNG(excludingWindowNumber: Int? = nil) throws -> DesktopScreenshotCapture {
+        try captureMainDisplayPNG(excludingWindowNumbers: excludingWindowNumber.flatMap { [$0] } ?? [])
+    }
+
+    nonisolated static func captureMainDisplayPNG(excludingWindowNumbers: [Int]) throws -> DesktopScreenshotCapture {
         // Quartz window-list capture APIs are deprecated on macOS 14 and removed on macOS 15+.
         // Use ScreenCaptureKit so we can (optionally) exclude our “Agent is running” HUD window
         // from LLM screenshots without hiding it on the user's screen.
         do {
-            return try captureMainDisplayPNGViaScreenCaptureKit(excludingWindowNumber: excludingWindowNumber)
+            return try captureMainDisplayPNGViaScreenCaptureKit(excludingWindowNumbers: excludingWindowNumbers)
         } catch {
             // Fallback: `screencapture` cannot exclude specific windows.
             // If an exclusion was requested, fail closed so the model never sees the HUD overlay.
-            if excludingWindowNumber != nil {
+            if !excludingWindowNumbers.isEmpty {
                 throw error
             }
             // No exclusion required: use `screencapture` as a pragmatic escape hatch.
@@ -40,7 +44,27 @@ struct DesktopScreenshotService {
         }
     }
 
-    nonisolated private static func captureMainDisplayPNGViaScreenCaptureKit(excludingWindowNumber: Int?) throws -> DesktopScreenshotCapture {
+    nonisolated static func captureDisplayPNG(displayID: CGDirectDisplayID, excludingWindowNumber: Int? = nil) throws -> DesktopScreenshotCapture {
+        try captureDisplayPNG(displayID: displayID, excludingWindowNumbers: excludingWindowNumber.flatMap { [$0] } ?? [])
+    }
+
+    nonisolated static func captureDisplayPNG(displayID: CGDirectDisplayID, excludingWindowNumbers: [Int]) throws -> DesktopScreenshotCapture {
+        do {
+            return try captureDisplayPNGViaScreenCaptureKit(displayID: displayID, excludingWindowNumbers: excludingWindowNumbers)
+        } catch {
+            // Fallback: `screencapture` cannot exclude specific windows.
+            // If an exclusion was requested, fail closed so the model never sees the HUD overlay.
+            if !excludingWindowNumbers.isEmpty {
+                throw error
+            }
+
+            // Best-effort: map CGDirectDisplayID back to a `screencapture -D` index.
+            let displayIndex = ScreenDisplayIndexService.screencaptureDisplayIndex(for: displayID)
+            return try capturePNGViaScreencapture(displayIndex: displayIndex)
+        }
+    }
+
+    nonisolated private static func captureMainDisplayPNGViaScreenCaptureKit(excludingWindowNumbers: [Int]) throws -> DesktopScreenshotCapture {
         let mainDisplayID = CGMainDisplayID()
 
         let content = try loadShareableContent(onScreenOnly: true)
@@ -50,10 +74,10 @@ struct DesktopScreenshotService {
 
         // Best-effort: exclude the overlay window if we can find it in the shareable window list.
         var excludedWindows: [SCWindow] = []
-        if let excludingWindowNumber, excludingWindowNumber > 0 {
-            let targetID = CGWindowID(excludingWindowNumber)
+        for windowNumber in excludingWindowNumbers where windowNumber > 0 {
+            let targetID = CGWindowID(windowNumber)
             if let match = content.windows.first(where: { $0.windowID == targetID }) {
-                excludedWindows = [match]
+                excludedWindows.append(match)
             }
         }
 
@@ -66,6 +90,39 @@ struct DesktopScreenshotService {
         config.width = size_t(max(1, display.width))
         config.height = size_t(max(1, display.height))
         // Include the cursor so hover/mouse-position tasks can be grounded visually.
+        config.showsCursor = true
+
+        let cgImage = try captureImage(filter: filter, config: config)
+        let pngData = try encodePNG(cgImage: cgImage)
+
+        return DesktopScreenshotCapture(
+            pngData: pngData,
+            width: cgImage.width,
+            height: cgImage.height
+        )
+    }
+
+    nonisolated private static func captureDisplayPNGViaScreenCaptureKit(displayID: CGDirectDisplayID, excludingWindowNumbers: [Int]) throws -> DesktopScreenshotCapture {
+        let content = try loadShareableContent(onScreenOnly: true)
+        guard let display = content.displays.first(where: { $0.displayID == displayID }) else {
+            throw DesktopScreenshotServiceError.captureFailed
+        }
+
+        // Best-effort: exclude the overlay window if we can find it in the shareable window list.
+        var excludedWindows: [SCWindow] = []
+        for windowNumber in excludingWindowNumbers where windowNumber > 0 {
+            let targetID = CGWindowID(windowNumber)
+            if let match = content.windows.first(where: { $0.windowID == targetID }) {
+                excludedWindows.append(match)
+            }
+        }
+
+        let filter = SCContentFilter(display: display, excludingWindows: excludedWindows)
+
+        let config = SCStreamConfiguration()
+        config.captureResolution = .nominal
+        config.width = size_t(max(1, display.width))
+        config.height = size_t(max(1, display.height))
         config.showsCursor = true
 
         let cgImage = try captureImage(filter: filter, config: config)
@@ -160,6 +217,10 @@ struct DesktopScreenshotService {
     }
 
     nonisolated private static func captureMainDisplayPNGViaScreencapture() throws -> DesktopScreenshotCapture {
+        try capturePNGViaScreencapture(displayIndex: nil)
+    }
+
+    nonisolated private static func capturePNGViaScreencapture(displayIndex: Int?) throws -> DesktopScreenshotCapture {
         let tempURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("taskagent-screenshot-\(UUID().uuidString)")
             .appendingPathExtension("png")
@@ -167,7 +228,12 @@ struct DesktopScreenshotService {
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
-        process.arguments = ["-x", "-C", "-t", "png", tempURL.path]
+        var args = ["-x", "-C", "-t", "png"]
+        if let displayIndex, displayIndex > 0 {
+            args.append(contentsOf: ["-D", "\(displayIndex)"])
+        }
+        args.append(tempURL.path)
+        process.arguments = args
 
         do {
             try process.run()

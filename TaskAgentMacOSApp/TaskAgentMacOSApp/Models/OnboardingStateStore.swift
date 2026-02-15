@@ -227,8 +227,6 @@ final class OnboardingStateStore {
         switch provider {
         case .openAI:
             providerSetupState.hasOpenAIKey = saved
-        case .anthropic:
-            providerSetupState.hasAnthropicKey = saved
         case .gemini:
             providerSetupState.hasGeminiKey = saved
         }
@@ -237,7 +235,6 @@ final class OnboardingStateStore {
     private static func loadProviderSetupState(from keyStore: any APIKeyStore) -> ProviderSetupState {
         ProviderSetupState(
             hasOpenAIKey: keyStore.hasKey(for: .openAI),
-            hasAnthropicKey: keyStore.hasKey(for: .anthropic),
             hasGeminiKey: keyStore.hasKey(for: .gemini)
         )
     }
