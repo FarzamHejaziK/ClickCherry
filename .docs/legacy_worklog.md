@@ -3490,3 +3490,20 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - Complete.
 - Issues/blockers:
   - None.
+
+## Entry
+- Date: 2026-02-15
+- Step: Bugfix: Deleting the currently-open task returns to a clean New Task state
+- Changes made:
+  - Fixed delete-task flow to always reset the UI when deleting the currently-open task (selection is captured before `reloadTasks()` clears it):
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
+  - Added unit test coverage for deleting the selected task:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-pin-delete CODE_SIGNING_ALLOWED=NO test -only-testing:TaskAgentMacOSAppTests` (pass).
+- Manual tests run:
+  - Pending user-side confirmation.
+- Result:
+  - Complete (pending user-side manual confirmation).
+- Issues/blockers:
+  - None.

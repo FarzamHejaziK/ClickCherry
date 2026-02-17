@@ -61,7 +61,6 @@ jobs:
             --sign "Developer ID Application: Farzam Hejazikookamari (QKN8WTSJYG)" \
             "$APP_PATH"
           codesign --verify --deep --strict --verbose=2 "$APP_PATH"
-          spctl --assess --type execute --verbose=4 "$APP_PATH"
 
       - name: Package app for notarization
         run: |
@@ -93,6 +92,7 @@ jobs:
           fi
           xcrun stapler staple "$APP_PATH"
           xcrun stapler validate "$APP_PATH"
+          spctl --assess --type execute --verbose=4 "$APP_PATH"
           ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" ClickCherry-macos.zip
 
       - name: Upload release artifact

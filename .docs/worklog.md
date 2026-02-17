@@ -8,6 +8,22 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-17
+- Step: Release workflow fix: avoid pre-notarization Gatekeeper failure
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`:
+    - removed `spctl --assess` from the post-sign/pre-notarization step.
+    - added `spctl --assess` after notarization + stapling, where Gatekeeper validation is expected to pass.
+- Automated tests run:
+  - N/A (workflow-only change).
+- Manual tests run:
+  - N/A (pending rerun of GitHub `Release` workflow).
+- Result:
+  - Complete (pending CI rerun).
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-17
 - Step: CI/release fix: resolve MainActor isolation build failure in `MainShellStateStore`
 - Changes made:
   - Marked run entry points as MainActor-isolated to satisfy Swift concurrency checks in CI:
@@ -222,23 +238,6 @@ description: Running implementation log of completed work, test evidence, blocke
     - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
 - Automated tests run:
   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-accentwine -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
-- Manual tests run:
-  - Pending user-side confirmation.
-- Result:
-  - Complete (pending user-side manual confirmation).
-- Issues/blockers:
-  - None.
-
-## Entry
-- Date: 2026-02-15
-- Step: Bugfix: Deleting the currently-open task returns to a clean New Task state
-- Changes made:
-  - Fixed delete-task flow to always reset the UI when deleting the currently-open task (selection is captured before `reloadTasks()` clears it):
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
-  - Added unit test coverage for deleting the selected task:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-pin-delete CODE_SIGNING_ALLOWED=NO test -only-testing:TaskAgentMacOSAppTests` (pass).
 - Manual tests run:
   - Pending user-side confirmation.
 - Result:
