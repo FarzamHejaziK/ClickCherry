@@ -866,6 +866,7 @@ final class MainShellStateStore {
         extractingRecordingID = nil
     }
 
+    @MainActor
     func startRunTaskNow() {
         guard let selectedTaskID else {
             return
@@ -939,6 +940,7 @@ final class MainShellStateStore {
         }
     }
 
+    @MainActor
     func runTaskNow() async {
         guard let selectedTaskID else {
             return

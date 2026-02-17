@@ -1086,6 +1086,7 @@ struct MainShellStateStoreTests {
     }
 
     @Test
+    @MainActor
     func runTaskNowSuccessPersistsRunSummary() async throws {
         let fm = FileManager.default
         let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -1130,6 +1131,7 @@ struct MainShellStateStoreTests {
     }
 
     @Test
+    @MainActor
     func runTaskNowPreparesDesktopBeforeExecution() async throws {
         let fm = FileManager.default
         let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -1171,10 +1173,19 @@ struct MainShellStateStoreTests {
         await store.runTaskNow()
 
         #expect(prepareCalls == 1)
-        #expect(store.executionTrace.contains(where: { $0.message.contains("Prepared screen by hiding 3 running app(s).") }))
+        var sawPrepareTrace = store.executionTrace.contains(where: { $0.message.contains("Prepared screen by hiding 3 running app(s).") })
+        if !sawPrepareTrace {
+            for _ in 0..<20 {
+                await Task.yield()
+                sawPrepareTrace = store.executionTrace.contains(where: { $0.message.contains("Prepared screen by hiding 3 running app(s).") })
+                if sawPrepareTrace { break }
+            }
+        }
+        #expect(sawPrepareTrace)
     }
 
     @Test
+    @MainActor
     func runTaskNowNeedsClarificationAppendsQuestionsToHeartbeat() async throws {
         let fm = FileManager.default
         let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -1215,6 +1226,7 @@ struct MainShellStateStoreTests {
     }
 
     @Test
+    @MainActor
     func startRunTaskNowShowsOverlayAndCancelsOnEscapeKey() async throws {
         let fm = FileManager.default
         let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -1284,6 +1296,7 @@ struct MainShellStateStoreTests {
     }
 
     @Test
+    @MainActor
     func startRunTaskNowMonitorFailureRestoresCursorSize() throws {
         let fm = FileManager.default
         let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)

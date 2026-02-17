@@ -8,6 +8,28 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-17
+- Step: CI/release fix: resolve MainActor isolation build failure in `MainShellStateStore`
+- Changes made:
+  - Marked run entry points as MainActor-isolated to satisfy Swift concurrency checks in CI:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
+      - `startRunTaskNow()` -> `@MainActor`
+      - `runTaskNow()` -> `@MainActor`
+  - Updated tests for actor isolation and removed flaky trace-race behavior:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
+      - added `@MainActor` to run-related tests calling `runTaskNow()` / `startRunTaskNow()`
+      - made `runTaskNowPreparesDesktopBeforeExecution` wait for async trace propagation before asserting
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-fix-mainactor-one -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests/runTaskNowPreparesDesktopBeforeExecution CODE_SIGNING_ALLOWED=NO test` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-fix-mainactor-5 -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - N/A (CI regression fix in code/tests).
+- Result:
+  - Complete.
+- Issues/blockers:
+  - Existing non-blocking warnings remain in CI logs (deployment-target/warning-level items) but do not block build.
+
+## Entry
+- Date: 2026-02-17
 - Step: Release workflow: enable real Developer ID signing + notarization + stapling
 - Changes made:
   - Updated release workflow to perform real signed/notarized packaging:
@@ -221,39 +243,6 @@ description: Running implementation log of completed work, test evidence, blocke
   - Pending user-side confirmation.
 - Result:
   - Complete (pending user-side manual confirmation).
-- Issues/blockers:
-  - None.
-
-## Entry
-- Date: 2026-02-15
-- Step: Runtime: Remove Anthropic provider; use OpenAI for agentic runs and Gemini 3 Flash for extraction
-- Changes made:
-  - Removed Anthropic provider support end-to-end (execution engine + tests + provider selection plumbing):
-    - Deleted `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AnthropicAutomationEngine.swift`.
-    - Deleted `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/ProviderRoutingAutomationEngine.swift`.
-    - Deleted `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/AnthropicAutomationEngineTests.swift`.
-    - Deleted `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/AnthropicComputerUseRunnerTests.swift`.
-    - Updated provider/key models so only `OpenAI` and `Gemini` remain:
-      - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/Protocols.swift`
-      - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OnboardingPersistence.swift`
-      - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/OnboardingStateStore.swift`
-      - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
-  - Restored the shared desktop action executor types (moved out of the deleted Anthropic file):
-    - Added `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/DesktopActionExecutor.swift`.
-  - Removed OpenAI screenshot capture dependency on Anthropic helpers:
-    - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomationEngine.swift` to capture screenshots directly via `DesktopScreenshotService`.
-  - Switched task-extraction model configuration from Gemini Pro to Gemini Flash:
-    - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/task_extraction/config.yaml` to `llm: gemini-3-flash` (mapped to `gemini-3-flash-preview` at runtime).
-    - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/GeminiVideoLLMClient.swift` to map `gemini-3-flash` -> `gemini-3-flash-preview`.
-  - Updated docs:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/PRD.md`
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" CODE_SIGNING_ALLOWED=NO build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSAppTests -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
-- Manual tests run:
-  - N/A.
-- Result:
-  - Complete.
 - Issues/blockers:
   - None.
 
