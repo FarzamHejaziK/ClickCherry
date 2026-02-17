@@ -20,35 +20,32 @@ description: Testing guidance for TaskAgentMacOSApp, including local commands an
 
 ## Recommended local test commands
 
-Unit tests only:
+CI-exact build command:
 
 ```bash
 xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj \
   -scheme TaskAgentMacOSApp \
-  -destination "platform=macOS" \
-  -derivedDataPath /tmp/taskagent-dd-local \
+  -destination "platform=macOS,arch=arm64" \
+  -derivedDataPath /tmp/taskagent-dd-ci-build \
+  CODE_SIGNING_ALLOWED=NO build
+```
+
+CI-exact unit-test command:
+
+```bash
+xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj \
+  -scheme TaskAgentMacOSApp \
+  -destination "platform=macOS,arch=arm64" \
+  -derivedDataPath /tmp/taskagent-dd-ci-test \
+  -parallel-testing-enabled NO \
   -only-testing:TaskAgentMacOSAppTests \
   CODE_SIGNING_ALLOWED=NO test
 ```
 
-Full test suite:
+Optional: force a specific Xcode when multiple versions are installed.
 
 ```bash
-xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj \
-  -scheme TaskAgentMacOSApp \
-  -destination "platform=macOS" \
-  -derivedDataPath /tmp/taskagent-dd-local \
-  CODE_SIGNING_ALLOWED=NO test
-```
-
-Build only:
-
-```bash
-xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj \
-  -scheme TaskAgentMacOSApp \
-  -destination "platform=macOS" \
-  -derivedDataPath /tmp/taskagent-dd-local \
-  CODE_SIGNING_ALLOWED=NO build
+DEVELOPER_DIR=/Applications/Xcode_16.4.app/Contents/Developer xcodebuild ...
 ```
 
 ## Operational notes
@@ -56,5 +53,6 @@ xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacO
 - Use a dedicated `-derivedDataPath` to avoid permission or lock conflicts.
 - Avoid running multiple `xcodebuild` commands concurrently against the same DerivedData path.
 - If you hit stale lock issues, remove the chosen DerivedData directory and rerun.
+- CI currently runs with Xcode 16.4; command parity alone does not guarantee result parity if local Xcode is different.
 - Unit tests run inside an XCTest host app process. To avoid macOS Keychain popups during test runs, `KeychainAPIKeyStore` automatically uses in-memory storage when `XCTestConfigurationFilePath` is present.
 - Runtime behavior is unchanged outside XCTest: provider keys are still read/written in macOS Keychain.

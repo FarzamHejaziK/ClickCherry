@@ -8,6 +8,45 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-17
+- Step: CI test-flake hardening for Gemini request assertions and staged-recording extraction race
+- Changes made:
+  - Updated test `GeminiVideoLLMClientTests.analyzeVideoUploadsPollsAndGeneratesExtractionOutput` to assert request details in test context (after run) instead of inside URLProtocol callback context, and to decode JSON request body for `file_uri` verification:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/GeminiVideoLLMClientTests.swift`
+  - Updated `BlockingStoreLLMClient` test double to buffer early `finish` / `fail` results when continuation is not yet registered, removing timing-sensitive drop behavior:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
+  - Updated issue tracking and queue docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test-fix-full -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass; 69 tests).
+- Manual tests run:
+  - Manual local verification of command parity and deterministic test behavior by reviewing `xcodebuild` run output and confirming the previously failing test names now pass in the CI-equivalent run.
+- Result:
+  - Complete (local).
+- Issues/blockers:
+  - GitHub CI rerun is still required to confirm runner-side stability with Xcode 16.4.
+
+## Entry
+- Date: 2026-02-17
+- Step: Local CI-parity verification using exact CI command flags
+- Changes made:
+  - Ran the same build/test command shape used by GitHub CI from `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/ci.yml`.
+  - Updated local testing guidance so CI-exact commands are the default documented reproduction path:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/testing.md`
+  - Updated execution queue to track CI/local mismatch follow-up:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-build CODE_SIGNING_ALLOWED=NO build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - N/A (command parity/documentation update).
+- Result:
+  - Complete.
+- Issues/blockers:
+  - Local machine has `/Applications/Xcode.app` (Xcode 26.2), while CI log indicates Xcode 16.4. Command parity is now exact; toolchain parity is still pending.
+
+## Entry
+- Date: 2026-02-17
 - Step: CI stabilization: serialize unit tests to reduce flakiness on GitHub runner
 - Changes made:
   - Updated GitHub CI workflow test invocation:
@@ -185,53 +224,6 @@ description: Running implementation log of completed work, test evidence, blocke
     - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
 - Automated tests run:
   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-primarybutton CODE_SIGNING_ALLOWED=NO test -only-testing:TaskAgentMacOSAppTests` (pass).
-- Manual tests run:
-  - Pending user-side confirmation.
-- Result:
-  - Complete (pending user-side manual confirmation).
-- Issues/blockers:
-  - None.
-
-## Entry
-- Date: 2026-02-15
-- Step: UI polish: Reduce sidebar red tint (match right column)
-- Changes made:
-  - Reduced the left-column accent tint strength to better match the subtler right-column theme:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/MainShellSidebarView.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/MainShellBackdropView.swift`
-  - Updated docs:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-sidebar-tint -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
-- Manual tests run:
-  - Pending user-side confirmation.
-- Result:
-  - Complete (pending user-side manual confirmation).
-- Issues/blockers:
-  - None.
-
-## Entry
-- Date: 2026-02-15
-- Step: Feature: Persist per-task run logs (Runs survive relaunch)
-- Changes made:
-  - Persisted structured run logs under each task workspace `runs/` directory and load them on task open:
-    - Added `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/AgentRunModels.swift`.
-    - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/Protocols.swift` so `AutomationRunOutcome` is `Codable` for run-log persistence.
-    - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/TaskService.swift`:
-      - `saveAgentRunLog(taskId:run:)` writes `agent-run-*.json`
-      - `listAgentRunLogs(taskId:)` loads persisted logs (newest first)
-    - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`:
-      - load run history per task (`loadSelectedTaskRunHistory()`),
-      - clear run history on `New Task`,
-      - persist the finished run log at the end of each run.
-  - Updated tests:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/TaskServiceTests.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
-  - Updated docs:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-runpersist4 CODE_SIGNING_ALLOWED=NO build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-runpersist-tests2 -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
 - Manual tests run:
   - Pending user-side confirmation.
 - Result:

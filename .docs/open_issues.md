@@ -257,6 +257,33 @@ description: Active unresolved issues with concrete repro details, mitigation, a
 
 # Closed Issues
 
+## Issue OI-2026-02-17-011
+- Issue ID: OI-2026-02-17-011
+- Title: CI unit tests intermittently fail in Gemini and staged-recording extraction flows
+- Status: Closed
+- Severity: High
+- First Seen: 2026-02-17
+- Scope:
+  - Affects `TaskAgentMacOSAppTests` in CI for:
+    - `GeminiVideoLLMClientTests.analyzeVideoUploadsPollsAndGeneratesExtractionOutput()`
+    - `MainShellStateStoreTests.extractFromFinishedRecordingCreatesTaskOnlyAfterExtractionReturns()`
+- Repro Steps:
+  1. Run CI-equivalent unit tests with `-parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests`.
+  2. Observe intermittent failure modes from assertion context and continuation timing.
+- Observed:
+  - Gemini test could record assertion issues from URLProtocol callback context (`unknown` issue context in Swift Testing).
+  - Staged recording extraction test could race when `finish(with:)` was called before `BlockingStoreLLMClient` continuation was set.
+- Expected:
+  - Deterministic unit tests that assert request payloads and staged extraction completion without callback-context assertion traps or dropped completions.
+- Current Mitigation:
+  - Gemini test now validates captured requests in test context after execution and decodes request JSON to verify `file_uri`, avoiding callback-context assertions.
+  - `BlockingStoreLLMClient` now buffers pending `finish`/`fail` outcomes if called before continuation registration, eliminating timing race drops.
+- Next Action:
+  - Monitor next GitHub CI runs for stability on the same test cases.
+- Owner: Codex
+- Resolution Date: 2026-02-17
+- Resolution Summary: Applied deterministic test fixes and reran CI-equivalent unit test command locally (`TaskAgentMacOSAppTests`), which passed with 69/69 tests.
+
 ## Issue OI-2026-02-08-002
 - Issue ID: OI-2026-02-08-002
 - Title: Gemini extraction fails when file poll endpoint returns top-level file object

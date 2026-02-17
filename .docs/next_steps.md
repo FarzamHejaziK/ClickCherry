@@ -4,6 +4,23 @@ description: Short, continuously updated plan of the immediate next implementati
 
 # Next Steps
 
+1. Step: CI-local parity verification with CI command shape (completed).
+2. Why now: Recent CI failures needed reproducible local evidence using the same `xcodebuild` flags and target selection as `.github/workflows/ci.yml`.
+3. Code tasks:
+   - Keep local verification commands aligned to CI:
+     - build: `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-build CODE_SIGNING_ALLOWED=NO build` (Completed locally)
+     - tests: `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (Completed locally)
+   - Added deterministic test fixes for:
+     - `GeminiVideoLLMClientTests.analyzeVideoUploadsPollsAndGeneratesExtractionOutput`
+     - `MainShellStateStoreTests.extractFromFinishedRecordingCreatesTaskOnlyAfterExtractionReturns` (Completed locally)
+   - Rerun GitHub CI and compare runner `.xcresult` with local logs only if failures persist. (Pending)
+4. Automated tests:
+   - Build command above (pass on 2026-02-17 local run).
+   - Test command above (pass on 2026-02-17 local run).
+5. Manual tests:
+   - N/A (command parity + log verification task).
+6. Exit criteria: CI and local use identical command shape, deterministic local failures are addressed, and the next GitHub CI run confirms green.
+
 1. Step: Open-source baseline rollout and launch hardening (active).
 2. Why now: The repository now has a concrete OSS strategy (MIT + DCO + owner review authority) and needs immediate launch-ready follow-through.
 3. Code tasks:

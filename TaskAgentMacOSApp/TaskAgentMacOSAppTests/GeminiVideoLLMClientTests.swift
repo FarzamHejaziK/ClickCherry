@@ -118,9 +118,6 @@ struct GeminiVideoLLMClientTests {
 
         let uploadSessionURL = URL(string: "https://upload.example/session-1")!
         QueueURLProtocol.enqueue { request in
-            #expect(request.url?.path == "/upload/v1beta/files")
-            #expect(request.value(forHTTPHeaderField: "X-Goog-Upload-Protocol") == "resumable")
-            #expect(request.value(forHTTPHeaderField: "X-Goog-Upload-Command") == "start")
             let response = Self.httpResponse(
                 url: request.url!,
                 statusCode: 200,
@@ -129,8 +126,6 @@ struct GeminiVideoLLMClientTests {
             return (response, Data())
         }
         QueueURLProtocol.enqueue { request in
-            #expect(request.url == uploadSessionURL)
-            #expect(request.value(forHTTPHeaderField: "X-Goog-Upload-Command") == "upload, finalize")
             let body = """
             {"file":{"name":"files/mock-video","uri":"https://files.example/mock-video","state":"PROCESSING"}}
             """
@@ -138,7 +133,6 @@ struct GeminiVideoLLMClientTests {
             return (response, Data(body.utf8))
         }
         QueueURLProtocol.enqueue { request in
-            #expect(request.url?.path == "/v1beta/files/mock-video")
             let body = """
             {"name":"files/mock-video","uri":"https://files.example/mock-video","state":"ACTIVE"}
             """
@@ -146,10 +140,6 @@ struct GeminiVideoLLMClientTests {
             return (response, Data(body.utf8))
         }
         QueueURLProtocol.enqueue { request in
-            #expect(request.url?.path == "/v1beta/models/gemini-3-pro-preview:generateContent")
-            let requestBody = Self.requestBodyString(from: request)
-            #expect(requestBody?.contains("Extract the task from this video.") == true)
-            #expect(requestBody?.contains("https://files.example/mock-video") == true)
             let body = """
             {"candidates":[{"content":{"parts":[{"text":"# Task\\nTaskDetected: true\\nStatus: TASK_FOUND\\nNoTaskReason: NONE\\nTitle: Submit expenses\\nGoal: Submit monthly expenses\\nAppsObserved:\\n- Browser\\n\\n## Questions\\n- None."}]}}]}
             """
@@ -180,7 +170,25 @@ struct GeminiVideoLLMClientTests {
 
         #expect(result.contains("# Task"))
         #expect(result.contains("TaskDetected: true"))
-        #expect(QueueURLProtocol.capturedRequests.count == 4)
+        let capturedRequests = QueueURLProtocol.capturedRequests
+        #expect(capturedRequests.count == 4)
+
+        let uploadStartRequest = capturedRequests[0]
+        #expect(uploadStartRequest.url?.path == "/upload/v1beta/files")
+        #expect(uploadStartRequest.value(forHTTPHeaderField: "X-Goog-Upload-Protocol") == "resumable")
+        #expect(uploadStartRequest.value(forHTTPHeaderField: "X-Goog-Upload-Command") == "start")
+
+        let uploadBodyRequest = capturedRequests[1]
+        #expect(uploadBodyRequest.url == uploadSessionURL)
+        #expect(uploadBodyRequest.value(forHTTPHeaderField: "X-Goog-Upload-Command") == "upload, finalize")
+
+        let pollRequest = capturedRequests[2]
+        #expect(pollRequest.url?.path == "/v1beta/files/mock-video")
+
+        let generateRequest = capturedRequests[3]
+        #expect(generateRequest.url?.path == "/v1beta/models/gemini-3-pro-preview:generateContent")
+        #expect(Self.requestBodyString(from: generateRequest)?.contains("Extract the task from this video.") == true)
+        #expect(Self.requestIncludesFileURI(generateRequest, expectedURI: "https://files.example/mock-video"))
     }
 
     @Test
@@ -257,8 +265,15 @@ struct GeminiVideoLLMClientTests {
     }
 
     private static func requestBodyString(from request: URLRequest) -> String? {
+        guard let data = requestBodyData(from: request) else {
+            return nil
+        }
+        return String(data: data, encoding: .utf8)
+    }
+
+    private static func requestBodyData(from request: URLRequest) -> Data? {
         if let body = request.httpBody {
-            return String(data: body, encoding: .utf8)
+            return body
         }
         guard let stream = request.httpBodyStream else {
             return nil
@@ -286,7 +301,20 @@ struct GeminiVideoLLMClientTests {
         if data.isEmpty {
             return nil
         }
-        return String(data: data, encoding: .utf8)
+        return data
+    }
+
+    private static func requestIncludesFileURI(_ request: URLRequest, expectedURI: String) -> Bool {
+        guard let bodyData = requestBodyData(from: request) else {
+            return false
+        }
+        guard let payload = try? JSONDecoder().decode(GenerateContentRequestProbe.self, from: bodyData) else {
+            return false
+        }
+        return payload.contents
+            .flatMap(\.parts)
+            .compactMap { $0.fileData?.fileURI }
+            .contains(expectedURI)
     }
 
     private func makeSession() -> URLSession {
@@ -299,5 +327,29 @@ struct GeminiVideoLLMClientTests {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         return root
+    }
+
+    private struct GenerateContentRequestProbe: Decodable {
+        struct Content: Decodable {
+            struct Part: Decodable {
+                struct FileData: Decodable {
+                    let fileURI: String
+
+                    enum CodingKeys: String, CodingKey {
+                        case fileURI = "file_uri"
+                    }
+                }
+
+                let fileData: FileData?
+
+                enum CodingKeys: String, CodingKey {
+                    case fileData = "file_data"
+                }
+            }
+
+            let parts: [Part]
+        }
+
+        let contents: [Content]
     }
 }

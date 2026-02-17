@@ -92,6 +92,8 @@ private final class BlockingStoreLLMClient: LLMClient {
     private let lock = NSLock()
     private var continuation: CheckedContinuation<String, Error>?
     private var shouldThrowNotConfigured = false
+    private var pendingOutput: String?
+    private var pendingError: Error?
 
     func setNotConfigured(_ value: Bool) {
         lock.lock()
@@ -109,6 +111,18 @@ private final class BlockingStoreLLMClient: LLMClient {
 
         return try await withCheckedThrowingContinuation { (cont: CheckedContinuation<String, Error>) in
             lock.lock()
+            if let error = pendingError {
+                pendingError = nil
+                lock.unlock()
+                cont.resume(throwing: error)
+                return
+            }
+            if let output = pendingOutput {
+                pendingOutput = nil
+                lock.unlock()
+                cont.resume(returning: output)
+                return
+            }
             continuation = cont
             lock.unlock()
         }
@@ -118,6 +132,10 @@ private final class BlockingStoreLLMClient: LLMClient {
         lock.lock()
         let cont = continuation
         continuation = nil
+        if cont == nil {
+            pendingOutput = output
+            pendingError = nil
+        }
         lock.unlock()
         cont?.resume(returning: output)
     }
@@ -126,6 +144,10 @@ private final class BlockingStoreLLMClient: LLMClient {
         lock.lock()
         let cont = continuation
         continuation = nil
+        if cont == nil {
+            pendingError = error
+            pendingOutput = nil
+        }
         lock.unlock()
         cont?.resume(throwing: error)
     }
