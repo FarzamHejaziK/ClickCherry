@@ -1,23 +1,44 @@
 # Task Agent macOS
 
-Fully native macOS app for learning and replaying desktop tasks from recordings.
+Task Agent macOS is a native macOS app for learning and replaying desktop tasks from recordings.
 
-## Stack
-- Swift
-- SwiftUI
-- Local-first storage
+## Open Source Baseline
 
-## Initial Scope
-- Import workflow recording (`.mp4`)
-- Generate task spec (`HEARTBEAT.md`)
-- Clarification loop (`## Questions`)
-- Local scheduled runs (while app is open)
+This repository is open source and contribution-ready.
+
+- License: MIT (`/LICENSE`)
+- Contributions: welcomed via pull requests (`/CONTRIBUTING.md`)
+- DCO required on commits (`git commit -s`)
+- Conduct expectations: `/CODE_OF_CONDUCT.md`
+- Security reporting policy: `/SECURITY.md`
+- Governance and review authority: `/GOVERNANCE.md`, `/MAINTAINERS.md`
+- Brand/trademark usage: `/TRADEMARK.md`
+
+## Public Documentation
+
+- `/docs/README.md`
+- `/docs/getting-started.md`
+- `/docs/development.md`
+- `/docs/architecture.md`
+- `/docs/release-process.md`
+
+## Internal Maintainer Docs
+
+Internal planning and implementation logs are in `/.docs/`.
 
 ## Project Layout
-- `app/` SwiftUI app source
-- `docs/` product and architecture docs
 
-## Next Steps
-1. Create Xcode SwiftUI app target.
-2. Add permissions preflight (Screen Recording, Accessibility, Automation).
-3. Implement task import + task spec generation flow.
+- `TaskAgentMacOSApp/`: Swift app code and tests
+- `docs/`: public contributor documentation
+- `.docs/`: internal maintainers' planning and work tracking
+- `.github/`: CI, release, PR, and issue workflows/templates
+
+## Quick Build
+
+```bash
+xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj \
+  -scheme TaskAgentMacOSApp \
+  -destination "platform=macOS" \
+  -derivedDataPath /tmp/taskagent-dd-local \
+  CODE_SIGNING_ALLOWED=NO build
+```

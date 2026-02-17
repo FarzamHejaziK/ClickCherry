@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: |
+          xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj \
+            -scheme TaskAgentMacOSApp \
+            -destination "platform=macOS" \
+            -derivedDataPath /tmp/taskagent-dd-ci-build \
+            CODE_SIGNING_ALLOWED=NO build
+      - name: Unit Tests
+        run: |
+          xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj \
+            -scheme TaskAgentMacOSApp \
+            -destination "platform=macOS" \
+            -derivedDataPath /tmp/taskagent-dd-ci-test \
+            -only-testing:TaskAgentMacOSAppTests \
+            CODE_SIGNING_ALLOWED=NO test

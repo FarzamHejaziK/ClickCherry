@@ -4,6 +4,21 @@ description: Short, continuously updated plan of the immediate next implementati
 
 # Next Steps
 
+1. Step: Open-source baseline rollout and launch hardening (active).
+2. Why now: The repository now has a concrete OSS strategy (MIT + DCO + owner review authority) and needs immediate launch-ready follow-through.
+3. Code tasks:
+   - Configure GitHub branch protection to require PRs, passing checks (`CI`, `DCO`), and owner/code-owner review. (Pending)
+   - Configure release signing/notarization secrets and wire signed artifact steps in release workflow. (Pending)
+   - Publish initial launch issues/labels (`good first issue`, `help wanted`, `documentation`). (Pending)
+   - Keep `/docs/` contributor guides current as onboarding/release flows evolve. (In progress)
+   - Keep `/.docs/open_source.md` as the strategy source of truth for OSS decisions and tradeoffs. (In progress)
+4. Automated tests:
+   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-oss-baseline -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test`
+5. Manual tests:
+   - Review `/README.md` and `/docs/*` as a new contributor and confirm setup/release/contribution flow is clear.
+   - Review governance and policy docs (`/CONTRIBUTING.md`, `/GOVERNANCE.md`, `/SECURITY.md`) for consistency with the locked strategy.
+6. Exit criteria: Repo can accept external PRs with clear governance, contribution process, and release documentation; pending secrets/branch rules are explicitly tracked.
+
 1. Step: UI/UX: New Task recording controls (multi-display + mic + Escape-to-stop) (active).
 2. Why now: User wants `New Task` to show available displays only when multiple displays exist, allow microphone selection, and keep the UI out of the way while still being easy to stop (Escape + HUD).
 3. Code tasks:

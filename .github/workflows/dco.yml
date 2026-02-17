@@ -1,0 +1,38 @@
+name: DCO
+
+on:
+  pull_request:
+
+jobs:
+  dco-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate Signed-off-by trailers
+        run: |
+          set -euo pipefail
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          COMMITS=$(git rev-list --no-merges "${BASE_SHA}..${HEAD_SHA}")
+          if [ -z "${COMMITS}" ]; then
+            echo "No commits to validate."
+            exit 0
+          fi
+
+          FAILED=0
+          for c in ${COMMITS}; do
+            AUTHOR_NAME=$(git show -s --format='%an' "$c")
+            AUTHOR_EMAIL=$(git show -s --format='%ae' "$c")
+            if ! git show -s --format='%B' "$c" | grep -Ei "^Signed-off-by: ${AUTHOR_NAME} <${AUTHOR_EMAIL}>$" >/dev/null; then
+              echo "Missing or mismatched Signed-off-by for commit: $c"
+              echo "Expected: Signed-off-by: ${AUTHOR_NAME} <${AUTHOR_EMAIL}>"
+              FAILED=1
+            fi
+          done
+
+          if [ "$FAILED" -ne 0 ]; then
+            echo "DCO check failed. Use: git commit -s"
+            exit 1
+          fi

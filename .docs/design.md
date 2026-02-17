@@ -430,3 +430,23 @@ This means: if the agent still has unresolved questions, should execution stop o
 - Provider key presence checks should avoid repeated per-provider Keychain round-trips at startup.
 - `KeychainAPIKeyStore.hasKey` must use a single service-level lookup with in-process caching to reduce repeated OS keychain prompts.
 - Secure key read/write behavior is unchanged: values remain in macOS Keychain outside XCTest.
+
+## Open-source governance and release policy (locked: 2026-02-16)
+
+- Repository host:
+  - GitHub (`FarzamHejaziK/task-agent-macos`)
+- License:
+  - MIT
+- Contribution legal attestation:
+  - DCO required for all commits (`Signed-off-by` trailers)
+  - no CLA in current phase
+- Governance:
+  - BDFL-style owner final authority
+  - owner approval required before merge to `main`
+  - full-path owner coverage in `CODEOWNERS` until maintainers are introduced
+- Documentation split:
+  - public contributor docs in `/docs/`
+  - internal planning/process docs in `/.docs/`
+- Release model:
+  - GitHub Releases from semantic tags
+  - signed/notarized macOS artifacts planned, currently pending repository secrets

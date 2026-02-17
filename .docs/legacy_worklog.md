@@ -3386,3 +3386,74 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - Complete (pending user-side manual confirmation).
 - Issues/blockers:
   - None.
+
+## Entry
+- Date: 2026-02-15
+- Step: UI: Task Detail per-run accordions with unified run logs (no screenshot retention)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/TaskDetailPageView.swift`:
+    - `Task` accordion now contains only the task editor + `Save`.
+    - Added per-run accordions under the task editor: `Run 1`, `Run 2`, ... each showing a single sequential log stream.
+    - Removed the `Run details` / `LLM calls` / `LLM screenshots` sub-sections from Task Detail.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`:
+    - Added in-memory `runHistory` with per-run unified events.
+    - Appends trace + LLM call events into the active run while a run is in progress.
+    - Removed screenshot log retention from the app state (no screenshot log sink is wired; run logs suppress screenshot-related lines).
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomationEngine.swift` and `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AnthropicAutomationEngine.swift`:
+    - Avoid recording screenshot-capture trace lines.
+    - Avoid decoding/retaining screenshot bytes unless an explicit screenshot log sink is provided.
+  - Updated previews:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift` now seeds `runHistory` for Canvas.
+  - Updated docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" CODE_SIGNING_ALLOWED=NO build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSAppTests -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - Runtime: run a task twice and confirm `Run 1/Run 2` appear and each shows a unified log stream. (Pending user-side confirmation)
+- Result:
+  - Complete (pending user-side manual confirmation).
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-15
+- Step: UI polish: Show date + time for run headers
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/TaskDetailPageView.swift` so each `Run N` header shows the full date and time (not just time-of-day).
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" CODE_SIGNING_ALLOWED=NO build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSAppTests -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - N/A.
+- Result:
+  - Complete.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-15
+- Step: UI: Sidebar task context menu (Pin to top + Delete)
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/MainShellSidebarView.swift`:
+    - added right-click context menu for tasks with `Pin to top` / `Unpin` and `Delete` actions,
+    - added delete confirmation alert.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`:
+    - added persisted pinned-task IDs (UserDefaults) and pinned-first sorting,
+    - added delete-task flow (request/confirm/cancel).
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/TaskService.swift`:
+    - added `deleteTask(taskId:)` to remove a task workspace from disk.
+  - Updated tests:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/TaskServiceTests.swift`
+  - Updated docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" CODE_SIGNING_ALLOWED=NO build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSAppTests -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - Runtime: right-click a task, `Pin to top`, confirm it moves to the top; `Delete`, confirm prompt and task disappears. (Pending user-side confirmation)
+- Result:
+  - Complete (pending user-side manual confirmation).
+- Issues/blockers:
+  - None.

@@ -7,6 +7,98 @@ description: Running implementation log of completed work, test evidence, blocke
 > Previous archived entries are in `/Users/farzamh/code-git-local/task-agent-macos/.docs/legacy_worklog.md`.
 
 ## Entry
+- Date: 2026-02-17
+- Step: Release workflow: enable real Developer ID signing + notarization + stapling
+- Changes made:
+  - Updated release workflow to perform real signed/notarized packaging:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`
+      - validate required Apple secrets
+      - import `Developer ID Application` certificate into temporary keychain
+      - build release app
+      - `codesign --options runtime --timestamp`
+      - `notarytool submit --wait`
+      - `stapler staple` + `stapler validate`
+      - publish notarized artifact zip (`ClickCherry-macos.zip`)
+  - Updated release documentation:
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md`
+  - Updated OSS strategy log for release status:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-release-signing-update -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (failed in Codex environment due known `swift-plugin-server` Observation macro failure / simulator service restrictions).
+- Manual tests run:
+  - Pending (run release workflow via GitHub tag to validate end-to-end signing/notarization in CI).
+- Result:
+  - Complete (pending user-side CI confirmation).
+- Issues/blockers:
+  - Local Codex environment cannot provide authoritative Swift macro test signal; CI release run is the source of truth for this change.
+
+## Entry
+- Date: 2026-02-16
+- Step: Policy contact update: set security/community email
+- Changes made:
+  - Updated security reporting contact to `clickcherry.app@gmail.com`:
+    - `/Users/farzamh/code-git-local/task-agent-macos/SECURITY.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/ISSUE_TEMPLATE/config.yml`
+  - Updated community/trademark contact references to same email:
+    - `/Users/farzamh/code-git-local/task-agent-macos/CODE_OF_CONDUCT.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TRADEMARK.md`
+  - Updated open-source strategy record:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
+- Automated tests run:
+  - N/A (docs-only).
+- Manual tests run:
+  - N/A (docs-only).
+- Result:
+  - Complete.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-16
+- Step: Open-source baseline: governance, contribution flow, docs split, and release scaffolding
+- Changes made:
+  - Added open-source governance and policy files:
+    - `/Users/farzamh/code-git-local/task-agent-macos/LICENSE`
+    - `/Users/farzamh/code-git-local/task-agent-macos/CONTRIBUTING.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/CODE_OF_CONDUCT.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/GOVERNANCE.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/MAINTAINERS.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/SECURITY.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/CHANGELOG.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TRADEMARK.md`
+  - Added GitHub collaboration scaffolding:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/CODEOWNERS`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/PULL_REQUEST_TEMPLATE.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/ISSUE_TEMPLATE/bug_report.yml`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/ISSUE_TEMPLATE/feature_request.yml`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/ISSUE_TEMPLATE/config.yml`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/ci.yml`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/dco.yml`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`
+  - Added public contributor docs and updated root readme:
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/README.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/getting-started.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/development.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/architecture.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/README.md`
+  - Updated internal process docs for OSS strategy tracking:
+    - `/Users/farzamh/code-git-local/task-agent-macos/AGENTS.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-oss-baseline -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - N/A (docs/process + repo-ops scaffolding update).
+- Result:
+  - Complete.
+- Issues/blockers:
+  - Signed/notarized release artifacts are pending repository secrets configuration.
+  - Branch protection rules must be configured in GitHub settings (cannot be enforced by repository files alone).
+
+## Entry
 - Date: 2026-02-15
 - Step: UI polish: Unify primary action buttons (less intense)
 - Changes made:
@@ -162,77 +254,6 @@ description: Running implementation log of completed work, test evidence, blocke
   - N/A.
 - Result:
   - Complete.
-- Issues/blockers:
-  - None.
-
-## Entry
-- Date: 2026-02-15
-- Step: UI: Sidebar task context menu (Pin to top + Delete)
-- Changes made:
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/MainShellSidebarView.swift`:
-    - added right-click context menu for tasks with `Pin to top` / `Unpin` and `Delete` actions,
-    - added delete confirmation alert.
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`:
-    - added persisted pinned-task IDs (UserDefaults) and pinned-first sorting,
-    - added delete-task flow (request/confirm/cancel).
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/TaskService.swift`:
-    - added `deleteTask(taskId:)` to remove a task workspace from disk.
-  - Updated tests:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/TaskServiceTests.swift`
-  - Updated docs:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" CODE_SIGNING_ALLOWED=NO build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSAppTests -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
-- Manual tests run:
-  - Runtime: right-click a task, `Pin to top`, confirm it moves to the top; `Delete`, confirm prompt and task disappears. (Pending user-side confirmation)
-- Result:
-  - Complete (pending user-side manual confirmation).
-- Issues/blockers:
-  - None.
-
-## Entry
-- Date: 2026-02-15
-- Step: UI polish: Show date + time for run headers
-- Changes made:
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/TaskDetailPageView.swift` so each `Run N` header shows the full date and time (not just time-of-day).
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" CODE_SIGNING_ALLOWED=NO build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSAppTests -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
-- Manual tests run:
-  - N/A.
-- Result:
-  - Complete.
-- Issues/blockers:
-  - None.
-
-## Entry
-- Date: 2026-02-15
-- Step: UI: Task Detail per-run accordions with unified run logs (no screenshot retention)
-- Changes made:
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/TaskDetailPageView.swift`:
-    - `Task` accordion now contains only the task editor + `Save`.
-    - Added per-run accordions under the task editor: `Run 1`, `Run 2`, ... each showing a single sequential log stream.
-    - Removed the `Run details` / `LLM calls` / `LLM screenshots` sub-sections from Task Detail.
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`:
-    - Added in-memory `runHistory` with per-run unified events.
-    - Appends trace + LLM call events into the active run while a run is in progress.
-    - Removed screenshot log retention from the app state (no screenshot log sink is wired; run logs suppress screenshot-related lines).
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomationEngine.swift` and `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AnthropicAutomationEngine.swift`:
-    - Avoid recording screenshot-capture trace lines.
-    - Avoid decoding/retaining screenshot bytes unless an explicit screenshot log sink is provided.
-  - Updated previews:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift` now seeds `runHistory` for Canvas.
-  - Updated docs:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" CODE_SIGNING_ALLOWED=NO build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSAppTests -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
-- Manual tests run:
-  - Runtime: run a task twice and confirm `Run 1/Run 2` appear and each shows a unified log stream. (Pending user-side confirmation)
-- Result:
-  - Complete (pending user-side manual confirmation).
 - Issues/blockers:
   - None.
 

@@ -1,0 +1,117 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate signing/notarization secrets
+        run: |
+          test -n "${{ secrets.APPLE_DEVELOPER_ID_APPLICATION_CERT_BASE64 }}"
+          test -n "${{ secrets.APPLE_DEVELOPER_ID_APPLICATION_CERT_PASSWORD }}"
+          test -n "${{ secrets.APPLE_TEAM_ID }}"
+          test -n "${{ secrets.APPLE_ID }}"
+          test -n "${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}"
+
+      - name: Import Developer ID certificate
+        env:
+          CERT_BASE64: ${{ secrets.APPLE_DEVELOPER_ID_APPLICATION_CERT_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.APPLE_DEVELOPER_ID_APPLICATION_CERT_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -hex 16)"
+          CERT_PATH="$RUNNER_TEMP/developer-id.p12"
+          echo "$CERT_BASE64" | base64 --decode > "$CERT_PATH"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -P "$CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH"
+          security default-keychain -d user -s "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+      - name: Build app
+        run: |
+          xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj \
+            -scheme TaskAgentMacOSApp \
+            -configuration Release \
+            -destination "platform=macOS" \
+            -derivedDataPath /tmp/taskagent-dd-release \
+            CODE_SIGNING_ALLOWED=NO build
+
+      - name: Sign app bundle
+        run: |
+          APP_PATH=$(find /tmp/taskagent-dd-release -name "ClickCherry.app" | head -n1)
+          if [ -z "$APP_PATH" ]; then
+            echo "Release app not found" >&2
+            exit 1
+          fi
+          codesign --force --deep --options runtime --timestamp \
+            --sign "Developer ID Application: Farzam Hejazikookamari (QKN8WTSJYG)" \
+            "$APP_PATH"
+          codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+          spctl --assess --type execute --verbose=4 "$APP_PATH"
+
+      - name: Package app for notarization
+        run: |
+          APP_PATH=$(find /tmp/taskagent-dd-release -name "ClickCherry.app" | head -n1)
+          if [ -z "$APP_PATH" ]; then
+            echo "Release app not found" >&2
+            exit 1
+          fi
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" ClickCherry-notary-input.zip
+
+      - name: Notarize app
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          xcrun notarytool submit ClickCherry-notary-input.zip \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait
+
+      - name: Staple notarization ticket and package release zip
+        run: |
+          APP_PATH=$(find /tmp/taskagent-dd-release -name "ClickCherry.app" | head -n1)
+          if [ -z "$APP_PATH" ]; then
+            echo "Release app not found" >&2
+            exit 1
+          fi
+          xcrun stapler staple "$APP_PATH"
+          xcrun stapler validate "$APP_PATH"
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" ClickCherry-macos.zip
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: clickcherry-release
+          path: ClickCherry-macos.zip
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: clickcherry-release
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ClickCherry-macos.zip
+          generate_release_notes: true
+          body: |
+            Automated signed + notarized macOS release build.

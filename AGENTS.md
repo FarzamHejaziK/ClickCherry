@@ -5,6 +5,14 @@
 - Follow the `.docs/` update contract below for file ownership and maintenance rules.
 - Never push changes (run `git push`) unless the user explicitly requests it in the current thread.
 
+## Open Source Strategy Rules
+
+- Track all open-source strategy decisions, tradeoffs, and process updates in `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`.
+- Whenever a change affects open-source governance, contribution process, licensing, releases, or public documentation strategy:
+  - update `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md` in the same task/PR.
+  - keep `/Users/farzamh/code-git-local/task-agent-macos/docs/` aligned for contributor-facing guidance.
+  - keep `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md` and `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md` aligned with the open-source work status.
+
 ## Prompt Rules
 
 - All LLM prompts must live under `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/`.

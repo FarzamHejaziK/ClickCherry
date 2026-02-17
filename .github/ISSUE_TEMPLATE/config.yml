@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security reports
+    url: mailto:clickcherry.app@gmail.com
+    about: Use email for sensitive security reports.

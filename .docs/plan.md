@@ -205,6 +205,36 @@ description: Step-by-step implementation plan with code scope, automated tests, 
 - Multi-task test (at least 3 tasks) for stability and persistence.
 - Final checklist for permissions, error handling, and data integrity.
 
+## Step 8: Open-source readiness and repository operations
+
+### Code
+- Add repository-level open-source governance files:
+  - `LICENSE` (MIT)
+  - `CONTRIBUTING.md`
+  - `CODE_OF_CONDUCT.md`
+  - `SECURITY.md`
+  - `GOVERNANCE.md`
+  - `MAINTAINERS.md`
+  - `CHANGELOG.md`
+- Add GitHub collaboration scaffolding:
+  - `CODEOWNERS`
+  - PR template
+  - bug/feature issue templates
+  - CI workflow (`xcodebuild` build + unit tests)
+  - DCO workflow (commit sign-off enforcement)
+  - release workflow baseline
+- Create public contributor docs in `/docs/` and align `README.md`.
+- Track locked open-source decisions and follow-ups in `/.docs/open_source.md`.
+
+### Automated tests
+- Run unit tests to confirm docs/workflow changes do not regress build/test paths.
+- Validate workflow file syntax and required file presence.
+
+### Manual test
+- Review public docs flow from `README.md` -> `/docs/*` for onboarding clarity.
+- Review governance docs for consistency (license, DCO, owner approval model).
+- Confirm release docs explicitly call out signed artifact prerequisites and pending secrets.
+
 ## Step 0.5: First-run onboarding (API keys + preflight)
 
 ### Code
