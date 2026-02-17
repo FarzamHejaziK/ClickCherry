@@ -8,6 +8,24 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-17
+- Step: CI stabilization: serialize unit tests to reduce flakiness on GitHub runner
+- Changes made:
+  - Updated GitHub CI workflow test invocation:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/ci.yml`
+    - build/test destination pinned to `platform=macOS,arch=arm64`
+    - unit-test step now runs with `-parallel-testing-enabled NO`
+  - Rationale: CI logs showed compile/build success but runtime test failures across multiple suites in the same run, consistent with parallel test instability/race behavior.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-deployment-fix -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass; prior local parity validation for this test command shape).
+- Manual tests run:
+  - N/A (CI workflow config change).
+- Result:
+  - Complete (pending GitHub CI rerun confirmation).
+- Issues/blockers:
+  - If failures persist after serialized execution, we must inspect full per-test assertion logs from `.xcresult` for deterministic code-level fixes.
+
+## Entry
+- Date: 2026-02-17
 - Step: CI compatibility fix: lower macOS deployment target from 26.2 to 14.0
 - Changes made:
   - Updated Xcode project build settings to align with locked minimum macOS target and GitHub macOS runners:
@@ -214,29 +232,6 @@ description: Running implementation log of completed work, test evidence, blocke
 - Automated tests run:
   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-runpersist4 CODE_SIGNING_ALLOWED=NO build` (pass).
   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-runpersist-tests2 -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
-- Manual tests run:
-  - Pending user-side confirmation.
-- Result:
-  - Complete (pending user-side manual confirmation).
-- Issues/blockers:
-  - None.
-
-## Entry
-- Date: 2026-02-15
-- Step: UI/UX: Show red border during agent runs (excluded from screenshots)
-- Changes made:
-  - Reused the existing border overlay implementation to display a red border on the selected display while the agent is running, and hide it on completion/cancel:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
-  - Added support for excluding multiple overlay windows from agent screenshots (agent HUD + red border overlay):
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/DesktopScreenshotService.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomationEngine.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/RecordingOverlayService.swift`
-  - Updated unit tests to assert the run border shows/hides during cancel/failure paths:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
-  - Updated docs:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-agentborder-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
 - Manual tests run:
   - Pending user-side confirmation.
 - Result:

@@ -3524,3 +3524,26 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - Complete (pending user-side manual confirmation).
 - Issues/blockers:
   - None.
+
+## Entry
+- Date: 2026-02-15
+- Step: UI/UX: Show red border during agent runs (excluded from screenshots)
+- Changes made:
+  - Reused the existing border overlay implementation to display a red border on the selected display while the agent is running, and hide it on completion/cancel:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
+  - Added support for excluding multiple overlay windows from agent screenshots (agent HUD + red border overlay):
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/DesktopScreenshotService.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomationEngine.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/RecordingOverlayService.swift`
+  - Updated unit tests to assert the run border shows/hides during cancel/failure paths:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
+  - Updated docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-agentborder-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - Pending user-side confirmation.
+- Result:
+  - Complete (pending user-side manual confirmation).
+- Issues/blockers:
+  - None.
