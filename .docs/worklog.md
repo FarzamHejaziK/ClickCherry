@@ -8,6 +8,22 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-17
+- Step: CI compatibility fix: lower macOS deployment target from 26.2 to 14.0
+- Changes made:
+  - Updated Xcode project build settings to align with locked minimum macOS target and GitHub macOS runners:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj/project.pbxproj`
+    - Replaced all `MACOSX_DEPLOYMENT_TARGET = 26.2;` with `MACOSX_DEPLOYMENT_TARGET = 14.0;`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-deployment-fix -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - Manual config verification: confirmed all six `MACOSX_DEPLOYMENT_TARGET` entries in `project.pbxproj` are now `14.0`.
+- Result:
+  - Complete.
+- Issues/blockers:
+  - Existing non-blocking warnings remain in CI logs (deprecated APIs / non-sendable capture warnings) but do not fail builds.
+
+## Entry
+- Date: 2026-02-17
 - Step: Release workflow fix: avoid pre-notarization Gatekeeper failure
 - Changes made:
   - Updated `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`:
@@ -221,23 +237,6 @@ description: Running implementation log of completed work, test evidence, blocke
     - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
 - Automated tests run:
   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-agentborder-tests -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
-- Manual tests run:
-  - Pending user-side confirmation.
-- Result:
-  - Complete (pending user-side manual confirmation).
-- Issues/blockers:
-  - None.
-
-## Entry
-- Date: 2026-02-15
-- Step: UI polish: Switch accent palette to wine/cherry red (match logo)
-- Changes made:
-  - Set the app’s `AccentColor` asset to a wine/cherry red for both light and dark appearances:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AccentColor.colorset/Contents.json`
-  - Updated docs:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-accentwine -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
 - Manual tests run:
   - Pending user-side confirmation.
 - Result:

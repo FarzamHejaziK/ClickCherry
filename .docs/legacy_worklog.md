@@ -3507,3 +3507,20 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - Complete (pending user-side manual confirmation).
 - Issues/blockers:
   - None.
+
+## Entry
+- Date: 2026-02-15
+- Step: UI polish: Switch accent palette to wine/cherry red (match logo)
+- Changes made:
+  - Set the app’s `AccentColor` asset to a wine/cherry red for both light and dark appearances:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AccentColor.colorset/Contents.json`
+  - Updated docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-accentwine -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - Pending user-side confirmation.
+- Result:
+  - Complete (pending user-side manual confirmation).
+- Issues/blockers:
+  - None.
