@@ -8,6 +8,28 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-17
+- Step: CI follow-up hardening for staged-recording extraction test under Xcode 16.4 runner behavior
+- Changes made:
+  - Updated `extractFromFinishedRecordingCreatesTaskOnlyAfterExtractionReturns` to use a time-based wait helper instead of `Task.yield` loops:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
+  - Added reusable `waitUntil(timeoutSeconds:pollIntervalNanoseconds:_:)` helper in test file for deterministic async waiting.
+  - Updated issue/status docs to reflect the additional mitigation:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - Stress loop (8 consecutive runs):
+    - `xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test-race -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests/extractFromFinishedRecordingCreatesTaskOnlyAfterExtractionReturns CODE_SIGNING_ALLOWED=NO test` (pass in all 8 runs).
+  - Full CI-equivalent unit suite:
+    - `xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test-final -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass; 69 tests).
+- Manual tests run:
+  - N/A (test-only change).
+- Result:
+  - Complete (local).
+- Issues/blockers:
+  - GitHub CI rerun remains required for final runner confirmation.
+
+## Entry
+- Date: 2026-02-17
 - Step: CI test-flake hardening for Gemini request assertions and staged-recording extraction race
 - Changes made:
   - Updated test `GeminiVideoLLMClientTests.analyzeVideoUploadsPollsAndGeneratesExtractionOutput` to assert request details in test context (after run) instead of inside URLProtocol callback context, and to decode JSON request body for `file_uri` verification:
@@ -208,26 +230,4 @@ description: Running implementation log of completed work, test evidence, blocke
 - Issues/blockers:
   - Signed/notarized release artifacts are pending repository secrets configuration.
   - Branch protection rules must be configured in GitHub settings (cannot be enforced by repository files alone).
-
-## Entry
-- Date: 2026-02-15
-- Step: UI polish: Unify primary action buttons (less intense)
-- Changes made:
-  - Replaced `.borderedProminent` primary actions with a shared custom glass+tint primary action style:
-    - Added `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/PrimaryActionButtonStyle.swift`.
-    - Updated primary action call sites:
-      - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/TaskDetailPageView.swift`
-      - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/ProviderKeyEntryPanelView.swift`
-      - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/OnboardingSharedViews.swift`
-      - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/RecordingFinishedDialogView.swift`
-  - Updated docs:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-primarybutton CODE_SIGNING_ALLOWED=NO test -only-testing:TaskAgentMacOSAppTests` (pass).
-- Manual tests run:
-  - Pending user-side confirmation.
-- Result:
-  - Complete (pending user-side manual confirmation).
-- Issues/blockers:
-  - None.
 

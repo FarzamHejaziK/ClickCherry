@@ -3594,3 +3594,25 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - Complete (pending user-side manual confirmation).
 - Issues/blockers:
   - None.
+
+## Entry
+- Date: 2026-02-15
+- Step: UI polish: Unify primary action buttons (less intense)
+- Changes made:
+  - Replaced `.borderedProminent` primary actions with a shared custom glass+tint primary action style:
+    - Added `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/PrimaryActionButtonStyle.swift`.
+    - Updated primary action call sites:
+      - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/TaskDetailPageView.swift`
+      - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/ProviderKeyEntryPanelView.swift`
+      - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/OnboardingSharedViews.swift`
+      - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/RecordingFinishedDialogView.swift`
+  - Updated docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-primarybutton CODE_SIGNING_ALLOWED=NO test -only-testing:TaskAgentMacOSAppTests` (pass).
+- Manual tests run:
+  - Pending user-side confirmation.
+- Result:
+  - Complete (pending user-side manual confirmation).
+- Issues/blockers:
+  - None.

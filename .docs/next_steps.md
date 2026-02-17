@@ -13,7 +13,8 @@ description: Short, continuously updated plan of the immediate next implementati
    - Added deterministic test fixes for:
      - `GeminiVideoLLMClientTests.analyzeVideoUploadsPollsAndGeneratesExtractionOutput`
      - `MainShellStateStoreTests.extractFromFinishedRecordingCreatesTaskOnlyAfterExtractionReturns` (Completed locally)
-   - Rerun GitHub CI and compare runner `.xcresult` with local logs only if failures persist. (Pending)
+   - Rerun GitHub CI and compare runner `.xcresult` with local logs only if failures persist. (In progress)
+   - Keep `extractFromFinishedRecordingCreatesTaskOnlyAfterExtractionReturns` on time-based wait helper (`Task.sleep` polling) to avoid yield-scheduler flake regressions. (Completed locally)
 4. Automated tests:
    - Build command above (pass on 2026-02-17 local run).
    - Test command above (pass on 2026-02-17 local run).

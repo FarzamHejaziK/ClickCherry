@@ -278,6 +278,7 @@ description: Active unresolved issues with concrete repro details, mitigation, a
 - Current Mitigation:
   - Gemini test now validates captured requests in test context after execution and decodes request JSON to verify `file_uri`, avoiding callback-context assertions.
   - `BlockingStoreLLMClient` now buffers pending `finish`/`fail` outcomes if called before continuation registration, eliminating timing race drops.
+  - `MainShellStateStoreTests.extractFromFinishedRecordingCreatesTaskOnlyAfterExtractionReturns` now waits with time-based polling (`Task.sleep`) and explicit timeout instead of `Task.yield` spin loops, preventing scheduler-dependent CI flakiness.
 - Next Action:
   - Monitor next GitHub CI runs for stability on the same test cases.
 - Owner: Codex

@@ -831,9 +831,8 @@ struct MainShellStateStoreTests {
         store.finishedRecordingReview = FinishedRecordingReview(recording: staged, mode: .newTaskStaging)
         store.extractTaskFromFinishedRecordingDialog()
 
-        for _ in 0..<100 {
-            if store.isExtractingTask { break }
-            await Task.yield()
+        await waitUntil(timeoutSeconds: 2.0) {
+            store.isExtractingTask
         }
         #expect(store.isExtractingTask)
 
@@ -853,9 +852,8 @@ struct MainShellStateStoreTests {
         - None.
         """)
 
-        for _ in 0..<200 {
-            if store.selectedTaskID != nil { break }
-            await Task.yield()
+        await waitUntil(timeoutSeconds: 5.0) {
+            store.selectedTaskID != nil
         }
 
         #expect(store.selectedTaskID != nil)
@@ -926,6 +924,20 @@ struct MainShellStateStoreTests {
         #expect(!store.providerSetupState.hasOpenAIKey)
         #expect(store.apiKeyStatusMessage == "Removed OpenAI API key.")
         #expect(store.apiKeyErrorMessage == "OpenAI API key is not saved.")
+    }
+
+    private func waitUntil(
+        timeoutSeconds: TimeInterval,
+        pollIntervalNanoseconds: UInt64 = 10_000_000,
+        _ condition: @escaping @Sendable () -> Bool
+    ) async {
+        let deadline = Date().addingTimeInterval(timeoutSeconds)
+        while Date() < deadline {
+            if condition() {
+                return
+            }
+            try? await Task.sleep(nanoseconds: pollIntervalNanoseconds)
+        }
     }
 
     @Test
