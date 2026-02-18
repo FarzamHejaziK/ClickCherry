@@ -3616,3 +3616,48 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - Complete (pending user-side manual confirmation).
 - Issues/blockers:
   - None.
+
+## Entry
+- Date: 2026-02-16
+- Step: Open-source baseline: governance, contribution flow, docs split, and release scaffolding
+- Changes made:
+  - Added open-source governance and policy files:
+    - `/Users/farzamh/code-git-local/task-agent-macos/LICENSE`
+    - `/Users/farzamh/code-git-local/task-agent-macos/CONTRIBUTING.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/CODE_OF_CONDUCT.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/GOVERNANCE.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/MAINTAINERS.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/SECURITY.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/CHANGELOG.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TRADEMARK.md`
+  - Added GitHub collaboration scaffolding:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/CODEOWNERS`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/PULL_REQUEST_TEMPLATE.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/ISSUE_TEMPLATE/bug_report.yml`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/ISSUE_TEMPLATE/feature_request.yml`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/ISSUE_TEMPLATE/config.yml`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/ci.yml`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/dco.yml`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`
+  - Added public contributor docs and updated root readme:
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/README.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/getting-started.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/development.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/architecture.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/README.md`
+  - Updated internal process docs for OSS strategy tracking:
+    - `/Users/farzamh/code-git-local/task-agent-macos/AGENTS.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-oss-baseline -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - N/A (docs/process + repo-ops scaffolding update).
+- Result:
+  - Complete.
+- Issues/blockers:
+  - Signed/notarized release artifacts are pending repository secrets configuration.
+  - Branch protection rules must be configured in GitHub settings (cannot be enforced by repository files alone).

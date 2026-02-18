@@ -4,6 +4,23 @@ description: Short, continuously updated plan of the immediate next implementati
 
 # Next Steps
 
+1. Step: Release notarization reliability hardening for transient GitHub runner network drops (completed in workflow, pending run confirmation).
+2. Why now: Recent release run stayed `In Progress` for hours and failed with `NSURLErrorDomain -1009` while waiting on notary status.
+3. Code tasks:
+   - Replace `xcrun notarytool submit --wait` with:
+     - submit + capture submission ID (Completed).
+     - explicit status polling with retry on transient network failures (Completed).
+     - bounded wait timeout and explicit invalid/rejected log handling (Completed).
+   - Validate next release tag run completes notarization with the new flow. (In progress)
+4. Automated tests:
+   - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass on 2026-02-18 local run).
+5. Manual tests:
+   - Manual workflow review:
+     - confirm submission ID is persisted via `GITHUB_ENV`.
+     - confirm polling retries `NSURLErrorDomain -1009`/offline errors.
+     - confirm accepted/invalid/rejected/timeout paths are explicit. (Completed)
+6. Exit criteria: A release workflow run completes with notarization accepted under the new submit+poll flow; transient network blips no longer cause immediate failure.
+
 1. Step: CI-local parity verification with CI command shape (completed).
 2. Why now: Recent CI failures needed reproducible local evidence using the same `xcodebuild` flags and target selection as `.github/workflows/ci.yml`.
 3. Code tasks:

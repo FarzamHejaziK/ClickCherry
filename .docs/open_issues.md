@@ -4,6 +4,35 @@ description: Active unresolved issues with concrete repro details, mitigation, a
 
 # Open Issues
 
+## Issue OI-2026-02-18-011
+- Issue ID: OI-2026-02-18-011
+- Title: Release notarization step can fail after long wait due transient runner network loss (`NSURLErrorDomain -1009`)
+- Status: Mitigated
+- Severity: Medium
+- First Seen: 2026-02-18
+- Scope:
+  - Affects GitHub `Release` workflow notarization wait path.
+  - Can fail signed release publishing even after successful upload to Apple Notary service.
+- Repro Steps:
+  1. Trigger release workflow on tag push (for example `v0.1.6`).
+  2. Reach notarization stage with `xcrun notarytool submit ... --wait`.
+  3. Observe long-running `In Progress` status.
+- Observed:
+  - Workflow can hang in long wait and then fail with:
+    - `NSURLErrorDomain Code=-1009`
+    - `The Internet connection appears to be offline`
+  - Failure happens during wait/poll, not submission upload.
+- Expected:
+  - Transient runner network interruptions should not fail release notarization immediately.
+- Current Mitigation:
+  - Replaced `notarytool submit --wait` with:
+    - submission step that captures submission ID
+    - explicit polling step (`notarytool info`) with transient network retry handling
+    - bounded wait timeout (90 minutes) and explicit failure path for `Invalid`/`Rejected`.
+- Next Action:
+  - Validate in the next release workflow run that transient offline errors retry and recover without failing the job.
+- Owner: Codex
+
 ## Issue OI-2026-02-14-010
 - Issue ID: OI-2026-02-14-010
 - Title: Escape-stop can end capture with status 15 and no output file (screencapture terminated too aggressively)

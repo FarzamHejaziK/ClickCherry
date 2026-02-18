@@ -71,7 +71,7 @@ jobs:
           fi
           ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" ClickCherry-notary-input.zip
 
-      - name: Notarize app
+      - name: Submit app for notarization
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
@@ -81,7 +81,78 @@ jobs:
             --apple-id "$APPLE_ID" \
             --password "$APPLE_APP_SPECIFIC_PASSWORD" \
             --team-id "$APPLE_TEAM_ID" \
-            --wait
+            --output-format json > notary-submit.json
+
+          SUBMISSION_ID=$(ruby -rjson -e 'print JSON.parse(File.read("notary-submit.json"))["id"]')
+          if [ -z "$SUBMISSION_ID" ]; then
+            echo "Unable to parse notarization submission id" >&2
+            cat notary-submit.json >&2
+            exit 1
+          fi
+
+          echo "Notarization submission id: $SUBMISSION_ID"
+          echo "NOTARY_SUBMISSION_ID=$SUBMISSION_ID" >> "$GITHUB_ENV"
+
+      - name: Wait for notarization result
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ -z "${NOTARY_SUBMISSION_ID:-}" ]; then
+            echo "NOTARY_SUBMISSION_ID is not set" >&2
+            exit 1
+          fi
+
+          DEADLINE_EPOCH=$(( $(date +%s) + 5400 ))
+
+          while [ "$(date +%s)" -lt "$DEADLINE_EPOCH" ]; do
+            set +e
+            INFO_JSON=$(xcrun notarytool info "$NOTARY_SUBMISSION_ID" \
+              --apple-id "$APPLE_ID" \
+              --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+              --team-id "$APPLE_TEAM_ID" \
+              --output-format json 2> notary-info.err)
+            INFO_EXIT=$?
+            set -e
+
+            if [ "$INFO_EXIT" -ne 0 ]; then
+              if grep -Eq "NSURLErrorDomain Code=-1009|The Internet connection appears to be offline|timed out|networkConnectionLost" notary-info.err; then
+                echo "Transient notary network error; retrying in 30s"
+                sleep 30
+                continue
+              fi
+
+              echo "Failed to query notarization status" >&2
+              cat notary-info.err >&2
+              exit "$INFO_EXIT"
+            fi
+
+            STATUS=$(printf "%s" "$INFO_JSON" | ruby -rjson -e 'print JSON.parse(STDIN.read)["status"]')
+            echo "Notarization status: $STATUS"
+
+            if [ "$STATUS" = "Accepted" ]; then
+              exit 0
+            fi
+
+            if [ "$STATUS" = "Invalid" ] || [ "$STATUS" = "Rejected" ]; then
+              echo "Notarization failed with status: $STATUS" >&2
+              xcrun notarytool log "$NOTARY_SUBMISSION_ID" \
+                --apple-id "$APPLE_ID" \
+                --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+                --team-id "$APPLE_TEAM_ID" || true
+              exit 1
+            fi
+
+            sleep 30
+          done
+
+          echo "Timed out waiting for notarization after 90 minutes" >&2
+          xcrun notarytool info "$NOTARY_SUBMISSION_ID" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" || true
+          exit 1
 
       - name: Staple notarization ticket and package release zip
         run: |
