@@ -29,6 +29,7 @@ description: Active unresolved issues with concrete repro details, mitigation, a
     - submission step that captures submission ID
     - explicit polling step (`notarytool info`) with transient network retry handling
     - bounded wait timeout (90 minutes) and explicit failure path for `Invalid`/`Rejected`.
+  - Poll logs now include UTC timestamps and elapsed time so long waits can be attributed to Apple queue time vs retry windows.
 - Next Action:
   - Validate in the next release workflow run that transient offline errors retry and recover without failing the job.
 - Owner: Codex

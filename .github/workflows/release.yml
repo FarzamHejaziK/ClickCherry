@@ -104,9 +104,18 @@ jobs:
             exit 1
           fi
 
-          DEADLINE_EPOCH=$(( $(date +%s) + 5400 ))
+          START_EPOCH=$(date +%s)
+          DEADLINE_EPOCH=$(( START_EPOCH + 5400 ))
+          POLL_COUNT=0
 
           while [ "$(date +%s)" -lt "$DEADLINE_EPOCH" ]; do
+            POLL_COUNT=$(( POLL_COUNT + 1 ))
+            NOW_EPOCH=$(date +%s)
+            ELAPSED_SECONDS=$(( NOW_EPOCH - START_EPOCH ))
+            ELAPSED_MINUTES=$(( ELAPSED_SECONDS / 60 ))
+            TIMESTAMP_UTC=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+            echo "[$TIMESTAMP_UTC] Poll #$POLL_COUNT (elapsed ${ELAPSED_MINUTES}m ${ELAPSED_SECONDS}s)"
+
             set +e
             INFO_JSON=$(xcrun notarytool info "$NOTARY_SUBMISSION_ID" \
               --apple-id "$APPLE_ID" \
@@ -118,7 +127,7 @@ jobs:
 
             if [ "$INFO_EXIT" -ne 0 ]; then
               if grep -Eq "NSURLErrorDomain Code=-1009|The Internet connection appears to be offline|timed out|networkConnectionLost" notary-info.err; then
-                echo "Transient notary network error; retrying in 30s"
+                echo "[$TIMESTAMP_UTC] Transient notary network error; retrying in 30s"
                 sleep 30
                 continue
               fi
@@ -129,7 +138,7 @@ jobs:
             fi
 
             STATUS=$(printf "%s" "$INFO_JSON" | ruby -rjson -e 'print JSON.parse(STDIN.read)["status"]')
-            echo "Notarization status: $STATUS"
+            echo "[$TIMESTAMP_UTC] Notarization status: $STATUS"
 
             if [ "$STATUS" = "Accepted" ]; then
               exit 0

@@ -3661,3 +3661,24 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
 - Issues/blockers:
   - Signed/notarized release artifacts are pending repository secrets configuration.
   - Branch protection rules must be configured in GitHub settings (cannot be enforced by repository files alone).
+
+## Entry
+- Date: 2026-02-16
+- Step: Policy contact update: set security/community email
+- Changes made:
+  - Updated security reporting contact to `clickcherry.app@gmail.com`:
+    - `/Users/farzamh/code-git-local/task-agent-macos/SECURITY.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/ISSUE_TEMPLATE/config.yml`
+  - Updated community/trademark contact references to same email:
+    - `/Users/farzamh/code-git-local/task-agent-macos/CODE_OF_CONDUCT.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TRADEMARK.md`
+  - Updated open-source strategy record:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
+- Automated tests run:
+  - N/A (docs-only).
+- Manual tests run:
+  - N/A (docs-only).
+- Result:
+  - Complete.
+- Issues/blockers:
+  - None.

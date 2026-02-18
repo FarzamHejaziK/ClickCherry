@@ -11,6 +11,7 @@ description: Short, continuously updated plan of the immediate next implementati
      - submit + capture submission ID (Completed).
      - explicit status polling with retry on transient network failures (Completed).
      - bounded wait timeout and explicit invalid/rejected log handling (Completed).
+     - timestamp + elapsed-time logging per poll for easier queue/runtime diagnosis (Completed).
    - Validate next release tag run completes notarization with the new flow. (In progress)
 4. Automated tests:
    - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass on 2026-02-18 local run).

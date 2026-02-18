@@ -8,6 +8,29 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-18
+- Step: Release workflow observability: notarization poll timestamps and elapsed duration logging
+- Changes made:
+  - Updated notarization wait loop logs in:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`
+  - Added per-poll log line with:
+    - UTC timestamp
+    - poll counter
+    - elapsed minutes/seconds since polling started
+  - Added timestamp prefix to transient network retry and status lines for easier timeline reconstruction.
+  - Updated tracking docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass).
+- Manual tests run:
+  - N/A (workflow/logging change; runtime verification requires next GitHub release run).
+- Result:
+  - Complete (local workflow update), pending release-run confirmation.
+- Issues/blockers:
+  - End-to-end verification depends on GitHub runner and Apple Notary service behavior during an actual release run.
+
+## Entry
+- Date: 2026-02-18
 - Step: Release notarization resilience for transient network drops on GitHub runner
 - Changes made:
   - Updated notarization flow in:
@@ -189,25 +212,4 @@ description: Running implementation log of completed work, test evidence, blocke
   - Complete (pending user-side CI confirmation).
 - Issues/blockers:
   - Local Codex environment cannot provide authoritative Swift macro test signal; CI release run is the source of truth for this change.
-
-## Entry
-- Date: 2026-02-16
-- Step: Policy contact update: set security/community email
-- Changes made:
-  - Updated security reporting contact to `clickcherry.app@gmail.com`:
-    - `/Users/farzamh/code-git-local/task-agent-macos/SECURITY.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.github/ISSUE_TEMPLATE/config.yml`
-  - Updated community/trademark contact references to same email:
-    - `/Users/farzamh/code-git-local/task-agent-macos/CODE_OF_CONDUCT.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TRADEMARK.md`
-  - Updated open-source strategy record:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
-- Automated tests run:
-  - N/A (docs-only).
-- Manual tests run:
-  - N/A (docs-only).
-- Result:
-  - Complete.
-- Issues/blockers:
-  - None.
 
