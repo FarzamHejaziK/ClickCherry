@@ -8,6 +8,30 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-18
+- Step: Release page format upgrade to OpenClaw-style structured notes
+- Changes made:
+  - Updated release publish job to generate structured release notes with sections:
+    - `Changes`
+    - `Fixes`
+    - `Artifacts`
+  - Updated release naming to versioned format on publish:
+    - `ClickCherry vX.Y.Z`
+  - Updated files:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass).
+- Manual tests run:
+  - N/A (workflow update; visual release-page confirmation requires next tagged release run).
+- Result:
+  - Complete (local workflow/docs update), pending tag-triggered release confirmation.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-18
 - Step: Release artifacts update: add DMG packaging alongside ZIP
 - Changes made:
   - Updated release workflow to package and publish both ZIP and DMG:
@@ -195,20 +219,4 @@ description: Running implementation log of completed work, test evidence, blocke
   - Complete (pending GitHub CI rerun confirmation).
 - Issues/blockers:
   - If failures persist after serialized execution, we must inspect full per-test assertion logs from `.xcresult` for deterministic code-level fixes.
-
-## Entry
-- Date: 2026-02-17
-- Step: CI compatibility fix: lower macOS deployment target from 26.2 to 14.0
-- Changes made:
-  - Updated Xcode project build settings to align with locked minimum macOS target and GitHub macOS runners:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj/project.pbxproj`
-    - Replaced all `MACOSX_DEPLOYMENT_TARGET = 26.2;` with `MACOSX_DEPLOYMENT_TARGET = 14.0;`
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-deployment-fix -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
-- Manual tests run:
-  - Manual config verification: confirmed all six `MACOSX_DEPLOYMENT_TARGET` entries in `project.pbxproj` are now `14.0`.
-- Result:
-  - Complete.
-- Issues/blockers:
-  - Existing non-blocking warnings remain in CI logs (deprecated APIs / non-sendable capture warnings) but do not fail builds.
 

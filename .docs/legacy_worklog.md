@@ -3746,3 +3746,19 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - Complete (pending CI rerun).
 - Issues/blockers:
   - None.
+
+## Entry
+- Date: 2026-02-17
+- Step: CI compatibility fix: lower macOS deployment target from 26.2 to 14.0
+- Changes made:
+  - Updated Xcode project build settings to align with locked minimum macOS target and GitHub macOS runners:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj/project.pbxproj`
+    - Replaced all `MACOSX_DEPLOYMENT_TARGET = 26.2;` with `MACOSX_DEPLOYMENT_TARGET = 14.0;`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-deployment-fix -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - Manual config verification: confirmed all six `MACOSX_DEPLOYMENT_TARGET` entries in `project.pbxproj` are now `14.0`.
+- Result:
+  - Complete.
+- Issues/blockers:
+  - Existing non-blocking warnings remain in CI logs (deprecated APIs / non-sendable capture warnings) but do not fail builds.

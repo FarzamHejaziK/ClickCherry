@@ -199,15 +199,64 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build]
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/download-artifact@v4
         with:
           name: clickcherry-release
+
+      - name: Build release notes
+        run: |
+          CURRENT_TAG="${GITHUB_REF_NAME}"
+          CURRENT_VERSION="${CURRENT_TAG#v}"
+
+          PREV_TAG=$(git tag --sort=-v:refname | grep -v "^${CURRENT_TAG}$" | head -n1 || true)
+
+          if [ -n "$PREV_TAG" ]; then
+            COMMIT_RANGE="${PREV_TAG}..${CURRENT_TAG}"
+            CHANGELOG_URL="https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${CURRENT_TAG}"
+          else
+            COMMIT_RANGE="${CURRENT_TAG}"
+            CHANGELOG_URL="https://github.com/${{ github.repository }}/commits/${CURRENT_TAG}"
+          fi
+
+          git log --pretty='- %s' "${COMMIT_RANGE}" > .release-commits.txt
+
+          grep -Ei '^- (fix|fixed|bug|hotfix|patch|resolve|resolved)\b' .release-commits.txt > .release-fixes.txt || true
+          grep -Eiv '^- (fix|fixed|bug|hotfix|patch|resolve|resolved)\b' .release-commits.txt > .release-changes.txt || true
+
+          {
+            echo "### Changes"
+            echo
+            if [ -s .release-changes.txt ]; then
+              cat .release-changes.txt
+            else
+              echo "- Maintenance and release pipeline updates."
+            fi
+            echo
+            echo "### Fixes"
+            echo
+            if [ -s .release-fixes.txt ]; then
+              cat .release-fixes.txt
+            else
+              echo "- No explicit fix-labeled commits in this release window."
+            fi
+            echo
+            echo "### Artifacts"
+            echo
+            echo "- \`ClickCherry-macos.dmg\`"
+            echo "- \`ClickCherry-macos.zip\`"
+            echo
+            echo "**Full Changelog**: ${CHANGELOG_URL}"
+          } > RELEASE_NOTES.md
+
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
+          name: ClickCherry ${{ github.ref_name }}
           files: |
             ClickCherry-macos.zip
             ClickCherry-macos.dmg
-          generate_release_notes: true
-          body: |
-            Automated signed + notarized macOS release build (ZIP + DMG).
+          generate_release_notes: false
+          body_path: RELEASE_NOTES.md
