@@ -8,6 +8,30 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-18
+- Step: Premium DMG installer visual polish
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`
+  - Enhanced DMG build step to produce a more polished Finder installer experience:
+    - generates branded background art during CI (Swift script).
+    - applies tuned icon/text layout for drag-to-install guidance.
+    - uses app icon as mounted volume icon when available.
+    - keeps `ClickCherry.app` + Applications drop link layout.
+  - Updated release/public strategy docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass).
+- Manual tests run:
+  - N/A locally; requires release artifact mount/visual check on macOS Finder.
+- Result:
+  - Complete (workflow + docs), pending release-run visual confirmation.
+- Issues/blockers:
+  - Final UX quality is dependent on actual mounted DMG appearance in Finder on release output.
+
+## Entry
+- Date: 2026-02-18
 - Step: Release workflow styled DMG packaging (drag-to-install Finder layout)
 - Changes made:
   - Updated:
@@ -210,30 +234,4 @@ description: Running implementation log of completed work, test evidence, blocke
   - Complete (code + docs), pending visual confirmation.
 - Issues/blockers:
   - No direct Canvas UI interaction available in this terminal environment.
-
-## Entry
-- Date: 2026-02-18
-- Step: Permissions light-mode shadow removal + DMG drag-to-install payload update
-- Changes made:
-  - Onboarding Permissions panel shadow update:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/PermissionsStepView.swift`
-    - light mode now has no panel shadow; dark mode shadow remains unchanged.
-  - DMG packaging update:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`
-    - DMG staging now includes `Applications` symlink alongside `ClickCherry.app`.
-  - Release/docs tracking alignment:
-    - `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-permissions-shadow-remove CODE_SIGNING_ALLOWED=NO build` (pass).
-  - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass).
-- Manual tests run:
-  - Pending user-side visual confirmation in Xcode Canvas (Permissions light mode).
-  - Pending next release run confirmation for DMG Finder experience.
-- Result:
-  - Complete (code + docs), pending user validation.
-- Issues/blockers:
-  - No direct Canvas/installed-DMG runtime validation in this terminal environment.
 

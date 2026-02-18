@@ -32,7 +32,11 @@ description: Open-source strategy decisions, governance, contribution model, and
   - GitHub Releases with version tags (`vMAJOR.MINOR.PATCH`)
   - Release workflow performs Developer ID signing + notarization + stapling
   - Release artifacts include both ZIP and DMG outputs
-  - DMG distribution uses a styled Finder drag-to-install layout (`ClickCherry.app` + Applications drop link) for a polished install experience
+  - DMG distribution uses a premium styled Finder drag-to-install layout:
+    - branded background art
+    - tuned icon/text positions
+    - volume icon
+    - `ClickCherry.app` + Applications drop link
   - Release page body is generated in a structured format (`Changes`, `Fixes`, `Artifacts`) from commit history between tags
   - Workflow requires repository signing/notarization secrets and fails fast if missing
 - Documentation split:

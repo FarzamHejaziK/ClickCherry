@@ -4,6 +4,25 @@ description: Short, continuously updated plan of the immediate next implementati
 
 # Next Steps
 
+1. Step: Premium DMG installer polish (completed, pending release-run visual verification).
+2. Why now: Styled DMG improved drag-to-install UX, but still lacked the polished background/layout feel common in top macOS apps.
+3. Code tasks:
+   - Enhanced `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml` DMG generation with:
+     - generated branded background image
+     - tuned icon/text layout
+     - app volume icon
+     - quieter/stabler hdiutil invocation
+   - Updated `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md` artifact notes.
+   - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md` release strategy wording.
+4. Automated tests:
+   - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass on 2026-02-18 local run).
+5. Manual tests:
+   - Pending next tag-based release run:
+     - mount DMG and verify background art renders.
+     - verify drag path is visually clear (`ClickCherry.app` -> Applications).
+     - verify icon spacing/text readability on Retina display.
+6. Exit criteria: Published DMG has premium Finder presentation comparable to polished mainstream macOS installers.
+
 1. Step: Styled drag-to-install DMG in release workflow (completed, pending next release run confirmation).
 2. Why now: Plain DMG UX felt manual/unstyled compared to standard polished macOS app installers.
 3. Code tasks:

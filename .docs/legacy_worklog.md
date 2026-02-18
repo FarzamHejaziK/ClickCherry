@@ -4019,3 +4019,29 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - Complete (code + docs), pending user confirmation.
 - Issues/blockers:
   - No direct Canvas runtime access in this terminal environment.
+
+## Entry
+- Date: 2026-02-18
+- Step: Permissions light-mode shadow removal + DMG drag-to-install payload update
+- Changes made:
+  - Onboarding Permissions panel shadow update:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/PermissionsStepView.swift`
+    - light mode now has no panel shadow; dark mode shadow remains unchanged.
+  - DMG packaging update:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`
+    - DMG staging now includes `Applications` symlink alongside `ClickCherry.app`.
+  - Release/docs tracking alignment:
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-permissions-shadow-remove CODE_SIGNING_ALLOWED=NO build` (pass).
+  - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass).
+- Manual tests run:
+  - Pending user-side visual confirmation in Xcode Canvas (Permissions light mode).
+  - Pending next release run confirmation for DMG Finder experience.
+- Result:
+  - Complete (code + docs), pending user validation.
+- Issues/blockers:
+  - No direct Canvas/installed-DMG runtime validation in this terminal environment.

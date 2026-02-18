@@ -37,7 +37,11 @@ If any secret is missing, release fails fast.
 
 - Current release artifacts:
   - notarized `ClickCherry-macos.zip`
-  - `ClickCherry-macos.dmg` (styled drag-to-install Finder layout with `ClickCherry.app` and Applications drop link)
+  - `ClickCherry-macos.dmg` (premium styled drag-to-install Finder layout with:
+    - custom branded background art
+    - tuned icon/text placement
+    - app volume icon
+    - `ClickCherry.app` + Applications drop link)
 - Release page notes are auto-generated from commit history between tags.
 - Current release runner/build target is arm64 macOS
 - Universal (arm64+x86_64) delivery can be added as a follow-up release enhancement
