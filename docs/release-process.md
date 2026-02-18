@@ -13,7 +13,7 @@
 4. Artifact is submitted to Apple Notary
 5. Notarization is polled until accepted/rejected/timeout
 6. Ticket is stapled to the app
-7. Notarized ZIP is published to GitHub Releases
+7. Notarized ZIP and DMG are published to GitHub Releases
 
 ## Create a Release
 
@@ -34,6 +34,8 @@ If any secret is missing, release fails fast.
 
 ## Current Artifact/Platform Notes
 
-- Current release artifact: notarized `ClickCherry-macos.zip`
+- Current release artifacts:
+  - notarized `ClickCherry-macos.zip`
+  - `ClickCherry-macos.dmg` (containing the notarized app)
 - Current release runner/build target is arm64 macOS
-- DMG packaging and universal (arm64+x86_64) delivery can be added as follow-up release enhancements
+- Universal (arm64+x86_64) delivery can be added as a follow-up release enhancement

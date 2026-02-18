@@ -43,6 +43,7 @@ description: Short, continuously updated plan of the immediate next implementati
 1. Step: Open-source baseline rollout and launch hardening (active).
 2. Why now: The repository now has a concrete OSS strategy (MIT + DCO + owner review authority) and needs immediate launch-ready follow-through.
 3. Code tasks:
+   - Add DMG packaging to release artifacts while keeping notarized ZIP distribution. (Completed)
    - Configure GitHub branch protection to require PRs, passing checks (`CI`, `DCO`), and owner/code-owner review. (Pending)
    - Configure release signing/notarization secrets and wire signed artifact steps in release workflow. (Pending)
    - Publish initial launch issues/labels (`good first issue`, `help wanted`, `documentation`). (Pending)

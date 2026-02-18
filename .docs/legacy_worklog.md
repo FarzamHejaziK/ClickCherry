@@ -3730,3 +3730,19 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - Complete.
 - Issues/blockers:
   - Existing non-blocking warnings remain in CI logs (deployment-target/warning-level items) but do not block build.
+
+## Entry
+- Date: 2026-02-17
+- Step: Release workflow fix: avoid pre-notarization Gatekeeper failure
+- Changes made:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`:
+    - removed `spctl --assess` from the post-sign/pre-notarization step.
+    - added `spctl --assess` after notarization + stapling, where Gatekeeper validation is expected to pass.
+- Automated tests run:
+  - N/A (workflow-only change).
+- Manual tests run:
+  - N/A (pending rerun of GitHub `Release` workflow).
+- Result:
+  - Complete (pending CI rerun).
+- Issues/blockers:
+  - None.

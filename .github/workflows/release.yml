@@ -163,7 +163,7 @@ jobs:
             --team-id "$APPLE_TEAM_ID" || true
           exit 1
 
-      - name: Staple notarization ticket and package release zip
+      - name: Staple notarization ticket and package release artifacts
         run: |
           APP_PATH=$(find /tmp/taskagent-dd-release -name "ClickCherry.app" | head -n1)
           if [ -z "$APP_PATH" ]; then
@@ -175,11 +175,25 @@ jobs:
           spctl --assess --type execute --verbose=4 "$APP_PATH"
           ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" ClickCherry-macos.zip
 
+          DMG_STAGING_DIR="$RUNNER_TEMP/dmg-root"
+          rm -rf "$DMG_STAGING_DIR"
+          mkdir -p "$DMG_STAGING_DIR"
+          cp -R "$APP_PATH" "$DMG_STAGING_DIR/"
+
+          hdiutil create \
+            -volname "ClickCherry" \
+            -srcfolder "$DMG_STAGING_DIR" \
+            -ov \
+            -format UDZO \
+            ClickCherry-macos.dmg
+
       - name: Upload release artifact
         uses: actions/upload-artifact@v4
         with:
           name: clickcherry-release
-          path: ClickCherry-macos.zip
+          path: |
+            ClickCherry-macos.zip
+            ClickCherry-macos.dmg
 
   publish:
     runs-on: ubuntu-latest
@@ -191,7 +205,9 @@ jobs:
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          files: ClickCherry-macos.zip
+          files: |
+            ClickCherry-macos.zip
+            ClickCherry-macos.dmg
           generate_release_notes: true
           body: |
-            Automated signed + notarized macOS release build.
+            Automated signed + notarized macOS release build (ZIP + DMG).

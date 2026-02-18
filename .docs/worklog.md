@@ -8,6 +8,27 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-18
+- Step: Release artifacts update: add DMG packaging alongside ZIP
+- Changes made:
+  - Updated release workflow to package and publish both ZIP and DMG:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`
+    - keeps notarized ZIP path and adds `hdiutil` DMG packaging from stapled app bundle.
+  - Updated public release docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md`
+  - Updated open-source strategy and execution queue:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass).
+- Manual tests run:
+  - N/A (workflow change; end-to-end validation requires a release run on GitHub Actions).
+- Result:
+  - Complete (local workflow/docs update), pending release-run confirmation.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-18
 - Step: Public README hero refinement (tagline + stronger visual top section)
 - Changes made:
   - Updated the top section of:
@@ -190,20 +211,4 @@ description: Running implementation log of completed work, test evidence, blocke
   - Complete.
 - Issues/blockers:
   - Existing non-blocking warnings remain in CI logs (deprecated APIs / non-sendable capture warnings) but do not fail builds.
-
-## Entry
-- Date: 2026-02-17
-- Step: Release workflow fix: avoid pre-notarization Gatekeeper failure
-- Changes made:
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`:
-    - removed `spctl --assess` from the post-sign/pre-notarization step.
-    - added `spctl --assess` after notarization + stapling, where Gatekeeper validation is expected to pass.
-- Automated tests run:
-  - N/A (workflow-only change).
-- Manual tests run:
-  - N/A (pending rerun of GitHub `Release` workflow).
-- Result:
-  - Complete (pending CI rerun).
-- Issues/blockers:
-  - None.
 

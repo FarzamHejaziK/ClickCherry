@@ -31,6 +31,7 @@ description: Open-source strategy decisions, governance, contribution model, and
 - Release strategy:
   - GitHub Releases with version tags (`vMAJOR.MINOR.PATCH`)
   - Release workflow performs Developer ID signing + notarization + stapling
+  - Release artifacts include both ZIP and DMG outputs
   - Workflow requires repository signing/notarization secrets and fails fast if missing
 - Documentation split:
   - Public contributor docs in `/docs/`
