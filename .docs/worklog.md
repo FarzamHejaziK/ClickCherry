@@ -8,6 +8,79 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-18
+- Step: Release workflow styled DMG packaging (drag-to-install Finder layout)
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`
+  - Replaced plain `hdiutil create` DMG packaging with `create-dmg`-based styled DMG generation.
+  - Added explicit installer layout configuration:
+    - app icon placement
+    - Applications drop-link placement
+    - polished drag-to-install Finder presentation.
+  - Updated release documentation:
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md`
+  - Updated open-source strategy tracking:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
+  - Updated execution queue tracking:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass).
+- Manual tests run:
+  - Pending next tag-based release run and Finder visual verification.
+- Result:
+  - Complete (workflow + docs), pending release-run validation.
+- Issues/blockers:
+  - Styled DMG output can only be verified from a release artifact produced on GitHub Actions.
+
+## Entry
+- Date: 2026-02-18
+- Step: README privacy wording precision (direct local provider calls)
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/README.md`
+  - Clarified privacy statement to explicitly say:
+    - LLM calls are direct from the local app to OpenAI/Gemini.
+    - no ClickCherry relay/proxy server is involved.
+  - Updated strategy wording:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
+  - Updated execution queue:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - N/A (docs-only).
+- Manual tests run:
+  - N/A (docs-only).
+- Result:
+  - Complete (docs-only).
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-18
+- Step: README privacy-first messaging update
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/README.md`
+  - Added a bold privacy callout near the top of README.
+  - Added dedicated `Privacy` section clarifying:
+    - local-first storage and processing.
+    - no ClickCherry server-side storage of personal workspace data.
+    - only direct LLM provider API calls via user-owned API keys.
+    - API keys stored in macOS Keychain.
+  - Updated open-source strategy tracking:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
+  - Updated execution queue tracking:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - N/A (docs-only).
+- Manual tests run:
+  - N/A (docs-only).
+- Result:
+  - Complete (docs-only).
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-18
 - Step: Provider key panel Save/Update alignment polish (onboarding + settings)
 - Changes made:
   - Updated:
@@ -163,71 +236,4 @@ description: Running implementation log of completed work, test evidence, blocke
   - Complete (code + docs), pending user validation.
 - Issues/blockers:
   - No direct Canvas/installed-DMG runtime validation in this terminal environment.
-
-## Entry
-- Date: 2026-02-18
-- Step: Permissions page light-mode shadow tuning
-- Changes made:
-  - Updated Permissions panel shadow to be color-scheme aware:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/PermissionsStepView.swift`
-    - light mode now uses a softer/smaller shadow.
-    - dark mode keeps the stronger existing shadow.
-  - Updated UI/UX tracking:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-permissions-shadow-tune CODE_SIGNING_ALLOWED=NO build` (pass).
-- Manual tests run:
-  - Pending user-side Canvas visual confirmation in light mode.
-- Result:
-  - Complete (code + docs), pending user confirmation.
-- Issues/blockers:
-  - No direct Canvas runtime access in this terminal environment.
-
-## Entry
-- Date: 2026-02-18
-- Step: Onboarding footer button consistency + light-mode Canvas previews
-- Changes made:
-  - Updated onboarding footer controls to use one shared action style:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/OnboardingSharedViews.swift`
-    - `Back` and `Skip` now use `.ccPrimaryActionButton()` (matching `Continue` / `Finish Setup`).
-  - Forced preview rendering to light mode:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift`
-    - added `.preferredColorScheme(.light)` to preview wrappers and recording dialog preview.
-  - Updated UI/UX tracking docs:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-onboarding-button-lightmode CODE_SIGNING_ALLOWED=NO build` (pass).
-- Manual tests run:
-  - Source-level verification with `rg` confirms updated button styles and preview light-mode modifiers are present.
-  - Pending user-side Xcode Canvas visual confirmation.
-- Result:
-  - Complete (code + docs), pending user Canvas confirmation.
-- Issues/blockers:
-  - No runtime/Canvas UI access in this terminal environment.
-
-## Entry
-- Date: 2026-02-18
-- Step: Release page format upgrade to OpenClaw-style structured notes
-- Changes made:
-  - Updated release publish job to generate structured release notes with sections:
-    - `Changes`
-    - `Fixes`
-    - `Artifacts`
-  - Updated release naming to versioned format on publish:
-    - `ClickCherry vX.Y.Z`
-  - Updated files:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`
-    - `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-- Automated tests run:
-  - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass).
-- Manual tests run:
-  - N/A (workflow update; visual release-page confirmation requires next tagged release run).
-- Result:
-  - Complete (local workflow/docs update), pending tag-triggered release confirmation.
-- Issues/blockers:
-  - None.
 

@@ -3952,3 +3952,70 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - Complete (local workflow/docs update), pending release-run confirmation.
 - Issues/blockers:
   - None.
+
+## Entry
+- Date: 2026-02-18
+- Step: Release page format upgrade to OpenClaw-style structured notes
+- Changes made:
+  - Updated release publish job to generate structured release notes with sections:
+    - `Changes`
+    - `Fixes`
+    - `Artifacts`
+  - Updated release naming to versioned format on publish:
+    - `ClickCherry vX.Y.Z`
+  - Updated files:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass).
+- Manual tests run:
+  - N/A (workflow update; visual release-page confirmation requires next tagged release run).
+- Result:
+  - Complete (local workflow/docs update), pending tag-triggered release confirmation.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-18
+- Step: Onboarding footer button consistency + light-mode Canvas previews
+- Changes made:
+  - Updated onboarding footer controls to use one shared action style:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/OnboardingSharedViews.swift`
+    - `Back` and `Skip` now use `.ccPrimaryActionButton()` (matching `Continue` / `Finish Setup`).
+  - Forced preview rendering to light mode:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift`
+    - added `.preferredColorScheme(.light)` to preview wrappers and recording dialog preview.
+  - Updated UI/UX tracking docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-onboarding-button-lightmode CODE_SIGNING_ALLOWED=NO build` (pass).
+- Manual tests run:
+  - Source-level verification with `rg` confirms updated button styles and preview light-mode modifiers are present.
+  - Pending user-side Xcode Canvas visual confirmation.
+- Result:
+  - Complete (code + docs), pending user Canvas confirmation.
+- Issues/blockers:
+  - No runtime/Canvas UI access in this terminal environment.
+
+## Entry
+- Date: 2026-02-18
+- Step: Permissions page light-mode shadow tuning
+- Changes made:
+  - Updated Permissions panel shadow to be color-scheme aware:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/PermissionsStepView.swift`
+    - light mode now uses a softer/smaller shadow.
+    - dark mode keeps the stronger existing shadow.
+  - Updated UI/UX tracking:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-permissions-shadow-tune CODE_SIGNING_ALLOWED=NO build` (pass).
+- Manual tests run:
+  - Pending user-side Canvas visual confirmation in light mode.
+- Result:
+  - Complete (code + docs), pending user confirmation.
+- Issues/blockers:
+  - No direct Canvas runtime access in this terminal environment.

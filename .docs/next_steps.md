@@ -4,6 +4,45 @@ description: Short, continuously updated plan of the immediate next implementati
 
 # Next Steps
 
+1. Step: Styled drag-to-install DMG in release workflow (completed, pending next release run confirmation).
+2. Why now: Plain DMG UX felt manual/unstyled compared to standard polished macOS app installers.
+3. Code tasks:
+   - Updated `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml` to build DMG via `create-dmg` with a Finder layout:
+     - `ClickCherry.app` icon placement
+     - Applications drop link placement
+     - styled drag-to-install window
+   - Updated `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md` artifact notes to describe styled DMG behavior.
+   - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md` release strategy wording.
+4. Automated tests:
+   - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass on 2026-02-18 local run).
+5. Manual tests:
+   - Pending next tag-based release run: open produced DMG in Finder and confirm drag-to-install layout is styled and clear.
+6. Exit criteria: GitHub release publishes a styled DMG showing `ClickCherry.app` and Applications drop link in a polished Finder layout.
+
+1. Step: README privacy wording clarification (completed).
+2. Why now: Privacy messaging needed explicit wording that LLM traffic goes directly from the local app to provider APIs with no ClickCherry server in between.
+3. Code tasks:
+   - Updated top privacy callout in `/Users/farzamh/code-git-local/task-agent-macos/README.md` to explicitly state direct local-to-OpenAI/Gemini calls. (Completed)
+   - Updated `Privacy` section in `/Users/farzamh/code-git-local/task-agent-macos/README.md` to state no ClickCherry relay/proxy for LLM requests. (Completed)
+   - Aligned strategy wording in `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`. (Completed)
+4. Automated tests:
+   - N/A (docs-only).
+5. Manual tests:
+   - N/A (docs-only).
+6. Exit criteria: README privacy language explicitly states direct local calls to OpenAI/Gemini and no ClickCherry relay server.
+
+1. Step: README privacy-first messaging hardening (completed).
+2. Why now: Privacy is a core product value and should be explicit at first glance for users and contributors.
+3. Code tasks:
+   - Added bold privacy callout near the top of `/Users/farzamh/code-git-local/task-agent-macos/README.md`. (Completed)
+   - Added a dedicated `Privacy` section in `/Users/farzamh/code-git-local/task-agent-macos/README.md` clarifying local-first behavior and direct provider API calls via user keys. (Completed)
+   - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md` to lock this public-docs privacy messaging direction. (Completed)
+4. Automated tests:
+   - N/A (docs-only).
+5. Manual tests:
+   - N/A (docs-only).
+6. Exit criteria: README prominently states local-first privacy guarantees and the direct-API-call model.
+
 1. Step: Provider key `Save/Update` action alignment (completed, pending visual confirmation).
 2. Why now: In Model Setup, the `Saved/Not saved` pills and `Save/Update` actions looked visually misaligned and awkward.
 3. Code tasks:

@@ -174,19 +174,33 @@ jobs:
           xcrun stapler validate "$APP_PATH"
           spctl --assess --type execute --verbose=4 "$APP_PATH"
           ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" ClickCherry-macos.zip
+      - name: Build styled drag-to-install DMG
+        run: |
+          brew install create-dmg
+
+          APP_PATH=$(find /tmp/taskagent-dd-release -name "ClickCherry.app" | head -n1)
+          if [ -z "$APP_PATH" ]; then
+            echo "Release app not found" >&2
+            exit 1
+          fi
 
           DMG_STAGING_DIR="$RUNNER_TEMP/dmg-root"
           rm -rf "$DMG_STAGING_DIR"
           mkdir -p "$DMG_STAGING_DIR"
-          cp -R "$APP_PATH" "$DMG_STAGING_DIR/"
-          ln -s /Applications "$DMG_STAGING_DIR/Applications"
+          cp -R "$APP_PATH" "$DMG_STAGING_DIR/ClickCherry.app"
 
-          hdiutil create \
-            -volname "ClickCherry" \
-            -srcfolder "$DMG_STAGING_DIR" \
-            -ov \
-            -format UDZO \
-            ClickCherry-macos.dmg
+          create-dmg \
+            --volname "ClickCherry" \
+            --window-pos 200 120 \
+            --window-size 700 420 \
+            --icon-size 128 \
+            --icon "ClickCherry.app" 180 210 \
+            --hide-extension "ClickCherry.app" \
+            --app-drop-link 520 210 \
+            --format UDZO \
+            --no-internet-enable \
+            "ClickCherry-macos.dmg" \
+            "$DMG_STAGING_DIR"
 
       - name: Upload release artifact
         uses: actions/upload-artifact@v4

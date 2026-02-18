@@ -11,6 +11,12 @@
   Teach once by recording your screen. Run it again with ClickCherry.
 </p>
 
+> ## Privacy First
+> **Everything stays on your Mac by default.**
+> **No personal task/workspace data is sent to ClickCherry servers.**
+> **The only network calls are direct LLM API calls from your local app to OpenAI or Gemini using your own provider API keys.**
+> **No ClickCherry relay server is in the middle.**
+
 <p align="center">
   <a href="https://github.com/FarzamHejaziK/ClickCherry/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/FarzamHejaziK/ClickCherry/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://github.com/FarzamHejaziK/ClickCherry/actions/workflows/release.yml"><img alt="Release" src="https://github.com/FarzamHejaziK/ClickCherry/actions/workflows/release.yml/badge.svg"></a>
@@ -34,6 +40,16 @@ ClickCherry is built for people who repeatedly do desktop tasks and want a fast 
 - Recording-first flow (`New Task` -> capture -> extract)
 - LLM-backed extraction and execution
 - Signed + notarized release pipeline
+
+## Privacy
+
+ClickCherry is designed as a local-first desktop app:
+
+- Task files, recordings, heartbeats, run logs, and local state stay on your machine.
+- ClickCherry does not upload your personal workspace data to ClickCherry-operated servers.
+- LLM requests are made directly from your local app to OpenAI or Gemini using your own API keys.
+- No ClickCherry server proxies or relays those LLM requests.
+- Your keys are stored in macOS Keychain.
 
 ## Product Flow
 
