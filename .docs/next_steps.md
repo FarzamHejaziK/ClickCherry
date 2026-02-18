@@ -46,6 +46,10 @@ description: Short, continuously updated plan of the immediate next implementati
    - Configure GitHub branch protection to require PRs, passing checks (`CI`, `DCO`), and owner/code-owner review. (Pending)
    - Configure release signing/notarization secrets and wire signed artifact steps in release workflow. (Pending)
    - Publish initial launch issues/labels (`good first issue`, `help wanted`, `documentation`). (Pending)
+   - Refresh public docs style with visual, quickstart-first structure:
+     - rewrite `README.md` with hero/badges/flow/quick links (Completed).
+     - refine README top hero with final product tagline + stronger logo/CTA visual treatment (Completed).
+     - rewrite `/docs/*` guides with clearer contributor/operator orientation (Completed).
    - Keep `/docs/` contributor guides current as onboarding/release flows evolve. (In progress)
    - Keep `/.docs/open_source.md` as the strategy source of truth for OSS decisions and tradeoffs. (In progress)
 4. Automated tests:

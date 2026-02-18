@@ -36,6 +36,7 @@ description: Open-source strategy decisions, governance, contribution model, and
   - Public contributor docs in `/docs/`
   - Internal planning and execution docs remain in `/.docs/`
   - Current repo choice is to keep tracking `/.docs/` and `AGENTS.md` until explicitly changed by owner
+  - Public docs presentation direction favors a visual, quickstart-first README and concise guide hub (while keeping technical details project-specific).
 - Security/community contact:
   - security reports and policy contacts use `clickcherry.app@gmail.com`
 

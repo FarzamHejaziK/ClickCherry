@@ -2,34 +2,27 @@
 
 ## Versioning
 
-- Tags follow `vMAJOR.MINOR.PATCH` (example: `v0.2.0`).
-- Update `/CHANGELOG.md` before tagging.
+- Use tags in `vMAJOR.MINOR.PATCH` format (example: `v0.1.7`)
+- Update [`CHANGELOG.md`](../CHANGELOG.md) before tagging
 
-## Branch and Review Requirements
+## Release Workflow
 
-- Merge into `main` only through reviewed PRs.
-- Required checks: CI + DCO.
-- Owner approval required before merge.
+1. Push a version tag
+2. GitHub Actions `Release` workflow builds the app
+3. App is Developer ID signed
+4. Artifact is submitted to Apple Notary
+5. Notarization is polled until accepted/rejected/timeout
+6. Ticket is stapled to the app
+7. Notarized ZIP is published to GitHub Releases
 
 ## Create a Release
 
-1. Ensure `main` is green.
-2. Update `CHANGELOG.md`.
-3. Create and push a version tag:
-
 ```bash
-git tag v0.1.1
-git push origin v0.1.1
+git tag v0.1.7
+git push origin v0.1.7
 ```
 
-4. GitHub Actions `Release` workflow builds and publishes artifacts.
-
-## Signed macOS Artifacts
-
-Release workflow signs with Developer ID, submits notarization, staples the ticket,
-and publishes the notarized app zip.
-
-Expected secrets:
+## Required Secrets
 
 - `APPLE_DEVELOPER_ID_APPLICATION_CERT_BASE64`
 - `APPLE_DEVELOPER_ID_APPLICATION_CERT_PASSWORD`
@@ -37,4 +30,10 @@ Expected secrets:
 - `APPLE_ID`
 - `APPLE_APP_SPECIFIC_PASSWORD`
 
-If any required secret is missing, the release workflow fails fast.
+If any secret is missing, release fails fast.
+
+## Current Artifact/Platform Notes
+
+- Current release artifact: notarized `ClickCherry-macos.zip`
+- Current release runner/build target is arm64 macOS
+- DMG packaging and universal (arm64+x86_64) delivery can be added as follow-up release enhancements

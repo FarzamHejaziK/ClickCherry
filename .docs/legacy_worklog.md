@@ -3682,3 +3682,51 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - Complete.
 - Issues/blockers:
   - None.
+
+## Entry
+- Date: 2026-02-17
+- Step: Release workflow: enable real Developer ID signing + notarization + stapling
+- Changes made:
+  - Updated release workflow to perform real signed/notarized packaging:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`
+      - validate required Apple secrets
+      - import `Developer ID Application` certificate into temporary keychain
+      - build release app
+      - `codesign --options runtime --timestamp`
+      - `notarytool submit --wait`
+      - `stapler staple` + `stapler validate`
+      - publish notarized artifact zip (`ClickCherry-macos.zip`)
+  - Updated release documentation:
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md`
+  - Updated OSS strategy log for release status:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-release-signing-update -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (failed in Codex environment due known `swift-plugin-server` Observation macro failure / simulator service restrictions).
+- Manual tests run:
+  - Pending (run release workflow via GitHub tag to validate end-to-end signing/notarization in CI).
+- Result:
+  - Complete (pending user-side CI confirmation).
+- Issues/blockers:
+  - Local Codex environment cannot provide authoritative Swift macro test signal; CI release run is the source of truth for this change.
+
+## Entry
+- Date: 2026-02-17
+- Step: CI/release fix: resolve MainActor isolation build failure in `MainShellStateStore`
+- Changes made:
+  - Marked run entry points as MainActor-isolated to satisfy Swift concurrency checks in CI:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
+      - `startRunTaskNow()` -> `@MainActor`
+      - `runTaskNow()` -> `@MainActor`
+  - Updated tests for actor isolation and removed flaky trace-race behavior:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
+      - added `@MainActor` to run-related tests calling `runTaskNow()` / `startRunTaskNow()`
+      - made `runTaskNowPreparesDesktopBeforeExecution` wait for async trace propagation before asserting
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-fix-mainactor-one -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests/runTaskNowPreparesDesktopBeforeExecution CODE_SIGNING_ALLOWED=NO test` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-fix-mainactor-5 -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - N/A (CI regression fix in code/tests).
+- Result:
+  - Complete.
+- Issues/blockers:
+  - Existing non-blocking warnings remain in CI logs (deployment-target/warning-level items) but do not block build.

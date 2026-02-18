@@ -8,6 +8,48 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-18
+- Step: Public README hero refinement (tagline + stronger visual top section)
+- Changes made:
+  - Updated the top section of:
+    - `/Users/farzamh/code-git-local/task-agent-macos/README.md`
+  - Applied user-approved tagline:
+    - `Your desktop AI assistant that learns tasks from your screen recordings and runs them for you.`
+  - Increased logo prominence and added quick-link CTA row for a more visual first screen.
+- Automated tests run:
+  - N/A (docs-only).
+- Manual tests run:
+  - N/A (docs-only).
+- Result:
+  - Complete.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-18
+- Step: Public open-source docs refresh (visual README + rewritten docs hub/guides)
+- Changes made:
+  - Rewrote root public README with visual layout and clearer project narrative:
+    - `/Users/farzamh/code-git-local/task-agent-macos/README.md`
+  - Rewrote public docs set with aligned structure and contributor/operator orientation:
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/README.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/getting-started.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/development.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/architecture.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md`
+  - Updated open-source strategy and execution queue alignment:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - N/A (docs-only).
+- Manual tests run:
+  - N/A (docs-only).
+- Result:
+  - Complete.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-18
 - Step: Release workflow observability: notarization poll timestamps and elapsed duration logging
 - Changes made:
   - Updated notarization wait loop logs in:
@@ -164,52 +206,4 @@ description: Running implementation log of completed work, test evidence, blocke
   - Complete (pending CI rerun).
 - Issues/blockers:
   - None.
-
-## Entry
-- Date: 2026-02-17
-- Step: CI/release fix: resolve MainActor isolation build failure in `MainShellStateStore`
-- Changes made:
-  - Marked run entry points as MainActor-isolated to satisfy Swift concurrency checks in CI:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
-      - `startRunTaskNow()` -> `@MainActor`
-      - `runTaskNow()` -> `@MainActor`
-  - Updated tests for actor isolation and removed flaky trace-race behavior:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
-      - added `@MainActor` to run-related tests calling `runTaskNow()` / `startRunTaskNow()`
-      - made `runTaskNowPreparesDesktopBeforeExecution` wait for async trace propagation before asserting
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-fix-mainactor-one -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests/runTaskNowPreparesDesktopBeforeExecution CODE_SIGNING_ALLOWED=NO test` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-fix-mainactor-5 -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
-- Manual tests run:
-  - N/A (CI regression fix in code/tests).
-- Result:
-  - Complete.
-- Issues/blockers:
-  - Existing non-blocking warnings remain in CI logs (deployment-target/warning-level items) but do not block build.
-
-## Entry
-- Date: 2026-02-17
-- Step: Release workflow: enable real Developer ID signing + notarization + stapling
-- Changes made:
-  - Updated release workflow to perform real signed/notarized packaging:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`
-      - validate required Apple secrets
-      - import `Developer ID Application` certificate into temporary keychain
-      - build release app
-      - `codesign --options runtime --timestamp`
-      - `notarytool submit --wait`
-      - `stapler staple` + `stapler validate`
-      - publish notarized artifact zip (`ClickCherry-macos.zip`)
-  - Updated release documentation:
-    - `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md`
-  - Updated OSS strategy log for release status:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-release-signing-update -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (failed in Codex environment due known `swift-plugin-server` Observation macro failure / simulator service restrictions).
-- Manual tests run:
-  - Pending (run release workflow via GitHub tag to validate end-to-end signing/notarization in CI).
-- Result:
-  - Complete (pending user-side CI confirmation).
-- Issues/blockers:
-  - Local Codex environment cannot provide authoritative Swift macro test signal; CI release run is the source of truth for this change.
 

@@ -2,9 +2,10 @@
 
 ## Repository Layout
 
-- `TaskAgentMacOSApp/`: App code, tests, and Xcode project
-- `docs/`: Public contributor documentation
-- `.docs/`: Internal maintainer planning and implementation logs
+- `TaskAgentMacOSApp/` - Swift app code, tests, project files
+- `docs/` - public documentation
+- `.github/` - CI, release, issue/PR templates, policy workflows
+- `.docs/` - internal maintainer planning and execution logs
 
 ## Prompt Files
 
@@ -12,19 +13,29 @@ All production prompts live under:
 
 - `TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/`
 
-Each prompt folder must include:
+Each prompt folder must contain:
 
 - `prompt.md`
-- `config.yaml` (`version`, `llm` required)
+- `config.yaml` (with at least `version` and `llm`)
 
-## Test Commands
+## Testing
 
-Authoritative commands are documented in `/.docs/testing.md`.
+Recommended CI-parity test command:
 
-## Pull Request Checklist
+```bash
+xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj \
+  -scheme TaskAgentMacOSApp \
+  -destination "platform=macOS,arch=arm64" \
+  -derivedDataPath /tmp/taskagent-dd-ci-test \
+  -parallel-testing-enabled NO \
+  -only-testing:TaskAgentMacOSAppTests \
+  CODE_SIGNING_ALLOWED=NO test
+```
 
-- Code compiles locally.
-- Unit tests pass locally.
-- Behavior changes include tests.
-- Relevant docs are updated.
-- Commits are DCO signed.
+## Pull Request Expectations
+
+- Project builds locally
+- Unit tests pass locally
+- Behavior changes include tests
+- Relevant docs are updated in the same PR
+- Commits are DCO signed
