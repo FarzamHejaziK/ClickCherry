@@ -189,6 +189,7 @@ private struct PreviewRootView: View {
                 RootView()
             }
         }
+        .preferredColorScheme(.light)
     }
 }
 
@@ -197,6 +198,7 @@ private struct PreviewMainShellView: View {
 
     var body: some View {
         MainShellView(mainShellStateStore: store)
+            .preferredColorScheme(.light)
     }
 }
 
@@ -286,6 +288,7 @@ private struct PreviewMainShellView: View {
         onRecordAgain: {},
         onExtractTask: {}
     )
+    .preferredColorScheme(.light)
 }
 
 #Preview(

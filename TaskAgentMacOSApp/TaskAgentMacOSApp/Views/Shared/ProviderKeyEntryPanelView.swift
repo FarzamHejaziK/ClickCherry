@@ -55,7 +55,7 @@ private struct ProviderKeyEntryRowView: View {
     static let iconSize: CGFloat = 28
     private static let rowPaddingX: CGFloat = 18
     private static let rowPaddingY: CGFloat = 16
-    private static let buttonWidth: CGFloat = 92
+    private static let actionColumnWidth: CGFloat = 112
 
     let title: String
     let iconAssetName: String
@@ -84,8 +84,7 @@ private struct ProviderKeyEntryRowView: View {
                 Spacer()
 
                 ProviderKeyStatusPillView(saved: saved)
-                    // Keep the right edge aligned with the Save/Update button below.
-                    .frame(width: Self.buttonWidth, alignment: .trailing)
+                    .frame(width: Self.actionColumnWidth, alignment: .trailing)
             }
 
             HStack(spacing: 12) {
@@ -95,9 +94,12 @@ private struct ProviderKeyEntryRowView: View {
                     isKeyVisible: $isKeyVisible
                 )
 
-                Button(saved ? "Update" : "Save", action: onSave)
+                Button(action: onSave) {
+                    Text(saved ? "Update" : "Save")
+                        .frame(maxWidth: .infinity)
+                }
                     .ccPrimaryActionButton()
-                    .frame(width: Self.buttonWidth)
+                    .frame(width: Self.actionColumnWidth)
                     .disabled(trimmedKeyInput.isEmpty)
             }
         }

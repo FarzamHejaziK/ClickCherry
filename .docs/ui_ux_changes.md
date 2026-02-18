@@ -26,6 +26,151 @@ description: Canonical log for UI/UX plans, decisions, and implementation alignm
 ## Entries
 
 ## Entry
+- Date: 2026-02-18
+- Area: Provider key panel action alignment (onboarding + settings)
+- Change Summary:
+  - Updated shared provider row layout so `Saved/Not saved` and `Save/Update` use one fixed right-side action column width.
+  - Made `Save/Update` button content fill that action column to avoid visual drift caused by intrinsic button label width.
+  - Implemented in shared view used by both onboarding and settings.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` visual polish and consistency goals across onboarding/settings.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` by enforcing consistent component geometry and reducing per-row layout variance.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-build CODE_SIGNING_ALLOWED=NO build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - Manual tests:
+    - Pending user-side visual confirmation in onboarding and settings Model Setup screens.
+
+## Entry
+- Date: 2026-02-18
+- Area: Recording finished dialog - action button visual consistency
+- Change Summary:
+  - Updated the `Record again` action to use the same shared primary button style as other key actions.
+  - This aligns the recording-finished dialog controls with the rest of the app button system.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` UI polish and consistency goals for existing flows.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` by using shared component styling instead of ad-hoc button variants.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-build CODE_SIGNING_ALLOWED=NO build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - Manual tests:
+    - Pending user-side visual confirmation in the recording finished dialog.
+
+## Entry
+- Date: 2026-02-18
+- Area: Onboarding - footer strip removal
+- Change Summary:
+  - Removed the dedicated bottom footer bar strip (white band) from onboarding pages.
+  - Moved footer controls to an overlaid bottom layout on top of the onboarding backdrop.
+  - Kept button behavior and step indicator unchanged.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` onboarding visual polish by reducing unnecessary layout chrome.
+- Design Decision Alignment:
+  - Preserves `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` clean/minimal direction and keeps focus on step content.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -configuration Debug -derivedDataPath /tmp/taskagent-dd-onboarding-nobar build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-onboarding-nobar-test test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests` (pass).
+  - Manual tests:
+    - Pending user-side visual confirmation that the bottom white strip is gone on onboarding pages.
+
+## Entry
+- Date: 2026-02-18
+- Area: Settings - Model Setup panel width and centering
+- Change Summary:
+  - Applied the same narrower treatment used in onboarding to Settings content:
+    - centered right-column content.
+    - capped section width to `640` for both `Model Setup` and `Permissions`.
+  - This prevents the provider key panel from stretching too wide on large displays.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` UI polish and consistency goals across onboarding and settings surfaces.
+- Design Decision Alignment:
+  - Preserves `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` glass-card style while improving readable line length and visual balance.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -configuration Debug -derivedDataPath /tmp/taskagent-dd-settings-center build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-settings-center-test test -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
+  - Manual tests:
+    - Pending user-side Canvas/runtime confirmation that Settings panel is centered and visually narrower.
+
+## Entry
+- Date: 2026-02-18
+- Area: Onboarding - Provider Setup width on wide screens
+- Change Summary:
+  - Narrowed Provider Setup content width so the step feels less stretched on large displays.
+  - Reduced provider-step max width from `720` to `640` while keeping centered alignment and existing spacing system.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` onboarding polish work by improving visual balance on large windows.
+- Design Decision Alignment:
+  - Preserves `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` glass-card direction while tightening readable content width.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -configuration Debug -derivedDataPath /tmp/taskagent-dd-provider-width build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-provider-width-test test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests` (pass).
+  - Manual tests:
+    - Pending user-side Canvas/runtime confirmation for Provider Setup width on wide screens.
+
+## Entry
+- Date: 2026-02-18
+- Area: Onboarding - Welcome page visual modernization
+- Change Summary:
+  - Reworked the Welcome step into a more modern composition:
+    - added a compact `Quick setup` badge and stronger title/subtitle hierarchy.
+    - replaced the sparse single-hero layout with a two-column glass card.
+    - introduced three concise setup highlights (`Connect providers`, `Grant macOS access`, `Start automating`) with icon chips.
+  - Kept existing ClickCherry identity and onboarding flow structure while reducing visual emptiness in the center area.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` onboarding polish direction by improving clarity and visual pacing without changing step logic.
+- Design Decision Alignment:
+  - Follows `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` principles for clear hierarchy, modern glass surfaces, and consistent accent-driven styling.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -configuration Debug -derivedDataPath /tmp/taskagent-dd-welcome-modern build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-welcome-modern-test test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests` (pass).
+  - Manual tests:
+    - Pending user-side Canvas/runtime visual confirmation for the updated Welcome step composition.
+
+## Entry
+- Date: 2026-02-18
+- Area: Onboarding - Permissions light-mode polish
+- Change Summary:
+  - Removed the Permissions panel drop shadow in light mode to avoid the heavy/awkward halo under the card.
+  - Kept the original stronger depth in dark mode.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` onboarding visual polish and consistency goals.
+- Design Decision Alignment:
+  - Preserves existing glass-card direction in `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` while making light mode feel cleaner and less muddy.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-permissions-shadow-tune CODE_SIGNING_ALLOWED=NO build` (pass).
+  - Manual tests:
+    - Pending user-side Canvas confirmation in light mode.
+
+## Entry
+- Date: 2026-02-18
+- Area: Onboarding footer controls + Canvas preview mode
+- Change Summary:
+  - Unified onboarding footer action visuals by applying the same primary action style to `Back`, `Skip`, `Continue`, and `Finish Setup`.
+  - Forced preview rendering to light mode so onboarding/main-shell preview variants in `RootViewPreviews` appear in light mode in Xcode Canvas.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` onboarding polish goals by removing inconsistent action button appearance and making preview validation deterministic.
+- Design Decision Alignment:
+  - Follows `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` consistency principles: primary footer actions should look visually coherent across onboarding steps.
+  - Keeps the existing ClickCherry glass-style button language (`CCPrimaryActionButtonStyle`) instead of introducing a new style branch.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-onboarding-button-lightmode CODE_SIGNING_ALLOWED=NO build` (pass).
+  - Manual tests:
+    - Source-level verification in modified files confirms:
+      - `Back` and `Skip` now use `.ccPrimaryActionButton()`.
+      - previews include `.preferredColorScheme(.light)`.
+    - Pending user-side Canvas confirmation in Xcode (`RootViewPreviews`) for visual final check.
+
+## Entry
 - Date: 2026-02-15
 - Area: Task Detail (Runs)
 - Change Summary:

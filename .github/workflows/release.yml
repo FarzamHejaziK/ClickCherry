@@ -179,6 +179,7 @@ jobs:
           rm -rf "$DMG_STAGING_DIR"
           mkdir -p "$DMG_STAGING_DIR"
           cp -R "$APP_PATH" "$DMG_STAGING_DIR/"
+          ln -s /Applications "$DMG_STAGING_DIR/Applications"
 
           hdiutil create \
             -volname "ClickCherry" \

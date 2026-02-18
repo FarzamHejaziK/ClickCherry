@@ -3762,3 +3762,193 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - Complete.
 - Issues/blockers:
   - Existing non-blocking warnings remain in CI logs (deprecated APIs / non-sendable capture warnings) but do not fail builds.
+
+## Entry
+- Date: 2026-02-17
+- Step: CI stabilization: serialize unit tests to reduce flakiness on GitHub runner
+- Changes made:
+  - Updated GitHub CI workflow test invocation:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/ci.yml`
+    - build/test destination pinned to `platform=macOS,arch=arm64`
+    - unit-test step now runs with `-parallel-testing-enabled NO`
+  - Rationale: CI logs showed compile/build success but runtime test failures across multiple suites in the same run, consistent with parallel test instability/race behavior.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-deployment-fix -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass; prior local parity validation for this test command shape).
+- Manual tests run:
+  - N/A (CI workflow config change).
+- Result:
+  - Complete (pending GitHub CI rerun confirmation).
+- Issues/blockers:
+  - If failures persist after serialized execution, we must inspect full per-test assertion logs from `.xcresult` for deterministic code-level fixes.
+
+## Entry
+- Date: 2026-02-17
+- Step: Local CI-parity verification using exact CI command flags
+- Changes made:
+  - Ran the same build/test command shape used by GitHub CI from `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/ci.yml`.
+  - Updated local testing guidance so CI-exact commands are the default documented reproduction path:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/testing.md`
+  - Updated execution queue to track CI/local mismatch follow-up:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-build CODE_SIGNING_ALLOWED=NO build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - N/A (command parity/documentation update).
+- Result:
+  - Complete.
+- Issues/blockers:
+  - Local machine has `/Applications/Xcode.app` (Xcode 26.2), while CI log indicates Xcode 16.4. Command parity is now exact; toolchain parity is still pending.
+
+## Entry
+- Date: 2026-02-17
+- Step: CI test-flake hardening for Gemini request assertions and staged-recording extraction race
+- Changes made:
+  - Updated test `GeminiVideoLLMClientTests.analyzeVideoUploadsPollsAndGeneratesExtractionOutput` to assert request details in test context (after run) instead of inside URLProtocol callback context, and to decode JSON request body for `file_uri` verification:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/GeminiVideoLLMClientTests.swift`
+  - Updated `BlockingStoreLLMClient` test double to buffer early `finish` / `fail` results when continuation is not yet registered, removing timing-sensitive drop behavior:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
+  - Updated issue tracking and queue docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test-fix-full -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass; 69 tests).
+- Manual tests run:
+  - Manual local verification of command parity and deterministic test behavior by reviewing `xcodebuild` run output and confirming the previously failing test names now pass in the CI-equivalent run.
+- Result:
+  - Complete (local).
+- Issues/blockers:
+  - GitHub CI rerun is still required to confirm runner-side stability with Xcode 16.4.
+
+## Entry
+- Date: 2026-02-17
+- Step: CI follow-up hardening for staged-recording extraction test under Xcode 16.4 runner behavior
+- Changes made:
+  - Updated `extractFromFinishedRecordingCreatesTaskOnlyAfterExtractionReturns` to use a time-based wait helper instead of `Task.yield` loops:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
+  - Added reusable `waitUntil(timeoutSeconds:pollIntervalNanoseconds:_:)` helper in test file for deterministic async waiting.
+  - Updated issue/status docs to reflect the additional mitigation:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - Stress loop (8 consecutive runs):
+    - `xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test-race -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests/extractFromFinishedRecordingCreatesTaskOnlyAfterExtractionReturns CODE_SIGNING_ALLOWED=NO test` (pass in all 8 runs).
+  - Full CI-equivalent unit suite:
+    - `xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test-final -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass; 69 tests).
+- Manual tests run:
+  - N/A (test-only change).
+- Result:
+  - Complete (local).
+- Issues/blockers:
+  - GitHub CI rerun remains required for final runner confirmation.
+
+## Entry
+- Date: 2026-02-18
+- Step: Release notarization resilience for transient network drops on GitHub runner
+- Changes made:
+  - Updated notarization flow in:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`
+  - Replaced blocking `xcrun notarytool submit ... --wait` with a two-step flow:
+    - submit and capture submission ID from JSON output.
+    - poll submission status with `xcrun notarytool info` and retries for transient network failures (`NSURLErrorDomain -1009`/offline/timeouts).
+  - Added bounded wait timeout (90 minutes) plus explicit handling for `Accepted`/`Invalid`/`Rejected`.
+  - Updated tracking docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass).
+- Manual tests run:
+  - Manual workflow review of release logic:
+    - submission id extraction/persistence path verified.
+    - retry conditions verified for offline/transient network errors.
+    - failure paths verified for invalid/rejected/timeout statuses.
+- Result:
+  - Complete (workflow update), pending next GitHub release run confirmation.
+- Issues/blockers:
+  - End-to-end notarization validation requires a real GitHub release run with Apple service access.
+
+## Entry
+- Date: 2026-02-18
+- Step: Release workflow observability: notarization poll timestamps and elapsed duration logging
+- Changes made:
+  - Updated notarization wait loop logs in:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`
+  - Added per-poll log line with:
+    - UTC timestamp
+    - poll counter
+    - elapsed minutes/seconds since polling started
+  - Added timestamp prefix to transient network retry and status lines for easier timeline reconstruction.
+  - Updated tracking docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass).
+- Manual tests run:
+  - N/A (workflow/logging change; runtime verification requires next GitHub release run).
+- Result:
+  - Complete (local workflow update), pending release-run confirmation.
+- Issues/blockers:
+  - End-to-end verification depends on GitHub runner and Apple Notary service behavior during an actual release run.
+
+## Entry
+- Date: 2026-02-18
+- Step: Public open-source docs refresh (visual README + rewritten docs hub/guides)
+- Changes made:
+  - Rewrote root public README with visual layout and clearer project narrative:
+    - `/Users/farzamh/code-git-local/task-agent-macos/README.md`
+  - Rewrote public docs set with aligned structure and contributor/operator orientation:
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/README.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/getting-started.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/development.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/architecture.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md`
+  - Updated open-source strategy and execution queue alignment:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - N/A (docs-only).
+- Manual tests run:
+  - N/A (docs-only).
+- Result:
+  - Complete.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-18
+- Step: Public README hero refinement (tagline + stronger visual top section)
+- Changes made:
+  - Updated the top section of:
+    - `/Users/farzamh/code-git-local/task-agent-macos/README.md`
+  - Applied user-approved tagline:
+    - `Your desktop AI assistant that learns tasks from your screen recordings and runs them for you.`
+  - Increased logo prominence and added quick-link CTA row for a more visual first screen.
+- Automated tests run:
+  - N/A (docs-only).
+- Manual tests run:
+  - N/A (docs-only).
+- Result:
+  - Complete.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-18
+- Step: Release artifacts update: add DMG packaging alongside ZIP
+- Changes made:
+  - Updated release workflow to package and publish both ZIP and DMG:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`
+    - keeps notarized ZIP path and adds `hdiutil` DMG packaging from stapled app bundle.
+  - Updated public release docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md`
+  - Updated open-source strategy and execution queue:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass).
+- Manual tests run:
+  - N/A (workflow change; end-to-end validation requires a release run on GitHub Actions).
+- Result:
+  - Complete (local workflow/docs update), pending release-run confirmation.
+- Issues/blockers:
+  - None.

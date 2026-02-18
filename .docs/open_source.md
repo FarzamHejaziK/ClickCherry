@@ -32,6 +32,7 @@ description: Open-source strategy decisions, governance, contribution model, and
   - GitHub Releases with version tags (`vMAJOR.MINOR.PATCH`)
   - Release workflow performs Developer ID signing + notarization + stapling
   - Release artifacts include both ZIP and DMG outputs
+  - DMG payload includes `ClickCherry.app` plus an `Applications` symlink to support drag-to-install UX
   - Release page body is generated in a structured format (`Changes`, `Fixes`, `Artifacts`) from commit history between tags
   - Workflow requires repository signing/notarization secrets and fails fast if missing
 - Documentation split:

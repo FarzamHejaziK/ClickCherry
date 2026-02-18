@@ -8,6 +8,207 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-18
+- Step: Provider key panel Save/Update alignment polish (onboarding + settings)
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/ProviderKeyEntryPanelView.swift`
+  - Replaced per-element sizing with a single fixed right action-column width used by both:
+    - `Saved/Not saved` status pills.
+    - `Save/Update` action buttons.
+  - Updated button label layout to fill its action-column width so visible button geometry aligns with status pills.
+  - Updated tracking docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-build CODE_SIGNING_ALLOWED=NO build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - Source-level manual verification:
+    - confirmed one shared `actionColumnWidth` is used for status and action elements.
+    - confirmed button label expands to `.frame(maxWidth: .infinity)` within that fixed width.
+  - Pending user-side visual verification in app/canvas.
+- Result:
+  - Complete (code + docs), pending user visual confirmation.
+- Issues/blockers:
+  - No direct Canvas/runtime UI interaction in this terminal environment.
+
+## Entry
+- Date: 2026-02-18
+- Step: Recording finished dialog `Record again` button style alignment
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/RecordingFinishedDialogView.swift`
+  - Changed `Record again` to use `.ccPrimaryActionButton()` so it matches the shared button system used elsewhere.
+  - Updated tracking docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-build CODE_SIGNING_ALLOWED=NO build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - Pending user-side visual confirmation in recording finished dialog.
+- Result:
+  - Complete (code + docs), pending user confirmation.
+- Issues/blockers:
+  - No direct runtime UI interaction in this terminal environment.
+
+## Entry
+- Date: 2026-02-18
+- Step: Onboarding white footer-strip removal
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/OnboardingFlowView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/OnboardingSharedViews.swift`
+  - Removed onboarding bottom `safeAreaInset` bar and changed footer to an overlay on top of the main backdrop.
+  - Removed divider + background bar styling from footer so the separate white strip no longer appears.
+  - Updated tracking docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -configuration Debug -derivedDataPath /tmp/taskagent-dd-onboarding-nobar build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-onboarding-nobar-test test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests` (pass).
+- Manual tests run:
+  - Pending user-side visual confirmation.
+- Result:
+  - Complete (code + docs), pending user confirmation.
+- Issues/blockers:
+  - No direct Canvas/runtime visual validation in this terminal environment.
+
+## Entry
+- Date: 2026-02-18
+- Step: Settings panel width/centering alignment with onboarding provider layout
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
+  - Centered right-column Settings detail content and constrained section width to improve margins on large screens.
+  - Applied `maxWidth: 640` to both `Model Setup` and `Permissions` sections for consistent visual density.
+  - Updated tracking docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -configuration Debug -derivedDataPath /tmp/taskagent-dd-settings-center build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-settings-center-test test -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
+- Manual tests run:
+  - Pending user-side Canvas/runtime visual confirmation.
+- Result:
+  - Complete (code + docs), pending visual confirmation.
+- Issues/blockers:
+  - No direct Canvas interaction available in this terminal environment.
+
+## Entry
+- Date: 2026-02-18
+- Step: Onboarding Provider Setup width reduction for wide-screen balance
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/OnboardingFlowView.swift`
+  - Reduced provider-step max content width from `720` to `640` so the panel sits with more margin on wide displays.
+  - Updated tracking docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -configuration Debug -derivedDataPath /tmp/taskagent-dd-provider-width build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-provider-width-test test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests` (pass).
+- Manual tests run:
+  - Pending user-side Canvas/runtime visual confirmation.
+- Result:
+  - Complete (code + docs), pending user confirmation.
+- Issues/blockers:
+  - No direct Canvas interaction in this terminal environment.
+
+## Entry
+- Date: 2026-02-18
+- Step: Onboarding Welcome page visual modernization
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/WelcomeStepView.swift`
+  - Replaced the sparse welcome layout with a more modern composition:
+    - stronger title/subtitle hierarchy and a compact `Quick setup` badge.
+    - two-column glass card combining the existing hero and three setup highlights.
+    - clearer explanatory copy for what setup does before first task run.
+  - Updated tracking docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -configuration Debug -derivedDataPath /tmp/taskagent-dd-welcome-modern build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-welcome-modern-test test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests` (pass).
+- Manual tests run:
+  - Pending user-side visual confirmation in Xcode Canvas/runtime for the Welcome step.
+- Result:
+  - Complete (code + docs), pending visual confirmation.
+- Issues/blockers:
+  - No direct Canvas UI interaction available in this terminal environment.
+
+## Entry
+- Date: 2026-02-18
+- Step: Permissions light-mode shadow removal + DMG drag-to-install payload update
+- Changes made:
+  - Onboarding Permissions panel shadow update:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/PermissionsStepView.swift`
+    - light mode now has no panel shadow; dark mode shadow remains unchanged.
+  - DMG packaging update:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`
+    - DMG staging now includes `Applications` symlink alongside `ClickCherry.app`.
+  - Release/docs tracking alignment:
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-permissions-shadow-remove CODE_SIGNING_ALLOWED=NO build` (pass).
+  - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass).
+- Manual tests run:
+  - Pending user-side visual confirmation in Xcode Canvas (Permissions light mode).
+  - Pending next release run confirmation for DMG Finder experience.
+- Result:
+  - Complete (code + docs), pending user validation.
+- Issues/blockers:
+  - No direct Canvas/installed-DMG runtime validation in this terminal environment.
+
+## Entry
+- Date: 2026-02-18
+- Step: Permissions page light-mode shadow tuning
+- Changes made:
+  - Updated Permissions panel shadow to be color-scheme aware:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/PermissionsStepView.swift`
+    - light mode now uses a softer/smaller shadow.
+    - dark mode keeps the stronger existing shadow.
+  - Updated UI/UX tracking:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-permissions-shadow-tune CODE_SIGNING_ALLOWED=NO build` (pass).
+- Manual tests run:
+  - Pending user-side Canvas visual confirmation in light mode.
+- Result:
+  - Complete (code + docs), pending user confirmation.
+- Issues/blockers:
+  - No direct Canvas runtime access in this terminal environment.
+
+## Entry
+- Date: 2026-02-18
+- Step: Onboarding footer button consistency + light-mode Canvas previews
+- Changes made:
+  - Updated onboarding footer controls to use one shared action style:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/OnboardingSharedViews.swift`
+    - `Back` and `Skip` now use `.ccPrimaryActionButton()` (matching `Continue` / `Finish Setup`).
+  - Forced preview rendering to light mode:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift`
+    - added `.preferredColorScheme(.light)` to preview wrappers and recording dialog preview.
+  - Updated UI/UX tracking docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-onboarding-button-lightmode CODE_SIGNING_ALLOWED=NO build` (pass).
+- Manual tests run:
+  - Source-level verification with `rg` confirms updated button styles and preview light-mode modifiers are present.
+  - Pending user-side Xcode Canvas visual confirmation.
+- Result:
+  - Complete (code + docs), pending user Canvas confirmation.
+- Issues/blockers:
+  - No runtime/Canvas UI access in this terminal environment.
+
+## Entry
+- Date: 2026-02-18
 - Step: Release page format upgrade to OpenClaw-style structured notes
 - Changes made:
   - Updated release publish job to generate structured release notes with sections:
@@ -29,194 +230,4 @@ description: Running implementation log of completed work, test evidence, blocke
   - Complete (local workflow/docs update), pending tag-triggered release confirmation.
 - Issues/blockers:
   - None.
-
-## Entry
-- Date: 2026-02-18
-- Step: Release artifacts update: add DMG packaging alongside ZIP
-- Changes made:
-  - Updated release workflow to package and publish both ZIP and DMG:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`
-    - keeps notarized ZIP path and adds `hdiutil` DMG packaging from stapled app bundle.
-  - Updated public release docs:
-    - `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md`
-  - Updated open-source strategy and execution queue:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-- Automated tests run:
-  - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass).
-- Manual tests run:
-  - N/A (workflow change; end-to-end validation requires a release run on GitHub Actions).
-- Result:
-  - Complete (local workflow/docs update), pending release-run confirmation.
-- Issues/blockers:
-  - None.
-
-## Entry
-- Date: 2026-02-18
-- Step: Public README hero refinement (tagline + stronger visual top section)
-- Changes made:
-  - Updated the top section of:
-    - `/Users/farzamh/code-git-local/task-agent-macos/README.md`
-  - Applied user-approved tagline:
-    - `Your desktop AI assistant that learns tasks from your screen recordings and runs them for you.`
-  - Increased logo prominence and added quick-link CTA row for a more visual first screen.
-- Automated tests run:
-  - N/A (docs-only).
-- Manual tests run:
-  - N/A (docs-only).
-- Result:
-  - Complete.
-- Issues/blockers:
-  - None.
-
-## Entry
-- Date: 2026-02-18
-- Step: Public open-source docs refresh (visual README + rewritten docs hub/guides)
-- Changes made:
-  - Rewrote root public README with visual layout and clearer project narrative:
-    - `/Users/farzamh/code-git-local/task-agent-macos/README.md`
-  - Rewrote public docs set with aligned structure and contributor/operator orientation:
-    - `/Users/farzamh/code-git-local/task-agent-macos/docs/README.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/docs/getting-started.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/docs/development.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/docs/architecture.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md`
-  - Updated open-source strategy and execution queue alignment:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-- Automated tests run:
-  - N/A (docs-only).
-- Manual tests run:
-  - N/A (docs-only).
-- Result:
-  - Complete.
-- Issues/blockers:
-  - None.
-
-## Entry
-- Date: 2026-02-18
-- Step: Release workflow observability: notarization poll timestamps and elapsed duration logging
-- Changes made:
-  - Updated notarization wait loop logs in:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`
-  - Added per-poll log line with:
-    - UTC timestamp
-    - poll counter
-    - elapsed minutes/seconds since polling started
-  - Added timestamp prefix to transient network retry and status lines for easier timeline reconstruction.
-  - Updated tracking docs:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-- Automated tests run:
-  - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass).
-- Manual tests run:
-  - N/A (workflow/logging change; runtime verification requires next GitHub release run).
-- Result:
-  - Complete (local workflow update), pending release-run confirmation.
-- Issues/blockers:
-  - End-to-end verification depends on GitHub runner and Apple Notary service behavior during an actual release run.
-
-## Entry
-- Date: 2026-02-18
-- Step: Release notarization resilience for transient network drops on GitHub runner
-- Changes made:
-  - Updated notarization flow in:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`
-  - Replaced blocking `xcrun notarytool submit ... --wait` with a two-step flow:
-    - submit and capture submission ID from JSON output.
-    - poll submission status with `xcrun notarytool info` and retries for transient network failures (`NSURLErrorDomain -1009`/offline/timeouts).
-  - Added bounded wait timeout (90 minutes) plus explicit handling for `Accepted`/`Invalid`/`Rejected`.
-  - Updated tracking docs:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-- Automated tests run:
-  - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass).
-- Manual tests run:
-  - Manual workflow review of release logic:
-    - submission id extraction/persistence path verified.
-    - retry conditions verified for offline/transient network errors.
-    - failure paths verified for invalid/rejected/timeout statuses.
-- Result:
-  - Complete (workflow update), pending next GitHub release run confirmation.
-- Issues/blockers:
-  - End-to-end notarization validation requires a real GitHub release run with Apple service access.
-
-## Entry
-- Date: 2026-02-17
-- Step: CI follow-up hardening for staged-recording extraction test under Xcode 16.4 runner behavior
-- Changes made:
-  - Updated `extractFromFinishedRecordingCreatesTaskOnlyAfterExtractionReturns` to use a time-based wait helper instead of `Task.yield` loops:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
-  - Added reusable `waitUntil(timeoutSeconds:pollIntervalNanoseconds:_:)` helper in test file for deterministic async waiting.
-  - Updated issue/status docs to reflect the additional mitigation:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-- Automated tests run:
-  - Stress loop (8 consecutive runs):
-    - `xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test-race -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests/extractFromFinishedRecordingCreatesTaskOnlyAfterExtractionReturns CODE_SIGNING_ALLOWED=NO test` (pass in all 8 runs).
-  - Full CI-equivalent unit suite:
-    - `xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test-final -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass; 69 tests).
-- Manual tests run:
-  - N/A (test-only change).
-- Result:
-  - Complete (local).
-- Issues/blockers:
-  - GitHub CI rerun remains required for final runner confirmation.
-
-## Entry
-- Date: 2026-02-17
-- Step: CI test-flake hardening for Gemini request assertions and staged-recording extraction race
-- Changes made:
-  - Updated test `GeminiVideoLLMClientTests.analyzeVideoUploadsPollsAndGeneratesExtractionOutput` to assert request details in test context (after run) instead of inside URLProtocol callback context, and to decode JSON request body for `file_uri` verification:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/GeminiVideoLLMClientTests.swift`
-  - Updated `BlockingStoreLLMClient` test double to buffer early `finish` / `fail` results when continuation is not yet registered, removing timing-sensitive drop behavior:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
-  - Updated issue tracking and queue docs:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-- Automated tests run:
-  - `xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test-fix-full -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass; 69 tests).
-- Manual tests run:
-  - Manual local verification of command parity and deterministic test behavior by reviewing `xcodebuild` run output and confirming the previously failing test names now pass in the CI-equivalent run.
-- Result:
-  - Complete (local).
-- Issues/blockers:
-  - GitHub CI rerun is still required to confirm runner-side stability with Xcode 16.4.
-
-## Entry
-- Date: 2026-02-17
-- Step: Local CI-parity verification using exact CI command flags
-- Changes made:
-  - Ran the same build/test command shape used by GitHub CI from `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/ci.yml`.
-  - Updated local testing guidance so CI-exact commands are the default documented reproduction path:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/testing.md`
-  - Updated execution queue to track CI/local mismatch follow-up:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-build CODE_SIGNING_ALLOWED=NO build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
-- Manual tests run:
-  - N/A (command parity/documentation update).
-- Result:
-  - Complete.
-- Issues/blockers:
-  - Local machine has `/Applications/Xcode.app` (Xcode 26.2), while CI log indicates Xcode 16.4. Command parity is now exact; toolchain parity is still pending.
-
-## Entry
-- Date: 2026-02-17
-- Step: CI stabilization: serialize unit tests to reduce flakiness on GitHub runner
-- Changes made:
-  - Updated GitHub CI workflow test invocation:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/ci.yml`
-    - build/test destination pinned to `platform=macOS,arch=arm64`
-    - unit-test step now runs with `-parallel-testing-enabled NO`
-  - Rationale: CI logs showed compile/build success but runtime test failures across multiple suites in the same run, consistent with parallel test instability/race behavior.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-deployment-fix -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass; prior local parity validation for this test command shape).
-- Manual tests run:
-  - N/A (CI workflow config change).
-- Result:
-  - Complete (pending GitHub CI rerun confirmation).
-- Issues/blockers:
-  - If failures persist after serialized execution, we must inspect full per-test assertion logs from `.xcresult` for deterministic code-level fixes.
 

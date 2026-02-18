@@ -14,39 +14,33 @@ struct OnboardingFooterBar: View {
     let onFinish: () -> Void
 
     var body: some View {
-        VStack(spacing: 0) {
-            Divider()
+        VStack(spacing: 14) {
+            OnboardingStepIndicatorView(currentIndex: currentIndex, totalCount: totalCount)
 
-            VStack(spacing: 14) {
-                OnboardingStepIndicatorView(currentIndex: currentIndex, totalCount: totalCount)
+            HStack {
+                Button("Back", action: onBack)
+                    .ccPrimaryActionButton()
+                    .disabled(!canGoBack)
 
-                HStack {
-                    Button("Back", action: onBack)
-                        .buttonStyle(.bordered)
-                        .disabled(!canGoBack)
+                Spacer()
 
-                    Spacer()
+                if showsSkip && !isLastStep {
+                    Button("Skip", action: onSkip)
+                        .ccPrimaryActionButton()
+                }
 
-                    if showsSkip && !isLastStep {
-                        Button("Skip", action: onSkip)
-                            .buttonStyle(.bordered)
-                    }
-
-                    if isLastStep {
-                        Button("Finish Setup", action: onFinish)
-                            .ccPrimaryActionButton()
-                    } else {
-                        Button("Continue", action: onContinue)
-                            .ccPrimaryActionButton()
-                            .disabled(!canContinue)
-                    }
+                if isLastStep {
+                    Button("Finish Setup", action: onFinish)
+                        .ccPrimaryActionButton()
+                } else {
+                    Button("Continue", action: onContinue)
+                        .ccPrimaryActionButton()
+                        .disabled(!canContinue)
                 }
             }
-            .padding(.horizontal, 28)
-            .padding(.vertical, 18)
         }
-        .frame(maxWidth: .infinity)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .padding(.horizontal, 28)
+        .padding(.vertical, 14)
     }
 }
 

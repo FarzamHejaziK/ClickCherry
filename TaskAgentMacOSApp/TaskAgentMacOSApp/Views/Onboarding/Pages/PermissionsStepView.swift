@@ -41,6 +41,7 @@ struct PermissionsStepView: View {
 }
 
 private struct PermissionsPanelView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @Bindable var onboardingStateStore: OnboardingStateStore
 
     var body: some View {
@@ -95,7 +96,12 @@ private struct PermissionsPanelView: View {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .strokeBorder(Color.primary.opacity(0.14))
         }
-        .shadow(color: Color.black.opacity(0.22), radius: 26, x: 0, y: 16)
+        .shadow(
+            color: Color.black.opacity(colorScheme == .dark ? 0.22 : 0.0),
+            radius: colorScheme == .dark ? 26 : 0,
+            x: 0,
+            y: colorScheme == .dark ? 16 : 0
+        )
         .frame(maxWidth: 720)
     }
 

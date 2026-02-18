@@ -125,7 +125,7 @@ struct MainShellSettingsView: View {
 
     private var settingsDetail: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(spacing: 18) {
                 switch selectedSection {
                 case .modelSetup:
                     modelSetupSection
@@ -135,7 +135,7 @@ struct MainShellSettingsView: View {
 
                 Spacer(minLength: 12)
             }
-            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .frame(maxWidth: .infinity, alignment: .top)
             .padding(.horizontal, 28)
             .padding(.vertical, 22)
         }
@@ -186,6 +186,7 @@ struct MainShellSettingsView: View {
                     .foregroundStyle(.red)
             }
         }
+        .frame(maxWidth: 640, alignment: .leading)
     }
 
     private var permissionsSection: some View {
@@ -251,8 +252,8 @@ struct MainShellSettingsView: View {
                     .strokeBorder(Color.primary.opacity(0.14))
             }
             .shadow(color: Color.black.opacity(0.22), radius: 26, x: 0, y: 16)
-            .frame(maxWidth: 720)
         }
+        .frame(maxWidth: 640, alignment: .leading)
     }
 
     private var permissionDivider: some View {

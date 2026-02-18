@@ -17,10 +17,8 @@ struct OnboardingFlowView: View {
             .frame(maxWidth: 720)
             .padding(.horizontal, 52)
             .padding(.top, 46)
-            .padding(.bottom, 30)
+            .padding(.bottom, 120)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        }
-        .safeAreaInset(edge: .bottom) {
             OnboardingFooterBar(
                 currentIndex: onboardingStateStore.currentStep.rawValue,
                 totalCount: OnboardingStep.allCases.count,
@@ -48,6 +46,9 @@ struct OnboardingFlowView: View {
                     onboardingStateStore.completeOnboarding()
                 }
             )
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+            .padding(.horizontal, 22)
+            .padding(.bottom, 14)
         }
     }
 
@@ -76,7 +77,6 @@ struct OnboardingFlowView: View {
                 ReadyStepView(onboardingStateStore: onboardingStateStore)
             }
         }
-        .frame(maxWidth: onboardingStateStore.currentStep == .providerSetup ? 720 : 560)
+        .frame(maxWidth: onboardingStateStore.currentStep == .providerSetup ? 640 : 560)
     }
 }
-

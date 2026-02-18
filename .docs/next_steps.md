@@ -4,6 +4,108 @@ description: Short, continuously updated plan of the immediate next implementati
 
 # Next Steps
 
+1. Step: Provider key `Save/Update` action alignment (completed, pending visual confirmation).
+2. Why now: In Model Setup, the `Saved/Not saved` pills and `Save/Update` actions looked visually misaligned and awkward.
+3. Code tasks:
+   - Updated shared provider row layout in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/ProviderKeyEntryPanelView.swift` to use one fixed right action column width for both status and action.
+   - Updated `Save/Update` button label to fill that fixed action column so its visible button geometry aligns with status pills.
+4. Automated tests:
+   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-build CODE_SIGNING_ALLOWED=NO build` (pass on 2026-02-18 local run).
+   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass on 2026-02-18 local run).
+5. Manual tests:
+   - Pending user-side visual confirmation in onboarding `Provider Setup` and settings `Model Setup`.
+6. Exit criteria: Status pills and action buttons are visually aligned in both provider rows on onboarding and settings.
+
+1. Step: Recording finished dialog button parity (completed, pending visual confirmation).
+2. Why now: `Record again` looked inconsistent with other primary actions and broke visual cohesion.
+3. Code tasks:
+   - Updated `Record again` in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/RecordingFinishedDialogView.swift` to use `.ccPrimaryActionButton()`. (Completed)
+4. Automated tests:
+   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-build CODE_SIGNING_ALLOWED=NO build` (pass on 2026-02-18 local run).
+   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass on 2026-02-18 local run).
+5. Manual tests:
+   - Pending user-side visual check of the recording finished dialog.
+6. Exit criteria: `Record again` has the same visual style as the app’s primary action buttons.
+
+1. Step: Onboarding bottom footer-strip removal (completed, pending visual confirmation).
+2. Why now: The onboarding pages showed an unnecessary white footer band that visually broke the page.
+3. Code tasks:
+   - Removed `safeAreaInset` footer bar treatment and rendered onboarding footer as a bottom overlay on the same backdrop. (Completed)
+   - Removed divider/background strip styling from `OnboardingFooterBar` while keeping navigation controls and step indicator intact. (Completed)
+4. Automated tests:
+   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -configuration Debug -derivedDataPath /tmp/taskagent-dd-onboarding-nobar build` (pass on 2026-02-18 local run).
+   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-onboarding-nobar-test test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests` (pass on 2026-02-18 local run).
+5. Manual tests:
+   - Pending user-side Canvas/runtime confirmation that onboarding no longer has a dedicated white footer strip.
+6. Exit criteria: Footer controls remain functional and the white bottom band is removed across onboarding steps.
+
+1. Step: Settings right-column centering + narrower provider/permissions panels (completed, pending visual confirmation).
+2. Why now: Settings had the same over-wide panel feel as onboarding and needed centered, narrower content on large displays.
+3. Code tasks:
+   - Centered settings detail content within the right column. (Completed)
+   - Set `Model Setup` and `Permissions` section max width to `640` so panels match onboarding width behavior. (Completed)
+4. Automated tests:
+   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -configuration Debug -derivedDataPath /tmp/taskagent-dd-settings-center build` (pass on 2026-02-18 local run).
+   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-settings-center-test test -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass on 2026-02-18 local run).
+5. Manual tests:
+   - Pending user-side visual confirmation for `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`.
+6. Exit criteria: Settings provider panel appears centered and not overly wide on large windows.
+
+1. Step: Onboarding Provider Setup width tightening on wide screens (completed, pending visual confirmation).
+2. Why now: Provider Setup still read too wide on large displays and needed stronger side margins.
+3. Code tasks:
+   - Reduced Provider Setup step max content width in onboarding flow from `720` to `640` while keeping centered layout. (Completed)
+4. Automated tests:
+   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -configuration Debug -derivedDataPath /tmp/taskagent-dd-provider-width build` (pass on 2026-02-18 local run).
+   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-provider-width-test test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests` (pass on 2026-02-18 local run).
+5. Manual tests:
+   - Pending user-side Canvas/runtime visual confirmation for `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/OnboardingFlowView.swift`.
+6. Exit criteria: Provider Setup panel appears narrower and better balanced on wide windows.
+
+1. Step: Onboarding Welcome page modernization (completed, pending visual confirmation).
+2. Why now: The Welcome step still looked sparse/awkward and did not match the more modern visual quality of the newer onboarding pages.
+3. Code tasks:
+   - Reworked `WelcomeStepView` visual hierarchy with a compact intro badge, stronger heading/subheading scale, and cleaner spacing. (Completed)
+   - Replaced the sparse hero-only center with a two-column glass card:
+     - app hero on the left.
+     - three setup highlight rows on the right (`Connect providers`, `Grant macOS access`, `Start automating`). (Completed)
+   - Kept onboarding flow behavior unchanged (content-only redesign). (Completed)
+4. Automated tests:
+   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -configuration Debug -derivedDataPath /tmp/taskagent-dd-welcome-modern build` (pass on 2026-02-18 local run).
+   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-welcome-modern-test test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests` (pass on 2026-02-18 local run).
+5. Manual tests:
+   - Pending user-side Canvas/runtime visual confirmation for `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/WelcomeStepView.swift`.
+6. Exit criteria: Welcome step looks balanced and modern in light/dark modes without changing onboarding behavior.
+
+1. Step: Onboarding light-mode permissions shadow polish (completed, pending Canvas confirmation).
+2. Why now: Light mode showed an overly strong shadow below the Permissions card that looked awkward compared with dark mode.
+3. Code tasks:
+   - Made Permissions panel shadow theme-aware:
+     - dark mode keeps stronger depth.
+     - light mode removes panel shadow entirely. (Completed)
+4. Automated tests:
+   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-permissions-shadow-tune CODE_SIGNING_ALLOWED=NO build` (pass on 2026-02-18 local run).
+5. Manual tests:
+   - Pending user-side Xcode Canvas check in light mode for `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift`.
+6. Exit criteria: Permissions card no longer shows the heavy bottom shadow in light mode while dark mode remains visually good.
+
+1. Step: Onboarding footer action parity + light-mode preview enforcement (completed, pending user Canvas confirmation).
+2. Why now: Onboarding footer controls looked inconsistent (`Skip`/`Back` vs `Continue`) and Canvas previews were defaulting to dark mode.
+3. Code tasks:
+   - Apply shared primary action style to onboarding footer controls:
+     - `Back` and `Skip` now use `CCPrimaryActionButtonStyle` to match `Continue`/`Finish Setup`. (Completed)
+   - Force preview color scheme to light mode for onboarding/main-shell preview wrappers and recording dialog preview. (Completed)
+4. Automated tests:
+   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-onboarding-button-lightmode CODE_SIGNING_ALLOWED=NO build` (pass on 2026-02-18 local run).
+5. Manual tests:
+   - Source-level verification completed:
+     - `Back`/`Skip` use `.ccPrimaryActionButton()`.
+     - previews include `.preferredColorScheme(.light)`.
+   - Pending user-side Xcode Canvas confirmation:
+     - open `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift`
+     - confirm onboarding preview variants render in light mode and footer actions look uniform.
+6. Exit criteria: Onboarding footer buttons are visually consistent and Canvas previews default to light mode.
+
 1. Step: Release notarization reliability hardening for transient GitHub runner network drops (completed in workflow, pending run confirmation).
 2. Why now: Recent release run stayed `In Progress` for hours and failed with `NSURLErrorDomain -1009` while waiting on notary status.
 3. Code tasks:
@@ -43,6 +145,7 @@ description: Short, continuously updated plan of the immediate next implementati
 1. Step: Open-source baseline rollout and launch hardening (active).
 2. Why now: The repository now has a concrete OSS strategy (MIT + DCO + owner review authority) and needs immediate launch-ready follow-through.
 3. Code tasks:
+   - Add `Applications` symlink into DMG payload for drag-to-install flow. (Completed)
    - Add DMG packaging to release artifacts while keeping notarized ZIP distribution. (Completed)
    - Generate richer OpenClaw-style release pages (structured `Changes`/`Fixes`/`Artifacts` notes with versioned release names). (Completed)
    - Configure GitHub branch protection to require PRs, passing checks (`CI`, `DCO`), and owner/code-owner review. (Pending)

@@ -167,7 +167,7 @@ struct RecordingFinishedDialogView: View {
             } label: {
                 Label("Record again", systemImage: "arrow.counterclockwise")
             }
-            .buttonStyle(.bordered)
+            .ccPrimaryActionButton()
             .disabled(isExtracting)
 
             Spacer(minLength: 0)
