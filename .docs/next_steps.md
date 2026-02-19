@@ -4,6 +4,38 @@ description: Short, continuously updated plan of the immediate next implementati
 
 # Next Steps
 
+1. Step: DMG installer icon/drop geometry correction (completed, pending release visual confirmation).
+2. Why now: The mounted installer looked cheap/misaligned with app/drop icons appearing too low and visually clipped.
+3. Code tasks:
+   - Updated `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml` DMG generator to:
+     - increase background/window canvas size,
+     - reposition drag arrow/text composition,
+     - use centered `ClickCherry.app` and Applications drop-link coordinates,
+     - remove redundant dashed target box art from background.
+   - Updated `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md` and `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md` notes to reflect the new centered layout decision.
+4. Automated tests:
+   - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass on 2026-02-19 local run).
+5. Manual tests:
+   - Pending next release artifact mount in Finder:
+     - confirm app icon and Applications drop-link are centered and not clipped.
+6. Exit criteria: Installer opens with clean centered drag-to-install composition and no clipped icon look.
+
+1. Step: Simplify contributor workflow doc to OpenClaw-style minimal guide (completed).
+2. Why now: Contributor guidance felt heavier than desired; user requested a simpler contributing experience.
+3. Code tasks:
+   - Rewrote `/Users/farzamh/code-git-local/task-agent-macos/CONTRIBUTING.md` to a concise format:
+     - quick links
+     - contribution paths
+     - short before-PR checklist
+     - required DCO sign-off
+     - review policy
+   - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md` strategy wording to lock this simpler contributor-doc direction.
+4. Automated tests:
+   - N/A (docs-only).
+5. Manual tests:
+   - N/A (docs-only).
+6. Exit criteria: `CONTRIBUTING.md` remains concise and easy to follow while preserving DCO/review requirements.
+
 1. Step: Release artifact scope narrowed to DMG-only upload (completed, pending next release confirmation).
 2. Why now: User requested release page assets to show only DMG from workflow output.
 3. Code tasks:

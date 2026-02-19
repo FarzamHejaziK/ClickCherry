@@ -4131,3 +4131,49 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - Complete (code + docs), pending user confirmation.
 - Issues/blockers:
   - No direct Canvas/runtime visual validation in this terminal environment.
+
+## Entry
+- Date: 2026-02-18
+- Step: Recording finished dialog `Record again` button style alignment
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/RecordingFinishedDialogView.swift`
+  - Changed `Record again` to use `.ccPrimaryActionButton()` so it matches the shared button system used elsewhere.
+  - Updated tracking docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-build CODE_SIGNING_ALLOWED=NO build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - Pending user-side visual confirmation in recording finished dialog.
+- Result:
+  - Complete (code + docs), pending user confirmation.
+- Issues/blockers:
+  - No direct runtime UI interaction in this terminal environment.
+
+## Entry
+- Date: 2026-02-18
+- Step: Provider key panel Save/Update alignment polish (onboarding + settings)
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/ProviderKeyEntryPanelView.swift`
+  - Replaced per-element sizing with a single fixed right action-column width used by both:
+    - `Saved/Not saved` status pills.
+    - `Save/Update` action buttons.
+  - Updated button label layout to fill its action-column width so visible button geometry aligns with status pills.
+  - Updated tracking docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-build CODE_SIGNING_ALLOWED=NO build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - Source-level manual verification:
+    - confirmed one shared `actionColumnWidth` is used for status and action elements.
+    - confirmed button label expands to `.frame(maxWidth: .infinity)` within that fixed width.
+  - Pending user-side visual verification in app/canvas.
+- Result:
+  - Complete (code + docs), pending user visual confirmation.
+- Issues/blockers:
+  - No direct Canvas/runtime UI interaction in this terminal environment.

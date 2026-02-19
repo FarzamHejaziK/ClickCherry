@@ -39,7 +39,7 @@ If any secret is missing, release fails fast.
   - `ClickCherry-macos.dmg` (premium styled drag-to-install Finder layout with:
     - custom branded background art
     - single-icon install composition (background avoids duplicating app icon art)
-    - tuned icon/text placement
+    - tuned icon/text placement and centered Finder icon/drop geometry (no bottom-clipped icon layout)
     - app volume icon
     - `ClickCherry.app` + Applications drop link)
 - GitHub automatically adds `Source code (zip)` and `Source code (tar.gz)` to releases; these are platform-provided and not controlled by this workflow.

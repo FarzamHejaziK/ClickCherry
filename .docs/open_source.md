@@ -36,7 +36,7 @@ description: Open-source strategy decisions, governance, contribution model, and
   - DMG distribution uses a premium styled Finder drag-to-install layout:
     - branded background art
     - background intentionally avoids duplicate app icon rendering
-    - tuned icon/text positions
+    - tuned icon/text positions with centered icon/drop-link geometry (avoids clipped bottom icon placement)
     - volume icon
     - `ClickCherry.app` + Applications drop link
   - Release page body is generated in a structured format (`Changes`, `Fixes`, `Artifacts`) from commit history between tags
@@ -44,6 +44,7 @@ description: Open-source strategy decisions, governance, contribution model, and
 - Documentation split:
   - Public contributor docs in `/docs/`
   - Internal planning and execution docs remain in `/.docs/`
+  - `CONTRIBUTING.md` should stay intentionally short and low-friction (OpenClaw-style): quick links, simple contribution paths, minimal required checks, DCO, and review policy.
   - Current repo choice is to keep tracking `/.docs/` and `AGENTS.md` until explicitly changed by owner
   - Public docs presentation direction favors a visual, quickstart-first README and concise guide hub (while keeping technical details project-specific).
   - Public docs must clearly and prominently communicate the local-first privacy model: local workspace data remains on-device; network usage is limited to direct API calls from the local app to OpenAI/Gemini using user-owned keys, with no ClickCherry relay server.

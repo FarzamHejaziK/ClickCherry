@@ -8,6 +8,50 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-19
+- Step: DMG installer visual alignment fix (drag-to-install layout)
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+  - Adjusted DMG background size/composition and create-dmg icon coordinates so the app icon and Applications drop-link appear centered and not clipped at the bottom.
+  - Removed redundant dashed drop-target artwork from background to avoid double-visual target artifacts.
+- Automated tests run:
+  - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass).
+- Manual tests run:
+  - Pending next release artifact visual check in Finder.
+- Result:
+  - Complete (workflow + docs), pending release-run visual confirmation.
+- Issues/blockers:
+  - Finder visual quality can only be confirmed from a produced release DMG.
+
+## Entry
+- Date: 2026-02-19
+- Step: Contributing guide simplification (OpenClaw-style)
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/CONTRIBUTING.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+  - Replaced the previous contributing document with a shorter, lower-friction format focused on:
+    - quick links
+    - simple contribution paths
+    - small before-PR checklist
+    - mandatory DCO sign-off
+    - concise review policy
+- Automated tests run:
+  - N/A (docs-only).
+- Manual tests run:
+  - N/A (docs-only).
+- Result:
+  - Complete (docs-only).
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-19
 - Step: Release artifacts switched to DMG-only workflow uploads
 - Changes made:
   - Updated:
@@ -196,50 +240,3 @@ description: Running implementation log of completed work, test evidence, blocke
   - Complete (docs-only).
 - Issues/blockers:
   - None.
-
-## Entry
-- Date: 2026-02-18
-- Step: Provider key panel Save/Update alignment polish (onboarding + settings)
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/ProviderKeyEntryPanelView.swift`
-  - Replaced per-element sizing with a single fixed right action-column width used by both:
-    - `Saved/Not saved` status pills.
-    - `Save/Update` action buttons.
-  - Updated button label layout to fill its action-column width so visible button geometry aligns with status pills.
-  - Updated tracking docs:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-build CODE_SIGNING_ALLOWED=NO build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
-- Manual tests run:
-  - Source-level manual verification:
-    - confirmed one shared `actionColumnWidth` is used for status and action elements.
-    - confirmed button label expands to `.frame(maxWidth: .infinity)` within that fixed width.
-  - Pending user-side visual verification in app/canvas.
-- Result:
-  - Complete (code + docs), pending user visual confirmation.
-- Issues/blockers:
-  - No direct Canvas/runtime UI interaction in this terminal environment.
-
-## Entry
-- Date: 2026-02-18
-- Step: Recording finished dialog `Record again` button style alignment
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/RecordingFinishedDialogView.swift`
-  - Changed `Record again` to use `.ccPrimaryActionButton()` so it matches the shared button system used elsewhere.
-  - Updated tracking docs:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-build CODE_SIGNING_ALLOWED=NO build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
-- Manual tests run:
-  - Pending user-side visual confirmation in recording finished dialog.
-- Result:
-  - Complete (code + docs), pending user confirmation.
-- Issues/blockers:
-  - No direct runtime UI interaction in this terminal environment.
-

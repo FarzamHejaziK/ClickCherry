@@ -201,7 +201,7 @@ jobs:
           }
 
           let outputPath = CommandLine.arguments[1]
-          let canvasSize = NSSize(width: 700, height: 420)
+          let canvasSize = NSSize(width: 760, height: 480)
           let canvasRect = NSRect(origin: .zero, size: canvasSize)
 
           let image = NSImage(size: canvasSize)
@@ -213,47 +213,41 @@ jobs:
           ])!
           gradient.draw(in: canvasRect, angle: 0)
 
-          let accentRect = NSRect(x: 0, y: 0, width: canvasSize.width, height: 120)
-          NSColor(calibratedWhite: 1.0, alpha: 0.08).setFill()
-          accentRect.fill(using: .sourceOver)
+          let topGlow = NSGradient(colors: [
+              NSColor(calibratedWhite: 1.0, alpha: 0.14),
+              NSColor(calibratedWhite: 1.0, alpha: 0.0)
+          ])!
+          topGlow.draw(in: NSRect(x: 0, y: 320, width: canvasSize.width, height: 160), angle: -90)
 
           let titleAttrs: [NSAttributedString.Key: Any] = [
-              .font: NSFont.systemFont(ofSize: 34, weight: .bold),
+              .font: NSFont.systemFont(ofSize: 36, weight: .bold),
               .foregroundColor: NSColor.white
           ]
           NSAttributedString(string: "Drag to install", attributes: titleAttrs)
-              .draw(at: NSPoint(x: 278, y: 250))
+              .draw(at: NSPoint(x: 250, y: 324))
 
           let subtitleAttrs: [NSAttributedString.Key: Any] = [
-              .font: NSFont.systemFont(ofSize: 17, weight: .medium),
+              .font: NSFont.systemFont(ofSize: 18, weight: .medium),
               .foregroundColor: NSColor(calibratedWhite: 1.0, alpha: 0.86)
           ]
           NSAttributedString(string: "Drop the app into Applications", attributes: subtitleAttrs)
-              .draw(at: NSPoint(x: 278, y: 214))
+              .draw(at: NSPoint(x: 250, y: 282))
 
           let arrowPath = NSBezierPath()
-          arrowPath.move(to: NSPoint(x: 130, y: 176))
-          arrowPath.line(to: NSPoint(x: 468, y: 176))
+          arrowPath.move(to: NSPoint(x: 220, y: 216))
+          arrowPath.line(to: NSPoint(x: 542, y: 216))
           arrowPath.lineWidth = 6
           NSColor(calibratedWhite: 1.0, alpha: 0.78).setStroke()
           arrowPath.stroke()
 
           let arrowHead = NSBezierPath()
-          arrowHead.move(to: NSPoint(x: 468, y: 176))
-          arrowHead.line(to: NSPoint(x: 442, y: 194))
-          arrowHead.move(to: NSPoint(x: 468, y: 176))
-          arrowHead.line(to: NSPoint(x: 442, y: 158))
+          arrowHead.move(to: NSPoint(x: 542, y: 216))
+          arrowHead.line(to: NSPoint(x: 514, y: 235))
+          arrowHead.move(to: NSPoint(x: 542, y: 216))
+          arrowHead.line(to: NSPoint(x: 514, y: 197))
           arrowHead.lineWidth = 6
           NSColor(calibratedWhite: 1.0, alpha: 0.78).setStroke()
           arrowHead.stroke()
-
-          let targetRect = NSRect(x: 482, y: 118, width: 134, height: 134)
-          let targetPath = NSBezierPath(roundedRect: targetRect, xRadius: 24, yRadius: 24)
-          let dash: [CGFloat] = [11, 8]
-          targetPath.setLineDash(dash, count: dash.count, phase: 0)
-          targetPath.lineWidth = 3
-          NSColor(calibratedWhite: 1.0, alpha: 0.36).setStroke()
-          targetPath.stroke()
 
           image.unlockFocus()
 
@@ -287,12 +281,12 @@ jobs:
             "${VOLICON_ARGS[@]}" \
             --background "$DMG_BG_PATH" \
             --window-pos 200 120 \
-            --window-size 700 420 \
+            --window-size 760 480 \
             --text-size 14 \
-            --icon-size 120 \
-            --icon "ClickCherry.app" 160 300 \
+            --icon-size 104 \
+            --icon "ClickCherry.app" 190 230 \
             --hide-extension "ClickCherry.app" \
-            --app-drop-link 530 300 \
+            --app-drop-link 570 230 \
             --format UDZO \
             --hdiutil-quiet \
             --no-internet-enable \

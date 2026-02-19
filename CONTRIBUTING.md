@@ -1,50 +1,53 @@
-# Contributing
+# Contributing to ClickCherry
 
-Thanks for contributing to Task Agent macOS.
+Thanks for contributing.
 
-## Quick Start
+## Quick Links
 
-1. Fork the repository.
-2. Create a branch from `main`.
-3. Make focused changes with tests.
-4. Run the local verification commands.
-5. Open a pull request.
+- Docs hub: [`/docs/README.md`](docs/README.md)
+- Getting started: [`/docs/getting-started.md`](docs/getting-started.md)
+- Day-to-day development: [`/docs/development.md`](docs/development.md)
+- Architecture: [`/docs/architecture.md`](docs/architecture.md)
+- Security policy: [`/SECURITY.md`](SECURITY.md)
+- Code of Conduct: [`/CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
 
-## Development Setup
+## How to Contribute
 
-See `/docs/getting-started.md` and `/docs/development.md`.
+1. **Bug fixes / small improvements**: open a focused PR.
+2. **Bigger changes** (new features, architecture, major UX): open an Issue first to align scope.
+3. **Questions**: open an Issue.
 
-## Pull Request Expectations
+## Before You Open a PR
 
-- Keep PRs small and scoped.
-- Add/adjust tests for behavior changes.
-- Update docs when behavior, workflows, or decisions change.
-- Use clear PR descriptions and include manual validation notes.
+- Keep the PR scoped to one concern.
+- Add/update tests for behavior changes.
+- Run local checks:
 
-## Commit Sign-Off (DCO)
+```bash
+xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj \
+  -scheme TaskAgentMacOSApp \
+  -destination "platform=macOS,arch=arm64" \
+  CODE_SIGNING_ALLOWED=NO build
 
-This project uses Developer Certificate of Origin (DCO).
-
-Every commit must include a `Signed-off-by` trailer matching the commit author.
-
-Example:
-
-```text
-Signed-off-by: Your Name <you@example.com>
+xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj \
+  -scheme TaskAgentMacOSApp \
+  -destination "platform=macOS,arch=arm64" \
+  -parallel-testing-enabled NO \
+  -only-testing:TaskAgentMacOSAppTests \
+  CODE_SIGNING_ALLOWED=NO test
 ```
 
-Use:
+- Include what changed, why, and manual verification notes in PR description.
+
+## DCO Sign-off (Required)
+
+Every commit must be signed off:
 
 ```bash
 git commit -s -m "your message"
 ```
 
-## Review and Merge Policy
+## Review Policy
 
-- Maintainer review is required for merges.
-- Branch protection should require at least one approval and passing checks.
-- For now, final merge authority remains with the project owner.
-
-## Code of Conduct
-
-By participating, you agree to follow `/CODE_OF_CONDUCT.md`.
+- Maintainer review is required before merge.
+- Final merge authority remains with the project owner (BDFL model).

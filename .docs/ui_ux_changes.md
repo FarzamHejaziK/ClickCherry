@@ -27,6 +27,25 @@ description: Canonical log for UI/UX plans, decisions, and implementation alignm
 
 ## Entry
 - Date: 2026-02-19
+- Area: DMG installer Finder layout (icon/drop alignment)
+- Change Summary:
+  - Fixed DMG visual composition where app/drop icons appeared low/clipped and misaligned.
+  - Updated release workflow DMG background art and Finder placement geometry:
+    - larger canvas/window size
+    - centered icon/drop coordinates
+    - removed redundant dashed target box from background to reduce visual clutter.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` polish goals for first-run installation UX.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` principle of clean, intentional visuals and minimal distracting chrome.
+- Validation:
+  - Automated tests:
+    - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass).
+  - Manual tests:
+    - Pending next release artifact mount in Finder to verify icon + Applications drop-link are centered and not clipped.
+
+## Entry
+- Date: 2026-02-19
 - Area: Recording finished dialog preview stability (post-capture sheet)
 - Change Summary:
   - Replaced SwiftUI `VideoPlayer` with a native `AVPlayerView` wrapper for the recording preview surface in the finished-recording sheet.
