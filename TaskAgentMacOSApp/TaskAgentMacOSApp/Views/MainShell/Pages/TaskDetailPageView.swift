@@ -28,6 +28,7 @@ struct TaskDetailView: View {
             .padding(.vertical, 24)
             .frame(maxWidth: .infinity, alignment: .top)
         }
+        .scrollIndicators(.never)
         .onAppear {
             mainShellStateStore.refreshCaptureDisplays()
         }

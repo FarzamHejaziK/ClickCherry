@@ -1041,6 +1041,47 @@ struct MainShellStateStoreTests {
     }
 
     @Test
+    func resetOnboardingClearsCompletionFlagAndPostsNotification() throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let suiteName = "MainShellStateStoreTests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        defaults.set(true, forKey: "onboarding.completed")
+
+        let store = MainShellStateStore(
+            taskService: taskService,
+            apiKeyStore: MockAPIKeyStore(),
+            userDefaults: defaults,
+            captureService: MockRecordingCaptureService(),
+            overlayService: MockRecordingOverlayService()
+        )
+
+        var received = false
+        let token = NotificationCenter.default.addObserver(
+            forName: .clickCherryResetOnboardingRequested,
+            object: nil,
+            queue: nil
+        ) { _ in
+            received = true
+        }
+        defer { NotificationCenter.default.removeObserver(token) }
+
+        store.resetOnboardingAndReturnToSetup()
+
+        #expect(defaults.bool(forKey: "onboarding.completed") == false)
+        #expect(received)
+    }
+
+    @Test
     func deletingSelectedTaskReturnsToNewTaskAndClearsState() throws {
         let fm = FileManager.default
         let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)

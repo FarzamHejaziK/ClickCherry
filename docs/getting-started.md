@@ -41,4 +41,3 @@ xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj \
 - Keep PRs focused and small when possible
 - Add or update tests for behavior changes
 - Update public docs when behavior/flow changes
-- Sign commits with DCO (`git commit -s`)

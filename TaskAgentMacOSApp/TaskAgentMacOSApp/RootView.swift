@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 struct RootView: View {
     @State private var onboardingStateStore: OnboardingStateStore
@@ -19,6 +20,12 @@ struct RootView: View {
         }
         .background(WindowTitlebarBrandInstaller())
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: isOnboarding ? .center : .topLeading)
+        .onReceive(NotificationCenter.default.publisher(for: .clickCherryResetOnboardingRequested)) { _ in
+            onboardingStateStore = OnboardingStateStore(
+                currentStep: .welcome,
+                hasCompletedOnboarding: false
+            )
+        }
         // The onboarding flow manages its own padding; the main shell is edge-to-edge.
         .padding(0)
     }

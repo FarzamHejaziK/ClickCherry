@@ -334,6 +334,12 @@ final class MainShellStateStore {
         permissionService.openSystemSettings(for: permission)
     }
 
+    func resetOnboardingAndReturnToSetup() {
+        userDefaults.set(false, forKey: "onboarding.completed")
+        userDefaults.synchronize()
+        NotificationCenter.default.post(name: .clickCherryResetOnboardingRequested, object: nil)
+    }
+
     func openTask(_ taskID: String) {
         route = .task(taskID)
         selectedTaskID = taskID

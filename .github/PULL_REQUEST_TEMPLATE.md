@@ -12,7 +12,3 @@
 
 - [ ] Docs updated (if required)
 - [ ] `.docs/open_source.md` updated (if OSS policy/process changed)
-
-## DCO
-
-- [ ] All commits are signed off (`git commit -s`)

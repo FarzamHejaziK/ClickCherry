@@ -4,6 +4,73 @@ description: Short, continuously updated plan of the immediate next implementati
 
 # Next Steps
 
+1. Step: Validate new in-app onboarding reset flow on user runtime devices (in progress).
+2. Why now: Manual deep uninstall/reset is unreliable for onboarding recovery; user still reported missing onboarding after cleanup.
+3. Code tasks:
+  - Added onboarding reset notification hook:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/AppNotifications.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/RootView.swift`
+  - Added state-reset entry point:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
+  - Added UI action:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
+  - Added automated coverage:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
+4. Automated tests:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" build` (pass on 2026-02-19 local run).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests test` (pass on 2026-02-19 local run).
+5. Manual tests:
+  - Performed: shell-level onboarding reset + relaunch verification (`defaults` reset + app relaunch).
+  - Pending: user-side runtime validation of `Settings -> Model Setup -> Start Over (Show Onboarding)`.
+6. Exit criteria:
+  - Clicking `Start Over (Show Onboarding)` immediately opens onboarding welcome.
+  - Relaunch keeps onboarding route until the user completes onboarding again.
+
+1. Step: Hide right-column scrollbar in task detail view (completed, pending runtime visual confirmation).
+2. Why now: User reported an awkward persistent vertical bar on the right detail column.
+3. Code tasks:
+   - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/TaskDetailPageView.swift` to apply `.scrollIndicators(.never)` on the main `ScrollView`.
+4. Automated tests:
+   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-rightscroll-build CODE_SIGNING_ALLOWED=NO build` (pass on 2026-02-19 local run).
+   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-rightscroll-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass on 2026-02-19 local run).
+5. Manual tests:
+   - Pending user-side visual check in task detail page.
+6. Exit criteria: Right detail column no longer shows the awkward vertical scroll bar.
+
+1. Step: Show `ClickCherry` name in macOS title/navigation bar (completed, pending runtime visual confirmation).
+2. Why now: User requested stable titlebar branding with app name visible in window chrome.
+3. Code tasks:
+   - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/AppMain.swift`:
+     - `WindowGroup("ClickCherry")`
+     - `.windowToolbarStyle(.unified(showsTitle: true))`
+   - Simplified `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Titlebar/WindowTitlebarBranding.swift` to enforce native window title visibility (`ClickCherry`) and removed custom accessory-title path.
+4. Automated tests:
+   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-titlebar-build CODE_SIGNING_ALLOWED=NO build` (pass on 2026-02-19 local run).
+   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-titlebar-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass on 2026-02-19 local run).
+5. Manual tests:
+   - Pending user-side runtime check that title bar shows `ClickCherry` consistently.
+6. Exit criteria: App window title/navigation bar visibly shows `ClickCherry` on launch.
+
+1. Step: Remove DCO requirement from contribution policy and CI (completed).
+2. Why now: User requested OpenClaw-style contributing flow without commit sign-off requirements.
+3. Code tasks:
+   - Removed DCO enforcement workflow:
+     - deleted `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/dco.yml`.
+   - Updated contributor-facing docs to remove DCO requirements:
+     - `/Users/farzamh/code-git-local/task-agent-macos/CONTRIBUTING.md`
+     - `/Users/farzamh/code-git-local/task-agent-macos/docs/getting-started.md`
+     - `/Users/farzamh/code-git-local/task-agent-macos/docs/development.md`
+     - `/Users/farzamh/code-git-local/task-agent-macos/.github/PULL_REQUEST_TEMPLATE.md`
+   - Updated policy/source-of-truth docs:
+     - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
+     - `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`
+     - `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`
+4. Automated tests:
+   - `ruby -ryaml -e 'YAML.load_file(".github/workflows/ci.yml"); puts "ci.yml ok"; YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass on 2026-02-19 local run).
+5. Manual tests:
+   - N/A (docs/workflow policy change).
+6. Exit criteria: Contribution docs and CI no longer require `Signed-off-by` trailers.
+
 1. Step: DMG installer icon/drop geometry correction (completed, pending release visual confirmation).
 2. Why now: The mounted installer looked cheap/misaligned with app/drop icons appearing too low and visually clipped.
 3. Code tasks:
@@ -27,14 +94,13 @@ description: Short, continuously updated plan of the immediate next implementati
      - quick links
      - contribution paths
      - short before-PR checklist
-     - required DCO sign-off
      - review policy
    - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md` strategy wording to lock this simpler contributor-doc direction.
 4. Automated tests:
    - N/A (docs-only).
 5. Manual tests:
    - N/A (docs-only).
-6. Exit criteria: `CONTRIBUTING.md` remains concise and easy to follow while preserving DCO/review requirements.
+6. Exit criteria: `CONTRIBUTING.md` remains concise and easy to follow while preserving review requirements.
 
 1. Step: Release artifact scope narrowed to DMG-only upload (completed, pending next release confirmation).
 2. Why now: User requested release page assets to show only DMG from workflow output.
@@ -297,12 +363,12 @@ description: Short, continuously updated plan of the immediate next implementati
 6. Exit criteria: CI and local use identical command shape, deterministic local failures are addressed, and the next GitHub CI run confirms green.
 
 1. Step: Open-source baseline rollout and launch hardening (active).
-2. Why now: The repository now has a concrete OSS strategy (MIT + DCO + owner review authority) and needs immediate launch-ready follow-through.
+2. Why now: The repository now has a concrete OSS strategy (MIT + owner review authority) and needs immediate launch-ready follow-through.
 3. Code tasks:
    - Add `Applications` symlink into DMG payload for drag-to-install flow. (Completed)
    - Add DMG packaging to release artifacts while keeping notarized ZIP distribution. (Completed)
    - Generate richer OpenClaw-style release pages (structured `Changes`/`Fixes`/`Artifacts` notes with versioned release names). (Completed)
-   - Configure GitHub branch protection to require PRs, passing checks (`CI`, `DCO`), and owner/code-owner review. (Pending)
+   - Configure GitHub branch protection to require PRs, passing checks (`CI`), and owner/code-owner review. (Pending)
    - Configure release signing/notarization secrets and wire signed artifact steps in release workflow. (Pending)
    - Publish initial launch issues/labels (`good first issue`, `help wanted`, `documentation`). (Pending)
    - Refresh public docs style with visual, quickstart-first structure:

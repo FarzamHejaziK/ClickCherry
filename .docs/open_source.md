@@ -18,8 +18,7 @@ description: Open-source strategy decisions, governance, contribution model, and
 - License:
   - MIT (`/LICENSE`)
 - Contribution legal model:
-  - DCO required (`git commit -s`) with CI validation
-  - No CLA for now
+  - No DCO or CLA requirement
 - Governance/review authority:
   - BDFL-style final decision authority by owner
   - Owner approval required before merges to `main`
@@ -44,7 +43,7 @@ description: Open-source strategy decisions, governance, contribution model, and
 - Documentation split:
   - Public contributor docs in `/docs/`
   - Internal planning and execution docs remain in `/.docs/`
-  - `CONTRIBUTING.md` should stay intentionally short and low-friction (OpenClaw-style): quick links, simple contribution paths, minimal required checks, DCO, and review policy.
+  - `CONTRIBUTING.md` should stay intentionally short and low-friction (OpenClaw-style): quick links, simple contribution paths, minimal required checks, and review policy.
   - Current repo choice is to keep tracking `/.docs/` and `AGENTS.md` until explicitly changed by owner
   - Public docs presentation direction favors a visual, quickstart-first README and concise guide hub (while keeping technical details project-specific).
   - Public docs must clearly and prominently communicate the local-first privacy model: local workspace data remains on-device; network usage is limited to direct API calls from the local app to OpenAI/Gemini using user-owned keys, with no ClickCherry relay server.
@@ -54,7 +53,6 @@ description: Open-source strategy decisions, governance, contribution model, and
 ## Rationale Snapshot
 
 - MIT was selected for maximum adoption simplicity.
-- DCO is selected as low-overhead legal attestation.
 - Centralized review authority protects product direction while accepting broad contribution.
 - Public docs and templates reduce onboarding friction and improve PR quality.
 
@@ -73,7 +71,6 @@ description: Open-source strategy decisions, governance, contribution model, and
   - `/.github/PULL_REQUEST_TEMPLATE.md`
   - `/.github/ISSUE_TEMPLATE/*`
   - `/.github/workflows/ci.yml`
-  - `/.github/workflows/dco.yml`
   - `/.github/workflows/release.yml`
 - Public docs:
   - `/docs/README.md`
@@ -86,7 +83,7 @@ description: Open-source strategy decisions, governance, contribution model, and
 
 - Configure repository branch protection in GitHub settings:
   - require PRs before merge
-  - require status checks (`CI`, `DCO`)
+  - require status checks (`CI`)
   - require review from code owners
   - restrict direct pushes to `main`
 - Decide whether to stop tracking `/.docs/` and `AGENTS.md` in git later.

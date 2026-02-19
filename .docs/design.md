@@ -438,8 +438,7 @@ This means: if the agent still has unresolved questions, should execution stop o
 - License:
   - MIT
 - Contribution legal attestation:
-  - DCO required for all commits (`Signed-off-by` trailers)
-  - no CLA in current phase
+  - no DCO or CLA requirement in current phase
 - Governance:
   - BDFL-style owner final authority
   - owner approval required before merge to `main`

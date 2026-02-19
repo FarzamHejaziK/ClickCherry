@@ -8,6 +8,106 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-19
+- Step: In-app onboarding reset path (`Start Over`) for reliable restart-from-scratch flow
+- Changes made:
+  - Added app-wide notification constant:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/AppNotifications.swift`
+  - Updated root routing:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/RootView.swift`
+    - Root view now listens for reset notification and rebuilds onboarding state as `welcome` + `hasCompletedOnboarding = false`.
+  - Updated state store:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
+    - Added `resetOnboardingAndReturnToSetup()` to set `onboarding.completed = false` and post reset notification.
+  - Updated settings UI:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
+    - Added `Start Over (Show Onboarding)` action in `Model Setup`.
+  - Added automated test:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
+    - Verifies onboarding flag reset + notification post.
+  - Updated docs/issue tracking:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests test` (pass).
+- Manual tests run:
+  - Performed local shell-level reset/relaunch verification:
+    - `defaults` onboarding key reset + `open -a /Applications/ClickCherry.app`.
+  - Pending user-side runtime click-through validation for new Settings action.
+- Result:
+  - Complete (code + docs), pending user runtime confirmation.
+- Issues/blockers:
+  - Terminal environment cannot click through the Settings UI directly.
+
+## Entry
+- Date: 2026-02-19
+- Step: Right-column scrollbar suppression in task detail view
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/TaskDetailPageView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+  - Added `.scrollIndicators(.never)` to the main right-column `TaskDetailView` vertical scroll container.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-rightscroll-build CODE_SIGNING_ALLOWED=NO build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-rightscroll-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - Pending user-side runtime visual validation.
+- Result:
+  - Complete (code + docs), pending user confirmation.
+- Issues/blockers:
+  - Terminal environment cannot directly verify runtime visual appearance.
+
+## Entry
+- Date: 2026-02-19
+- Step: Native titlebar app-name visibility (`ClickCherry`)
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/AppMain.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Titlebar/WindowTitlebarBranding.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+  - Enabled native title display via `WindowGroup("ClickCherry")` and `.windowToolbarStyle(.unified(showsTitle: true))`.
+  - Removed custom titlebar accessory branding path and switched to reliable native window title enforcement (`ClickCherry`).
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-titlebar-build CODE_SIGNING_ALLOWED=NO build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-titlebar-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - Pending user-side runtime validation of titlebar display.
+- Result:
+  - Complete (code + docs), pending runtime visual confirmation.
+- Issues/blockers:
+  - Cannot directly verify live titlebar rendering from terminal-only environment.
+
+## Entry
+- Date: 2026-02-19
+- Step: Remove DCO requirement from contributor policy and CI
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/CONTRIBUTING.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/getting-started.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/development.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/PULL_REQUEST_TEMPLATE.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`
+  - Deleted:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/dco.yml`
+  - Removed commit sign-off language (`Signed-off-by` / `git commit -s`) from contributor docs and templates.
+  - Removed DCO enforcement workflow and policy references; branch-protection guidance now tracks `CI` only.
+- Automated tests run:
+  - `ruby -ryaml -e 'YAML.load_file(".github/workflows/ci.yml"); puts "ci.yml ok"; YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass).
+- Manual tests run:
+  - N/A (docs/workflow policy change).
+- Result:
+  - Complete (policy + docs + workflow), pending YAML validation command completion.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-19
 - Step: DMG installer visual alignment fix (drag-to-install layout)
 - Changes made:
   - Updated:
@@ -144,99 +244,3 @@ description: Running implementation log of completed work, test evidence, blocke
 - Issues/blockers:
   - DMG visual quality can only be fully confirmed on a produced release artifact in Finder.
 
-## Entry
-- Date: 2026-02-18
-- Step: Premium DMG installer visual polish
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`
-  - Enhanced DMG build step to produce a more polished Finder installer experience:
-    - generates branded background art during CI (Swift script).
-    - applies tuned icon/text layout for drag-to-install guidance.
-    - uses app icon as mounted volume icon when available.
-    - keeps `ClickCherry.app` + Applications drop link layout.
-  - Updated release/public strategy docs:
-    - `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-- Automated tests run:
-  - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass).
-- Manual tests run:
-  - N/A locally; requires release artifact mount/visual check on macOS Finder.
-- Result:
-  - Complete (workflow + docs), pending release-run visual confirmation.
-- Issues/blockers:
-  - Final UX quality is dependent on actual mounted DMG appearance in Finder on release output.
-
-## Entry
-- Date: 2026-02-18
-- Step: Release workflow styled DMG packaging (drag-to-install Finder layout)
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`
-  - Replaced plain `hdiutil create` DMG packaging with `create-dmg`-based styled DMG generation.
-  - Added explicit installer layout configuration:
-    - app icon placement
-    - Applications drop-link placement
-    - polished drag-to-install Finder presentation.
-  - Updated release documentation:
-    - `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md`
-  - Updated open-source strategy tracking:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
-  - Updated execution queue tracking:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-- Automated tests run:
-  - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass).
-- Manual tests run:
-  - Pending next tag-based release run and Finder visual verification.
-- Result:
-  - Complete (workflow + docs), pending release-run validation.
-- Issues/blockers:
-  - Styled DMG output can only be verified from a release artifact produced on GitHub Actions.
-
-## Entry
-- Date: 2026-02-18
-- Step: README privacy wording precision (direct local provider calls)
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/README.md`
-  - Clarified privacy statement to explicitly say:
-    - LLM calls are direct from the local app to OpenAI/Gemini.
-    - no ClickCherry relay/proxy server is involved.
-  - Updated strategy wording:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
-  - Updated execution queue:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-- Automated tests run:
-  - N/A (docs-only).
-- Manual tests run:
-  - N/A (docs-only).
-- Result:
-  - Complete (docs-only).
-- Issues/blockers:
-  - None.
-
-## Entry
-- Date: 2026-02-18
-- Step: README privacy-first messaging update
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/README.md`
-  - Added a bold privacy callout near the top of README.
-  - Added dedicated `Privacy` section clarifying:
-    - local-first storage and processing.
-    - no ClickCherry server-side storage of personal workspace data.
-    - only direct LLM provider API calls via user-owned API keys.
-    - API keys stored in macOS Keychain.
-  - Updated open-source strategy tracking:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
-  - Updated execution queue tracking:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-- Automated tests run:
-  - N/A (docs-only).
-- Manual tests run:
-  - N/A (docs-only).
-- Result:
-  - Complete (docs-only).
-- Issues/blockers:
-  - None.

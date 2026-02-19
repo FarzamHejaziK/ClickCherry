@@ -4177,3 +4177,100 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - Complete (code + docs), pending user visual confirmation.
 - Issues/blockers:
   - No direct Canvas/runtime UI interaction in this terminal environment.
+
+## Entry
+- Date: 2026-02-18
+- Step: README privacy-first messaging update
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/README.md`
+  - Added a bold privacy callout near the top of README.
+  - Added dedicated `Privacy` section clarifying:
+    - local-first storage and processing.
+    - no ClickCherry server-side storage of personal workspace data.
+    - only direct LLM provider API calls via user-owned API keys.
+    - API keys stored in macOS Keychain.
+  - Updated open-source strategy tracking:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
+  - Updated execution queue tracking:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - N/A (docs-only).
+- Manual tests run:
+  - N/A (docs-only).
+- Result:
+  - Complete (docs-only).
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-18
+- Step: README privacy wording precision (direct local provider calls)
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/README.md`
+  - Clarified privacy statement to explicitly say:
+    - LLM calls are direct from the local app to OpenAI/Gemini.
+    - no ClickCherry relay/proxy server is involved.
+  - Updated strategy wording:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
+  - Updated execution queue:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - N/A (docs-only).
+- Manual tests run:
+  - N/A (docs-only).
+- Result:
+  - Complete (docs-only).
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-18
+- Step: Release workflow styled DMG packaging (drag-to-install Finder layout)
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`
+  - Replaced plain `hdiutil create` DMG packaging with `create-dmg`-based styled DMG generation.
+  - Added explicit installer layout configuration:
+    - app icon placement
+    - Applications drop-link placement
+    - polished drag-to-install Finder presentation.
+  - Updated release documentation:
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md`
+  - Updated open-source strategy tracking:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
+  - Updated execution queue tracking:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass).
+- Manual tests run:
+  - Pending next tag-based release run and Finder visual verification.
+- Result:
+  - Complete (workflow + docs), pending release-run validation.
+- Issues/blockers:
+  - Styled DMG output can only be verified from a release artifact produced on GitHub Actions.
+
+## Entry
+- Date: 2026-02-18
+- Step: Premium DMG installer visual polish
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`
+  - Enhanced DMG build step to produce a more polished Finder installer experience:
+    - generates branded background art during CI (Swift script).
+    - applies tuned icon/text layout for drag-to-install guidance.
+    - uses app icon as mounted volume icon when available.
+    - keeps `ClickCherry.app` + Applications drop link layout.
+  - Updated release/public strategy docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass).
+- Manual tests run:
+  - N/A locally; requires release artifact mount/visual check on macOS Finder.
+- Result:
+  - Complete (workflow + docs), pending release-run visual confirmation.
+- Issues/blockers:
+  - Final UX quality is dependent on actual mounted DMG appearance in Finder on release output.

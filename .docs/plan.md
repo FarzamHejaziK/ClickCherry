@@ -221,7 +221,6 @@ description: Step-by-step implementation plan with code scope, automated tests, 
   - PR template
   - bug/feature issue templates
   - CI workflow (`xcodebuild` build + unit tests)
-  - DCO workflow (commit sign-off enforcement)
   - release workflow baseline
 - Create public contributor docs in `/docs/` and align `README.md`.
 - Track locked open-source decisions and follow-ups in `/.docs/open_source.md`.
@@ -232,7 +231,7 @@ description: Step-by-step implementation plan with code scope, automated tests, 
 
 ### Manual test
 - Review public docs flow from `README.md` -> `/docs/*` for onboarding clarity.
-- Review governance docs for consistency (license, DCO, owner approval model).
+- Review governance docs for consistency (license, contribution policy, owner approval model).
 - Confirm release docs explicitly call out signed artifact prerequisites and pending secrets.
 
 ## Step 0.5: First-run onboarding (API keys + preflight)

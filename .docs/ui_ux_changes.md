@@ -27,6 +27,59 @@ description: Canonical log for UI/UX plans, decisions, and implementation alignm
 
 ## Entry
 - Date: 2026-02-19
+- Area: Settings reset flow for onboarding restart
+- Change Summary:
+  - Added a `Start Over (Show Onboarding)` action under `Settings -> Model Setup`.
+  - The action now forces onboarding state reset and routes the app back to onboarding welcome immediately.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` reliability goals for first-run and setup flows by replacing brittle manual reset steps with an in-app control.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` usability principles: critical recovery paths must be explicit and available in product UI.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests test` (pass).
+  - Manual tests:
+    - Performed: local key reset + relaunch via shell commands (`defaults` + `open -a /Applications/ClickCherry.app`) to verify onboarding key can be cleared.
+    - Pending: user-side click-through validation of the new Settings reset button in runtime UI.
+
+## Entry
+- Date: 2026-02-19
+- Area: Main shell right-column scrollbar cleanup
+- Change Summary:
+  - Removed the vertical scroll indicator from the right detail column task view.
+  - Applied `.scrollIndicators(.never)` to `TaskDetailView`'s main `ScrollView` to eliminate the persistent awkward right-edge bar.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` shell polish goals and visual consistency across columns.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` minimalist chrome direction by hiding non-essential scroll indicators in standard usage.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-rightscroll-build CODE_SIGNING_ALLOWED=NO build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-rightscroll-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - Manual tests:
+    - Pending user-side runtime confirmation that the right-column vertical bar no longer appears.
+
+## Entry
+- Date: 2026-02-19
+- Area: Window title bar branding (native title visibility)
+- Change Summary:
+  - Made window title show `ClickCherry` consistently in the macOS title bar by using native title rendering.
+  - Updated app scene to `WindowGroup("ClickCherry")` and enabled unified toolbar title display.
+  - Removed fragile custom titlebar accessory injection path and now enforce a simple native window title in `WindowTitlebarBrandInstaller`.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` UI polish/stability goals for core shell experience.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` preference for reliable, clear macOS-native chrome over brittle custom titlebar behavior.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-titlebar-build CODE_SIGNING_ALLOWED=NO build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-titlebar-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - Manual tests:
+    - Pending user-side runtime confirmation that `ClickCherry` appears in the title/navigation bar.
+
+## Entry
+- Date: 2026-02-19
 - Area: DMG installer Finder layout (icon/drop alignment)
 - Change Summary:
   - Fixed DMG visual composition where app/drop icons appeared low/clipped and misaligned.

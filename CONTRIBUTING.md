@@ -39,14 +39,6 @@ xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj \
 
 - Include what changed, why, and manual verification notes in PR description.
 
-## DCO Sign-off (Required)
-
-Every commit must be signed off:
-
-```bash
-git commit -s -m "your message"
-```
-
 ## Review Policy
 
 - Maintainer review is required before merge.

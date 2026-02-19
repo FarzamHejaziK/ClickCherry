@@ -10,9 +10,9 @@ struct TaskAgentMacOSApp: App {
     }
 
     var body: some Scene {
-        WindowGroup {
+        WindowGroup("ClickCherry") {
             RootView()
         }
-        .windowToolbarStyle(.unified(showsTitle: false))
+        .windowToolbarStyle(.unified(showsTitle: true))
     }
 }

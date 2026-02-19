@@ -4,6 +4,37 @@ description: Active unresolved issues with concrete repro details, mitigation, a
 
 # Open Issues
 
+## Issue OI-2026-02-19-013
+- Issue ID: OI-2026-02-19-013
+- Title: Onboarding does not reappear after uninstall/reset on some local installs
+- Status: Mitigated
+- Severity: High
+- First Seen: 2026-02-19
+- Scope:
+  - Affects users who completed onboarding and later want to restart from scratch.
+  - Impacts both local and secondary device installs where manual preference cleanup may not restore onboarding route.
+- Repro Steps:
+  1. Complete onboarding once.
+  2. Remove app/preferences manually and reinstall.
+  3. Launch app and expect onboarding to appear.
+- Observed:
+  - App can still open directly to main shell with no onboarding flow.
+  - Manual preference cleanup is not consistently reliable for end users.
+- Expected:
+  - User can reliably return to onboarding from inside the app without shell cleanup.
+- Current Mitigation:
+  - Added in-app reset action in Settings (`Start Over (Show Onboarding)`) that:
+    - writes `onboarding.completed = false`,
+    - emits an app-wide reset notification,
+    - immediately routes root view back to onboarding welcome step.
+  - Added test coverage for the reset path (`MainShellStateStoreTests.resetOnboardingClearsCompletionFlagAndPostsNotification`).
+- Next Action:
+  - User-side runtime validation:
+    - open Settings -> Model Setup -> `Start Over (Show Onboarding)`.
+    - confirm app immediately returns to onboarding welcome.
+    - relaunch app and confirm onboarding still appears until explicitly completed.
+- Owner: Codex + user validation in local runtime
+
 ## Issue OI-2026-02-19-012
 - Issue ID: OI-2026-02-19-012
 - Title: App aborts when stopping recording and presenting recording-finished preview sheet

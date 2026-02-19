@@ -185,6 +185,24 @@ struct MainShellSettingsView: View {
                 Text(apiKeyErrorMessage)
                     .foregroundStyle(.red)
             }
+
+            Divider()
+                .padding(.top, 4)
+                .opacity(0.4)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Start Over")
+                    .font(.headline)
+
+                Text("Show onboarding again and restart setup flow from the welcome step.")
+                    .foregroundStyle(.secondary)
+
+                Button("Start Over (Show Onboarding)") {
+                    mainShellStateStore.resetOnboardingAndReturnToSetup()
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.red)
+            }
         }
         .frame(maxWidth: 640, alignment: .leading)
     }

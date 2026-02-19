@@ -38,4 +38,3 @@ xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj \
 - Unit tests pass locally
 - Behavior changes include tests
 - Relevant docs are updated in the same PR
-- Commits are DCO signed
