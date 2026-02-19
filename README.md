@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_512x512.png" width="140" alt="ClickCherry logo" />
+  <img src="docs/images/clickcherry-cool.png" width="760" alt="ClickCherry" />
 </p>
 
 <h1 align="center">ClickCherry</h1>
