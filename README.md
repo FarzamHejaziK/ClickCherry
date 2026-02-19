@@ -2,7 +2,6 @@
   <img src="docs/images/clickcherry-cool.png" width="760" alt="ClickCherry" />
 </p>
 
-<h1 align="center">ClickCherry</h1>
 <p align="center">
   <strong>Your desktop AI assistant that learns tasks from your screen recordings and runs them for you.</strong>
 </p>
