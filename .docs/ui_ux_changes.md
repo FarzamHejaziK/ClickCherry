@@ -26,6 +26,58 @@ description: Canonical log for UI/UX plans, decisions, and implementation alignm
 ## Entries
 
 ## Entry
+- Date: 2026-02-19
+- Area: Recording finished dialog preview stability (post-capture sheet)
+- Change Summary:
+  - Replaced SwiftUI `VideoPlayer` with a native `AVPlayerView` wrapper for the recording preview surface in the finished-recording sheet.
+  - Added a short delayed player initialization after sheet appearance and cancellation on sheet dismiss to avoid presentation-time race conditions.
+  - Kept visual appearance/behavior intact while changing underlying preview implementation for runtime stability.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` validation/stability goals for core recording flow surfaces.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` by preserving existing dialog layout and controls while hardening implementation details.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-crashfix-build CODE_SIGNING_ALLOWED=NO build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-crashfix-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - Manual tests:
+    - Pending user-side runtime validation on recording start/stop flow to confirm crash is resolved.
+
+## Entry
+- Date: 2026-02-19
+- Area: Main shell sidebar empty-state alignment
+- Change Summary:
+  - Centered the `No tasks yet.` empty-state text in the left task column.
+  - Removes the off-center appearance when the task list is empty.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` UI polish/consistency goals for core shell pages.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` minimal, balanced layout direction in sidebar surfaces.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-build CODE_SIGNING_ALLOWED=NO build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - Manual tests:
+    - Pending user-side runtime visual confirmation of the empty-state alignment.
+
+## Entry
+- Date: 2026-02-19
+- Area: Main shell sidebar - task list scrollbar polish
+- Change Summary:
+  - Removed the persistent/visible scroll indicator from the left task-list column.
+  - Sidebar now keeps the cleaner appearance users expected from earlier builds.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` UI polish and visual consistency goals for core app surfaces.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` minimalist shell styling by removing distracting chrome from the task column.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-build CODE_SIGNING_ALLOWED=NO build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - Manual tests:
+    - Pending user-side runtime confirmation in the main shell sidebar.
+
+## Entry
 - Date: 2026-02-18
 - Area: Provider key panel action alignment (onboarding + settings)
 - Change Summary:

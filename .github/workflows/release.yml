@@ -163,7 +163,7 @@ jobs:
             --team-id "$APPLE_TEAM_ID" || true
           exit 1
 
-      - name: Staple notarization ticket and package release artifacts
+      - name: Staple notarization ticket
         run: |
           APP_PATH=$(find /tmp/taskagent-dd-release -name "ClickCherry.app" | head -n1)
           if [ -z "$APP_PATH" ]; then
@@ -173,7 +173,6 @@ jobs:
           xcrun stapler staple "$APP_PATH"
           xcrun stapler validate "$APP_PATH"
           spctl --assess --type execute --verbose=4 "$APP_PATH"
-          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" ClickCherry-macos.zip
       - name: Build styled drag-to-install DMG
         run: |
           brew install create-dmg
@@ -187,7 +186,6 @@ jobs:
           DMG_STAGING_DIR="$RUNNER_TEMP/dmg-root"
           DMG_BG_PATH="$RUNNER_TEMP/dmg-background.png"
           DMG_BG_SCRIPT="$RUNNER_TEMP/make_dmg_background.swift"
-          APP_ICON_SOURCE="TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_512x512.png"
 
           rm -rf "$DMG_STAGING_DIR"
           mkdir -p "$DMG_STAGING_DIR"
@@ -197,13 +195,12 @@ jobs:
           import AppKit
           import Foundation
 
-          guard CommandLine.arguments.count == 3 else {
-              fputs("usage: make_dmg_background.swift <icon-path> <output-png>\n", stderr)
+          guard CommandLine.arguments.count == 2 else {
+              fputs("usage: make_dmg_background.swift <output-png>\n", stderr)
               exit(2)
           }
 
-          let iconPath = CommandLine.arguments[1]
-          let outputPath = CommandLine.arguments[2]
+          let outputPath = CommandLine.arguments[1]
           let canvasSize = NSSize(width: 700, height: 420)
           let canvasRect = NSRect(origin: .zero, size: canvasSize)
 
@@ -220,11 +217,6 @@ jobs:
           NSColor(calibratedWhite: 1.0, alpha: 0.08).setFill()
           accentRect.fill(using: .sourceOver)
 
-          if let icon = NSImage(contentsOfFile: iconPath) {
-              let iconRect = NSRect(x: 88, y: 128, width: 150, height: 150)
-              icon.draw(in: iconRect)
-          }
-
           let titleAttrs: [NSAttributedString.Key: Any] = [
               .font: NSFont.systemFont(ofSize: 34, weight: .bold),
               .foregroundColor: NSColor.white
@@ -236,24 +228,32 @@ jobs:
               .font: NSFont.systemFont(ofSize: 17, weight: .medium),
               .foregroundColor: NSColor(calibratedWhite: 1.0, alpha: 0.86)
           ]
-          NSAttributedString(string: "Drop ClickCherry into Applications", attributes: subtitleAttrs)
+          NSAttributedString(string: "Drop the app into Applications", attributes: subtitleAttrs)
               .draw(at: NSPoint(x: 278, y: 214))
 
           let arrowPath = NSBezierPath()
-          arrowPath.move(to: NSPoint(x: 268, y: 176))
-          arrowPath.line(to: NSPoint(x: 474, y: 176))
+          arrowPath.move(to: NSPoint(x: 130, y: 176))
+          arrowPath.line(to: NSPoint(x: 468, y: 176))
           arrowPath.lineWidth = 6
           NSColor(calibratedWhite: 1.0, alpha: 0.78).setStroke()
           arrowPath.stroke()
 
           let arrowHead = NSBezierPath()
-          arrowHead.move(to: NSPoint(x: 474, y: 176))
-          arrowHead.line(to: NSPoint(x: 450, y: 194))
-          arrowHead.move(to: NSPoint(x: 474, y: 176))
-          arrowHead.line(to: NSPoint(x: 450, y: 158))
+          arrowHead.move(to: NSPoint(x: 468, y: 176))
+          arrowHead.line(to: NSPoint(x: 442, y: 194))
+          arrowHead.move(to: NSPoint(x: 468, y: 176))
+          arrowHead.line(to: NSPoint(x: 442, y: 158))
           arrowHead.lineWidth = 6
           NSColor(calibratedWhite: 1.0, alpha: 0.78).setStroke()
           arrowHead.stroke()
+
+          let targetRect = NSRect(x: 482, y: 118, width: 134, height: 134)
+          let targetPath = NSBezierPath(roundedRect: targetRect, xRadius: 24, yRadius: 24)
+          let dash: [CGFloat] = [11, 8]
+          targetPath.setLineDash(dash, count: dash.count, phase: 0)
+          targetPath.lineWidth = 3
+          NSColor(calibratedWhite: 1.0, alpha: 0.36).setStroke()
+          targetPath.stroke()
 
           image.unlockFocus()
 
@@ -274,7 +274,7 @@ jobs:
           }
           SWIFT
 
-          swift "$DMG_BG_SCRIPT" "$APP_ICON_SOURCE" "$DMG_BG_PATH"
+          swift "$DMG_BG_SCRIPT" "$DMG_BG_PATH"
 
           VOLICON_PATH="$APP_PATH/Contents/Resources/AppIcon.icns"
           VOLICON_ARGS=()
@@ -290,7 +290,7 @@ jobs:
             --window-size 700 420 \
             --text-size 14 \
             --icon-size 120 \
-            --icon "ClickCherry.app" 170 300 \
+            --icon "ClickCherry.app" 160 300 \
             --hide-extension "ClickCherry.app" \
             --app-drop-link 530 300 \
             --format UDZO \
@@ -304,7 +304,6 @@ jobs:
         with:
           name: clickcherry-release
           path: |
-            ClickCherry-macos.zip
             ClickCherry-macos.dmg
 
   publish:
@@ -358,7 +357,6 @@ jobs:
             echo "### Artifacts"
             echo
             echo "- \`ClickCherry-macos.dmg\`"
-            echo "- \`ClickCherry-macos.zip\`"
             echo
             echo "**Full Changelog**: ${CHANGELOG_URL}"
           } > RELEASE_NOTES.md
@@ -368,7 +366,6 @@ jobs:
         with:
           name: ClickCherry ${{ github.ref_name }}
           files: |
-            ClickCherry-macos.zip
             ClickCherry-macos.dmg
           generate_release_notes: false
           body_path: RELEASE_NOTES.md

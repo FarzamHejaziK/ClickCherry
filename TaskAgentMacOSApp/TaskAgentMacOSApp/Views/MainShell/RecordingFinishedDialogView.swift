@@ -11,6 +11,7 @@ struct RecordingFinishedDialogView: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var player: AVPlayer?
+    @State private var playerSetupWorkItem: DispatchWorkItem?
 
     var body: some View {
         ZStack {
@@ -42,9 +43,11 @@ struct RecordingFinishedDialogView: View {
                 .strokeBorder(Color.white.opacity(0.10), lineWidth: 1)
         )
         .onAppear {
-            configurePlayerIfPossible()
+            schedulePlayerConfigurationIfPossible()
         }
         .onDisappear {
+            playerSetupWorkItem?.cancel()
+            playerSetupWorkItem = nil
             player?.pause()
             player = nil
         }
@@ -130,7 +133,7 @@ struct RecordingFinishedDialogView: View {
                 )
 
             if exists, let player {
-                VideoPlayer(player: player)
+                RecordingPreviewPlayerView(player: player)
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             } else {
                 VStack(spacing: 10) {
@@ -150,7 +153,7 @@ struct RecordingFinishedDialogView: View {
                         VStack(spacing: 10) {
                             ProgressView()
                                 .progressViewStyle(.circular)
-                                .controlSize(.large)
+                                .scaleEffect(1.05)
                             Text("Extracting…")
                                 .font(.callout.weight(.semibold))
                                 .foregroundStyle(.primary.opacity(0.95))
@@ -188,11 +191,23 @@ struct RecordingFinishedDialogView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func configurePlayerIfPossible() {
+    private func schedulePlayerConfigurationIfPossible() {
+        playerSetupWorkItem?.cancel()
+        playerSetupWorkItem = nil
+
         guard FileManager.default.fileExists(atPath: recording.fileURL.path) else {
             player = nil
             return
         }
-        player = AVPlayer(url: recording.fileURL)
+
+        let setupWorkItem = DispatchWorkItem {
+            guard FileManager.default.fileExists(atPath: recording.fileURL.path) else {
+                player = nil
+                return
+            }
+            player = AVPlayer(url: recording.fileURL)
+        }
+        playerSetupWorkItem = setupWorkItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: setupWorkItem)
     }
 }

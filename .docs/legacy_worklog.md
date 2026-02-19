@@ -4045,3 +4045,89 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - Complete (code + docs), pending user validation.
 - Issues/blockers:
   - No direct Canvas/installed-DMG runtime validation in this terminal environment.
+
+## Entry
+- Date: 2026-02-18
+- Step: Onboarding Welcome page visual modernization
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/WelcomeStepView.swift`
+  - Replaced the sparse welcome layout with a more modern composition:
+    - stronger title/subtitle hierarchy and a compact `Quick setup` badge.
+    - two-column glass card combining the existing hero and three setup highlights.
+    - clearer explanatory copy for what setup does before first task run.
+  - Updated tracking docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -configuration Debug -derivedDataPath /tmp/taskagent-dd-welcome-modern build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-welcome-modern-test test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests` (pass).
+- Manual tests run:
+  - Pending user-side visual confirmation in Xcode Canvas/runtime for the Welcome step.
+- Result:
+  - Complete (code + docs), pending visual confirmation.
+- Issues/blockers:
+  - No direct Canvas UI interaction available in this terminal environment.
+
+## Entry
+- Date: 2026-02-18
+- Step: Onboarding Provider Setup width reduction for wide-screen balance
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/OnboardingFlowView.swift`
+  - Reduced provider-step max content width from `720` to `640` so the panel sits with more margin on wide displays.
+  - Updated tracking docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -configuration Debug -derivedDataPath /tmp/taskagent-dd-provider-width build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-provider-width-test test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests` (pass).
+- Manual tests run:
+  - Pending user-side Canvas/runtime visual confirmation.
+- Result:
+  - Complete (code + docs), pending user confirmation.
+- Issues/blockers:
+  - No direct Canvas interaction in this terminal environment.
+
+## Entry
+- Date: 2026-02-18
+- Step: Settings panel width/centering alignment with onboarding provider layout
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
+  - Centered right-column Settings detail content and constrained section width to improve margins on large screens.
+  - Applied `maxWidth: 640` to both `Model Setup` and `Permissions` sections for consistent visual density.
+  - Updated tracking docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -configuration Debug -derivedDataPath /tmp/taskagent-dd-settings-center build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-settings-center-test test -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
+- Manual tests run:
+  - Pending user-side Canvas/runtime visual confirmation.
+- Result:
+  - Complete (code + docs), pending visual confirmation.
+- Issues/blockers:
+  - No direct Canvas interaction available in this terminal environment.
+
+## Entry
+- Date: 2026-02-18
+- Step: Onboarding white footer-strip removal
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/OnboardingFlowView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/OnboardingSharedViews.swift`
+  - Removed onboarding bottom `safeAreaInset` bar and changed footer to an overlay on top of the main backdrop.
+  - Removed divider + background bar styling from footer so the separate white strip no longer appears.
+  - Updated tracking docs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -configuration Debug -derivedDataPath /tmp/taskagent-dd-onboarding-nobar build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-onboarding-nobar-test test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests` (pass).
+- Manual tests run:
+  - Pending user-side visual confirmation.
+- Result:
+  - Complete (code + docs), pending user confirmation.
+- Issues/blockers:
+  - No direct Canvas/runtime visual validation in this terminal environment.

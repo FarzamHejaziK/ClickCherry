@@ -32,7 +32,7 @@ struct MainShellSidebarView: View {
                     if mainShellStateStore.tasks.isEmpty {
                         Text("No tasks yet.")
                             .foregroundStyle(.secondary)
-                            .padding(.horizontal, 12)
+                            .frame(maxWidth: .infinity, alignment: .center)
                             .padding(.vertical, 6)
                     } else {
                         VStack(spacing: 4) {
@@ -72,6 +72,7 @@ struct MainShellSidebarView: View {
                     Spacer(minLength: 10)
                 }
             }
+            .scrollIndicators(.never)
 
             Divider()
 

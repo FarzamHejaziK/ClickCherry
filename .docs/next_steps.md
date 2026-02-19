@@ -4,6 +4,70 @@ description: Short, continuously updated plan of the immediate next implementati
 
 # Next Steps
 
+1. Step: Release artifact scope narrowed to DMG-only upload (completed, pending next release confirmation).
+2. Why now: User requested release page assets to show only DMG from workflow output.
+3. Code tasks:
+   - Updated `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml` to stop creating/uploading `ClickCherry-macos.zip`.
+   - Updated `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml` release notes + publish step to include only `ClickCherry-macos.dmg`.
+   - Updated `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md` and `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md` to reflect DMG-only upload policy and note GitHub's automatic source archives.
+4. Automated tests:
+   - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass on 2026-02-19 local run).
+5. Manual tests:
+   - Pending next tag release verification:
+     - release assets uploaded by workflow include only `ClickCherry-macos.dmg`.
+     - confirm expected GitHub-managed `Source code (zip)` and `Source code (tar.gz)` still appear.
+6. Exit criteria: Workflow-generated upload assets are DMG-only on the next release.
+
+1. Step: Recording stop crash mitigation in finished-recording preview sheet (completed, pending runtime confirmation).
+2. Why now: Stopping a recording could crash the app while presenting the review sheet (`SIGABRT` in AVKit/SwiftUI metadata initialization path).
+3. Code tasks:
+   - Added `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/RecordingPreviewPlayerView.swift` (`NSViewRepresentable` around `AVPlayerView`).
+   - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/RecordingFinishedDialogView.swift` to:
+     - replace SwiftUI `VideoPlayer` with `RecordingPreviewPlayerView`.
+     - defer player construction by 250ms after sheet appearance.
+     - cancel pending player setup on dismiss and cleanly release player.
+4. Automated tests:
+   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-crashfix-build CODE_SIGNING_ALLOWED=NO build` (pass on 2026-02-19 local run).
+   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-crashfix-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass on 2026-02-19 local run).
+5. Manual tests:
+   - Pending user-side runtime validation:
+     - start recording -> stop -> verify review sheet opens without crash.
+     - repeat multiple times (including short recordings) and verify stability.
+6. Exit criteria: Recording stop no longer crashes and finished-recording sheet consistently opens on local runtime devices.
+
+1. Step: Sidebar empty-state text centering (completed, pending visual confirmation).
+2. Why now: `No tasks yet.` in the left task column was not visually centered and looked misaligned.
+3. Code tasks:
+   - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/MainShellSidebarView.swift` to center the empty-state text with `.frame(maxWidth: .infinity, alignment: .center)`.
+4. Automated tests:
+   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-build CODE_SIGNING_ALLOWED=NO build` (pass on 2026-02-19 local run).
+   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass on 2026-02-19 local run).
+5. Manual tests:
+   - Pending user-side runtime visual confirmation in the sidebar empty state.
+6. Exit criteria: `No tasks yet.` is horizontally centered in the task column empty state.
+
+1. Step: DMG installer duplicate-icon cleanup + clearer Applications target (completed, pending release artifact confirmation).
+2. Why now: The installer showed awkward duplicate ClickCherry icon visuals and unclear Applications drop affordance.
+3. Code tasks:
+   - Updated `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml` DMG background generator to remove embedded app icon art (so Finder only shows the real draggable app icon).
+   - Tuned installer background copy/arrow/target placement to better align with the real Applications drop link.
+4. Automated tests:
+   - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass on 2026-02-19 local run).
+5. Manual tests:
+   - Pending next release artifact mount in Finder to confirm no duplicate app icon appears and drag target reads clearly.
+6. Exit criteria: Mounted DMG shows one ClickCherry app icon and a visually clear Applications drop target.
+
+1. Step: Sidebar task-column scrollbar visual cleanup (completed, pending runtime confirmation).
+2. Why now: The right-side bar in the task column looked awkward and regressed the cleaner look users expected.
+3. Code tasks:
+   - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/MainShellSidebarView.swift` to hide sidebar scroll indicators.
+4. Automated tests:
+   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-build CODE_SIGNING_ALLOWED=NO build` (pass on 2026-02-19 local run).
+   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass on 2026-02-19 local run).
+5. Manual tests:
+   - Pending user-side runtime visual confirmation in task sidebar.
+6. Exit criteria: Sidebar no longer shows the distracting right scroll bar in normal usage.
+
 1. Step: Premium DMG installer polish (completed, pending release-run visual verification).
 2. Why now: Styled DMG improved drag-to-install UX, but still lacked the polished background/layout feel common in top macOS apps.
 3. Code tasks:

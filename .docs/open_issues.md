@@ -4,6 +4,35 @@ description: Active unresolved issues with concrete repro details, mitigation, a
 
 # Open Issues
 
+## Issue OI-2026-02-19-012
+- Issue ID: OI-2026-02-19-012
+- Title: App aborts when stopping recording and presenting recording-finished preview sheet
+- Status: Mitigated
+- Severity: High
+- First Seen: 2026-02-19
+- Scope:
+  - Affects the post-recording flow after `New Task` capture stop.
+  - Crash appears during recording-finished sheet presentation with AVKit/SwiftUI preview initialization.
+- Repro Steps:
+  1. Start a recording from `New Task`.
+  2. Stop recording (Stop button or Escape path that reaches finished-recording sheet).
+  3. Observe app termination while the recording review sheet is being presented.
+- Observed:
+  - App exits with `EXC_CRASH (SIGABRT)` and `abort() called`.
+  - Crash stack contains `_AVKit_SwiftUI`, `PlatformViewRepresentable._makeView`, and Swift metadata fatal paths (`swift::fatalError`, `getSuperclassMetadata`).
+- Expected:
+  - Stopping recording should reliably present the review sheet with preview and never crash.
+- Current Mitigation:
+  - Replaced SwiftUI `VideoPlayer` in the recording-finished sheet with a native `AVPlayerView` (`NSViewRepresentable`) wrapper.
+  - Deferred `AVPlayer` creation slightly after sheet appearance to avoid stop->restore->sheet presentation timing races.
+  - Removed `ProgressView.controlSize(.large)` in this sheet overlay path to reduce associated metadata specialization churn in the crash-prone render path.
+- Next Action:
+  - User-side runtime validation on local and secondary devices:
+    - start recording -> stop recording -> confirm sheet opens and preview renders without crash.
+    - repeat at least 10 times, including rapid short captures (<2s).
+  - If any crash remains, capture the new crash report and symbolicate against the matching build dSYM.
+- Owner: Codex + user validation in local runtime
+
 ## Issue OI-2026-02-18-011
 - Issue ID: OI-2026-02-18-011
 - Title: Release notarization step can fail after long wait due transient runner network loss (`NSURLErrorDomain -1009`)
