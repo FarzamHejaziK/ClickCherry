@@ -182,7 +182,7 @@ final class OnboardingStateStore {
     }
 
     func openPermissionSettings(for permission: AppPermission) {
-        permissionService.openSystemSettings(for: permission)
+        permissionService.requestAccessAndOpenSystemSettings(for: permission)
     }
 
     /// Passive status poll (no prompts). Used for the onboarding Permissions step UI.

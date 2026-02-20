@@ -7,240 +7,223 @@ description: Running implementation log of completed work, test evidence, blocke
 > Previous archived entries are in `/Users/farzamh/code-git-local/task-agent-macos/.docs/legacy_worklog.md`.
 
 ## Entry
-- Date: 2026-02-19
-- Step: In-app onboarding reset path (`Start Over`) for reliable restart-from-scratch flow
+- Date: 2026-02-20
+- Step: Run-task preflight dialog unification (OpenAI key + Accessibility)
 - Changes made:
-  - Added app-wide notification constant:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/AppNotifications.swift`
-  - Updated root routing:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/RootView.swift`
-    - Root view now listens for reset notification and rebuilds onboarding state as `welcome` + `hasCompletedOnboarding = false`.
-  - Updated state store:
+  - Added:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/RunTaskPreflightDialogCanvasView.swift`
+  - Updated:
     - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
-    - Added `resetOnboardingAndReturnToSetup()` to set `onboarding.completed = false` and post reset notification.
-  - Updated settings UI:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
-    - Added `Start Over (Show Onboarding)` action in `Model Setup`.
-  - Added automated test:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/MainShellView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift`
     - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
-    - Verifies onboarding flag reset + notification post.
-  - Updated docs/issue tracking:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+  - Implemented run-task preflight requirements model and dialog state for:
+    - OpenAI API key
+    - Accessibility permission
+  - Replaced direct run start checks with the preflight path and removed old `ensureExecutionPermissions` gate.
+  - Added run preflight preview and test coverage updates for missing OpenAI key/missing Accessibility cases.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-run-preflight build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-run-preflight test -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
+- Manual tests run:
+  - Pending user-side runtime verification of run-task preflight interactions.
+- Result:
+  - Complete (code + automated tests + docs), pending runtime confirmation.
+- Issues/blockers:
+  - Terminal-only environment cannot verify interactive sheet behavior visually.
+
+## Entry
+- Date: 2026-02-20
+- Step: Extraction progress bar overflow clip fix
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/TaskExtractionProgressCanvasView.swift`
+  - Fixed the indeterminate extraction bar animation so the moving highlight is clipped to the capsule track and no longer renders outside left/right bounds.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-extraction-progress build` (pass).
+- Manual tests run:
+  - Pending user-side visual verification in preview/runtime.
+- Result:
+  - Complete (code + automated test), pending visual confirmation.
+- Issues/blockers:
+  - Terminal-only environment cannot directly validate animation clipping visually.
+
+## Entry
+- Date: 2026-02-20
+- Step: Extraction progress UI modernization + canvas preview
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/RecordingFinishedDialogView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+  - Added:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/TaskExtractionProgressCanvasView.swift`
+  - Replaced extraction spinner overlay with a higher-visibility animated progress canvas (indeterminate bar + animated activity dots + status detail text).
+  - Added root previews:
+    - `Recording Finished Dialog (Extracting)`
+    - `Extraction Progress Canvas`.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-extraction-progress test -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
+- Manual tests run:
+  - Pending user-side runtime verification of extraction animation visibility and preview acceptance.
+- Result:
+  - Complete (code + automated tests + docs), pending runtime visual confirmation.
+- Issues/blockers:
+  - Terminal-only environment cannot directly verify animation fidelity in live UI.
+
+## Entry
+- Date: 2026-02-20
+- Step: Recording border visibility + stale display-selection hardening
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/RecordingOverlayService.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
     - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
     - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
     - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+  - `startCapture()` now refreshes display options and validates selection before starting capture/border.
+  - Border overlay window now uses `.screenSaver` level and a fallback screen lookup path.
+  - Added regression test:
+    - `MainShellStateStoreTests.startCaptureRefreshesInvalidDisplaySelectionBeforeShowingBorder`.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests -only-testing:TaskAgentMacOSAppTests/ScreenDisplayIndexServiceTests test` (pass).
+- Manual tests run:
+  - Pending user-side runtime validation on multi-display hardware.
+- Result:
+  - Complete (code + automated tests + docs), pending runtime user confirmation.
+- Issues/blockers:
+  - Terminal-only environment cannot directly verify on-screen border visibility.
+
+## Entry
+- Date: 2026-02-20
+- Step: Multi-display recording target mismatch fix (`NSScreen.main` -> `CGMainDisplayID` ordering)
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/ScreenDisplayIndexService.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/ScreenDisplayIndexServiceTests.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+  - Root cause found: display ordering used `NSScreen.main` (key-window display), which can differ from `screencapture -D 1` (system primary display).
+  - Fixed screen-index mapping to anchor `Display 1` at `CGMainDisplayID()` and only reorder when needed.
+  - Added dedicated mapping tests to protect against regressions.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/ScreenDisplayIndexServiceTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests test` (pass).
+- Manual tests run:
+  - Pending user-side runtime verification on a multi-display setup.
+- Result:
+  - Complete (code + automated tests + docs), pending runtime user confirmation.
+- Issues/blockers:
+  - Terminal-only environment cannot directly validate physical-display recording output.
+
+## Entry
+- Date: 2026-02-20
+- Step: Preflight action reliability patch (`dismiss()` on actions)
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/RecordingPreflightDialogCanvasView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+  - Disabled hit-testing on preflight backdrop layer in sheet context.
+  - Added explicit SwiftUI sheet dismissal for `Not now` and `Open Settings`.
 - Automated tests run:
   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" build` (pass).
   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests test` (pass).
 - Manual tests run:
-  - Performed local shell-level reset/relaunch verification:
-    - `defaults` onboarding key reset + `open -a /Applications/ClickCherry.app`.
-  - Pending user-side runtime click-through validation for new Settings action.
+  - Pending user-side runtime verification.
 - Result:
-  - Complete (code + docs), pending user runtime confirmation.
+  - Complete (code + tests + docs), pending user confirmation.
 - Issues/blockers:
-  - Terminal environment cannot click through the Settings UI directly.
+  - Runtime click behavior must be validated in live app session.
 
 ## Entry
-- Date: 2026-02-19
-- Step: Right-column scrollbar suppression in task detail view
+- Date: 2026-02-20
+- Step: Preflight sheet white-host removal + overlay hit-testing fix
 - Changes made:
   - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/TaskDetailPageView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/MainShellView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/RecordingPreflightDialogCanvasView.swift`
     - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
     - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-  - Added `.scrollIndicators(.never)` to the main right-column `TaskDetailView` vertical scroll container.
+  - Enabled clear sheet presentation background for recording preflight to remove the large white host box.
+  - Marked decorative overlay layers in preflight dialog as non-hit-testable to avoid control click interception.
 - Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-rightscroll-build CODE_SIGNING_ALLOWED=NO build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-rightscroll-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests test` (pass).
 - Manual tests run:
-  - Pending user-side runtime visual validation.
+  - Pending user-side runtime validation.
 - Result:
-  - Complete (code + docs), pending user confirmation.
+  - Complete (code + tests + docs), pending user confirmation.
 - Issues/blockers:
-  - Terminal environment cannot directly verify runtime visual appearance.
+  - Runtime interaction behavior still requires user-side confirmation.
 
 ## Entry
-- Date: 2026-02-19
-- Step: Native titlebar app-name visibility (`ClickCherry`)
+- Date: 2026-02-20
+- Step: Recording preflight non-interactive dialog fallback to native sheet path
 - Changes made:
   - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/AppMain.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Titlebar/WindowTitlebarBranding.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/MainShellView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/RecordingPreflightDialogCanvasView.swift`
     - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
     - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-  - Enabled native title display via `WindowGroup("ClickCherry")` and `.windowToolbarStyle(.unified(showsTitle: true))`.
-  - Removed custom titlebar accessory branding path and switched to reliable native window title enforcement (`ClickCherry`).
+  - Replaced recording preflight overlay rendering with native SwiftUI sheet presentation to bypass custom overlay hit-testing behavior.
+  - Added `showsBackdrop` toggle for preflight dialog component so it can render correctly in sheet context.
 - Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-titlebar-build CODE_SIGNING_ALLOWED=NO build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-titlebar-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests test` (pass on rerun; first run encountered transient bundle-instance creation failure).
 - Manual tests run:
-  - Pending user-side runtime validation of titlebar display.
+  - Pending user-side runtime validation.
 - Result:
-  - Complete (code + docs), pending runtime visual confirmation.
+  - Complete (code + tests + docs), pending user verification.
 - Issues/blockers:
-  - Cannot directly verify live titlebar rendering from terminal-only environment.
+  - Runtime interactive behavior must be validated in the live app session.
 
 ## Entry
-- Date: 2026-02-19
-- Step: Remove DCO requirement from contributor policy and CI
+- Date: 2026-02-20
+- Step: Recording preflight interaction emergency fallback (disable outside-tap dismiss)
 - Changes made:
   - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/CONTRIBUTING.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/docs/getting-started.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/docs/development.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.github/PULL_REQUEST_TEMPLATE.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md`
-  - Deleted:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/dco.yml`
-  - Removed commit sign-off language (`Signed-off-by` / `git commit -s`) from contributor docs and templates.
-  - Removed DCO enforcement workflow and policy references; branch-protection guidance now tracks `CI` only.
-- Automated tests run:
-  - `ruby -ryaml -e 'YAML.load_file(".github/workflows/ci.yml"); puts "ci.yml ok"; YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass).
-- Manual tests run:
-  - N/A (docs/workflow policy change).
-- Result:
-  - Complete (policy + docs + workflow), pending YAML validation command completion.
-- Issues/blockers:
-  - None.
-
-## Entry
-- Date: 2026-02-19
-- Step: DMG installer visual alignment fix (drag-to-install layout)
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`
-    - `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/RecordingPreflightDialogCanvasView.swift`
     - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
     - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-  - Adjusted DMG background size/composition and create-dmg icon coordinates so the app icon and Applications drop-link appear centered and not clipped at the bottom.
-  - Removed redundant dashed drop-target artwork from background to avoid double-visual target artifacts.
+  - Removed backdrop tap-to-dismiss from recording preflight dialog to avoid potential event interception.
+  - Dialog now relies on explicit controls (`Not now`, `Check again`) for dismissal/continue.
 - Automated tests run:
-  - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests test` (pass).
 - Manual tests run:
-  - Pending next release artifact visual check in Finder.
+  - Pending user-side runtime validation.
 - Result:
-  - Complete (workflow + docs), pending release-run visual confirmation.
+  - Complete (code + tests + docs), pending user confirmation.
 - Issues/blockers:
-  - Finder visual quality can only be confirmed from a produced release DMG.
+  - Interactive runtime behavior cannot be confirmed from terminal-only environment.
 
 ## Entry
-- Date: 2026-02-19
-- Step: Contributing guide simplification (OpenClaw-style)
+- Date: 2026-02-20
+- Step: Recording preflight non-interactive modal mitigation via presentation-path change
 - Changes made:
   - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/CONTRIBUTING.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-  - Replaced the previous contributing document with a shorter, lower-friction format focused on:
-    - quick links
-    - simple contribution paths
-    - small before-PR checklist
-    - mandatory DCO sign-off
-    - concise review policy
-- Automated tests run:
-  - N/A (docs-only).
-- Manual tests run:
-  - N/A (docs-only).
-- Result:
-  - Complete (docs-only).
-- Issues/blockers:
-  - None.
-
-## Entry
-- Date: 2026-02-19
-- Step: Release artifacts switched to DMG-only workflow uploads
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`
-    - `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-  - Removed `ClickCherry-macos.zip` creation/upload from release workflow.
-  - Release notes artifact section now lists only `ClickCherry-macos.dmg`.
-  - Documented that GitHub automatically adds source archives (`zip`/`tar.gz`) and these cannot be removed by workflow upload configuration.
-- Automated tests run:
-  - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass).
-- Manual tests run:
-  - Pending next tag release verification on GitHub Releases.
-- Result:
-  - Complete (workflow + docs), pending next release run confirmation.
-- Issues/blockers:
-  - GitHub source archive assets are platform-default release artifacts and remain visible.
-
-## Entry
-- Date: 2026-02-19
-- Step: Recording stop crash mitigation in recording-finished sheet
-- Changes made:
-  - Added:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/RecordingPreviewPlayerView.swift`
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/RecordingFinishedDialogView.swift`
-  - Replaced SwiftUI `VideoPlayer` with `AVPlayerView` (`NSViewRepresentable`) in the finished-recording sheet preview.
-  - Added delayed player initialization and cancellation-on-dismiss to reduce stop->sheet presentation races.
-  - Updated tracking docs:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-crashfix-build CODE_SIGNING_ALLOWED=NO build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-crashfix-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
-- Manual tests run:
-  - Pending user-side runtime validation on local devices:
-    - start recording -> stop -> confirm review sheet opens without crash.
-- Result:
-  - Complete (code + docs), pending runtime validation.
-- Issues/blockers:
-  - Cannot execute interactive macOS UI recording flow from this terminal-only environment.
-
-## Entry
-- Date: 2026-02-19
-- Step: Sidebar empty-state text alignment fix
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/MainShellSidebarView.swift`
-  - Centered the empty-state line (`No tasks yet.`) in the task column when no tasks exist.
-  - Updated tracking docs:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-build CODE_SIGNING_ALLOWED=NO build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
-- Manual tests run:
-  - Pending user-side visual confirmation in runtime sidebar empty state.
-- Result:
-  - Complete (code + docs), pending user confirmation.
-- Issues/blockers:
-  - No direct runtime UI interaction in this terminal environment.
-
-## Entry
-- Date: 2026-02-19
-- Step: DMG icon-composition cleanup + sidebar scrollbar polish
-- Changes made:
-  - Updated DMG release packaging visuals:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`
-    - background generator no longer draws an app icon (prevents duplicate icon appearance in mounted DMG).
-    - refined instructional text/arrow/target geometry to make Applications drop destination clearer.
-  - Updated main-shell sidebar visual behavior:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/MainShellSidebarView.swift`
-    - hid task-list scroll indicators via `.scrollIndicators(.never)`.
-  - Updated documentation/tracking:
-    - `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/MainShellView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/RecordingPreflightDialogCanvasView.swift`
     - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
     - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+  - Moved modal presentation from `.overlay` to explicit root `ZStack` modal layer.
+  - Restored outside-click dismiss on dim backdrop.
+  - Added no-op tap consumer on dialog card so inside clicks do not dismiss.
 - Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-build CODE_SIGNING_ALLOWED=NO build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
-  - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests test` (pass on rerun; first run encountered transient bundle-instance creation failure).
 - Manual tests run:
-  - Pending user-side verification:
-    - mount release DMG and confirm single app icon + clear Applications target.
-    - confirm sidebar no longer shows awkward right scroll bar.
+  - Pending user-side runtime validation.
 - Result:
-  - Complete (code + workflow + docs), pending runtime visual confirmation.
+  - Complete (code + tests + docs), pending user verification.
 - Issues/blockers:
-  - DMG visual quality can only be fully confirmed on a produced release artifact in Finder.
+  - Terminal-only environment cannot directly verify interactive runtime behavior.
 

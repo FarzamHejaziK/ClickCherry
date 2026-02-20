@@ -27,6 +27,19 @@ struct MainShellView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
+
+            if let dialog = mainShellStateStore.missingProviderKeyDialog, mainShellStateStore.finishedRecordingReview == nil {
+                MissingProviderKeyDialogCanvasView(
+                    dialog: dialog,
+                    onDismiss: {
+                        mainShellStateStore.dismissMissingProviderKeyDialog()
+                    },
+                    onOpenSettings: {
+                        mainShellStateStore.openSettingsForMissingProviderKeyDialog()
+                    }
+                )
+                .zIndex(100)
+            }
         }
         .onAppear {
             mainShellStateStore.reloadTasks()
@@ -42,16 +55,100 @@ struct MainShellView: View {
                 isExtracting: mainShellStateStore.isExtractingTask && mainShellStateStore.extractingRecordingID == review.recording.id,
                 statusMessage: mainShellStateStore.extractionStatusMessage,
                 errorMessage: mainShellStateStore.errorMessage,
+                missingProviderKeyDialog: mainShellStateStore.missingProviderKeyDialog,
                 onRecordAgain: {
                     mainShellStateStore.recordAgainFromFinishedRecordingDialog()
                 },
                 onExtractTask: {
                     mainShellStateStore.extractTaskFromFinishedRecordingDialog()
+                },
+                onDismissMissingProviderKeyDialog: {
+                    mainShellStateStore.dismissMissingProviderKeyDialog()
+                },
+                onOpenSettingsForMissingProviderKeyDialog: {
+                    mainShellStateStore.openSettingsForMissingProviderKeyDialog()
                 }
             )
             .frame(width: 780, height: 560)
             .interactiveDismissDisabled(mainShellStateStore.isExtractingTask && mainShellStateStore.extractingRecordingID == review.recording.id)
         }
+        .sheet(
+            isPresented: Binding(
+                get: {
+                    mainShellStateStore.recordingPreflightDialogState != nil
+                        && mainShellStateStore.finishedRecordingReview == nil
+                },
+                set: { isPresented in
+                    if !isPresented {
+                        mainShellStateStore.dismissRecordingPreflightDialog()
+                    }
+                }
+            )
+        ) {
+            if let state = mainShellStateStore.recordingPreflightDialogState {
+                RecordingPreflightDialogCanvasView(
+                    showsBackdrop: true,
+                    state: state,
+                    apiKeyStatusMessage: mainShellStateStore.apiKeyStatusMessage,
+                    apiKeyErrorMessage: mainShellStateStore.apiKeyErrorMessage,
+                    onDismiss: {
+                        mainShellStateStore.dismissRecordingPreflightDialog()
+                    },
+                    onOpenSettingsForRequirement: { requirement in
+                        mainShellStateStore.openSettingsForRecordingPreflightRequirement(requirement)
+                    },
+                    onSaveGeminiKey: { key in
+                        _ = mainShellStateStore.saveGeminiKeyFromRecordingPreflight(key)
+                    },
+                    onContinue: {
+                        mainShellStateStore.continueAfterRecordingPreflightDialog()
+                    }
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .presentationBackground(.clear)
+                .interactiveDismissDisabled(false)
+            }
+        }
+        .sheet(
+            isPresented: Binding(
+                get: {
+                    mainShellStateStore.runTaskPreflightDialogState != nil
+                        && mainShellStateStore.finishedRecordingReview == nil
+                },
+                set: { isPresented in
+                    if !isPresented {
+                        mainShellStateStore.dismissRunTaskPreflightDialog()
+                    }
+                }
+            )
+        ) {
+            if let state = mainShellStateStore.runTaskPreflightDialogState {
+                RunTaskPreflightDialogCanvasView(
+                    showsBackdrop: true,
+                    state: state,
+                    apiKeyStatusMessage: mainShellStateStore.apiKeyStatusMessage,
+                    apiKeyErrorMessage: mainShellStateStore.apiKeyErrorMessage,
+                    onDismiss: {
+                        mainShellStateStore.dismissRunTaskPreflightDialog()
+                    },
+                    onOpenSettingsForRequirement: { requirement in
+                        mainShellStateStore.openSettingsForRunTaskPreflightRequirement(requirement)
+                    },
+                    onSaveOpenAIKey: { key in
+                        _ = mainShellStateStore.saveOpenAIKeyFromRunTaskPreflight(key)
+                    },
+                    onContinue: {
+                        mainShellStateStore.continueAfterRunTaskPreflightDialog()
+                    }
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .presentationBackground(.clear)
+                .interactiveDismissDisabled(false)
+            }
+        }
+        .animation(.easeInOut(duration: 0.18), value: mainShellStateStore.missingProviderKeyDialog != nil)
+        .animation(.easeInOut(duration: 0.18), value: mainShellStateStore.recordingPreflightDialogState != nil)
+        .animation(.easeInOut(duration: 0.18), value: mainShellStateStore.runTaskPreflightDialogState != nil)
     }
 }
 

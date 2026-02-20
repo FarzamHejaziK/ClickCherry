@@ -4,6 +4,38 @@ description: Active unresolved issues with concrete repro details, mitigation, a
 
 # Open Issues
 
+## Issue OI-2026-02-20-014
+- Issue ID: OI-2026-02-20-014
+- Title: Multi-display recording can capture the wrong screen while border appears on selected screen
+- Status: Mitigated
+- Severity: High
+- First Seen: 2026-02-20
+- Scope:
+  - Affects multi-display recording display selection in `New Task` and display-index-based overlays.
+  - Reproduces when the app's key window display differs from the system primary display.
+- Repro Steps:
+  1. Connect 2+ displays.
+  2. Move `ClickCherry` to a non-primary display.
+  3. Start recording after selecting a specific display.
+  4. Compare red border display vs resulting recorded video display.
+- Observed:
+  - Border can appear on the chosen display while `screencapture` records a different display.
+- Expected:
+  - Border, control overlays, and recorded output all target the same selected physical display.
+- Current Mitigation:
+  - `ScreenDisplayIndexService` now maps `screencapture -D 1` to `CGMainDisplayID()` instead of using `NSScreen.main` (key-window display).
+  - `MainShellStateStore.startCapture()` now refreshes/validates the selected display right before launching capture, so stale display indexes cannot suppress the border overlay.
+  - Recording border window now uses a higher window level and fallback screen resolution path to keep the border visible during capture.
+  - Added unit tests covering display-order mapping logic:
+    - `ScreenDisplayIndexServiceTests.orderedDisplayIDsForScreencaptureMovesPrimaryDisplayToFront`
+    - `ScreenDisplayIndexServiceTests.orderedDisplayIDsForScreencaptureLeavesOrderWhenPrimaryAlreadyFirst`
+    - `ScreenDisplayIndexServiceTests.orderedDisplayIDsForScreencaptureLeavesOrderWhenPrimaryMissing`
+    - `MainShellStateStoreTests.startCaptureRefreshesInvalidDisplaySelectionBeforeShowingBorder`
+- Next Action:
+  - User-side runtime validation on a multi-display setup:
+    - select each display and confirm the red border + final recording match the same display.
+- Owner: Codex + user validation in local runtime
+
 ## Issue OI-2026-02-19-013
 - Issue ID: OI-2026-02-19-013
 - Title: Onboarding does not reappear after uninstall/reset on some local installs
@@ -173,7 +205,7 @@ description: Active unresolved issues with concrete repro details, mitigation, a
   - Red border overlay and recording HUD appear on the selected display.
 - Current Mitigation:
   - Overlay windows are now created without passing a `screen:` argument to `NSWindow`/`NSPanel` initializers so their frames are interpreted in global screen coordinates.
-  - Display indexing for overlays and display thumbnails now uses AppKit screen ordering (`NSScreen`, main first) to align with `screencapture -D` numbering.
+  - Display indexing now maps `screencapture -D 1` to the system primary display (`CGMainDisplayID`) and avoids key-window (`NSScreen.main`) reordering mismatches.
   - Build/tests pass; runtime confirmation pending.
 - Next Action:
   - User-side runtime validation on a multi-display setup:

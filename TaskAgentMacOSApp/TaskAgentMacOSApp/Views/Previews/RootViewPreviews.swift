@@ -5,6 +5,7 @@ import SwiftUI
 private enum PreviewFrames {
     static let `default` = CGSize(width: 1100, height: 720)
     static let recordingDialog = CGSize(width: 780, height: 560)
+    static let extractionCanvas = CGSize(width: 780, height: 260)
 }
 
 private final class PreviewAPIKeyStore: APIKeyStore {
@@ -285,8 +286,88 @@ private struct PreviewMainShellView: View {
         isExtracting: false,
         statusMessage: nil,
         errorMessage: nil,
+        missingProviderKeyDialog: nil,
         onRecordAgain: {},
-        onExtractTask: {}
+        onExtractTask: {},
+        onDismissMissingProviderKeyDialog: {},
+        onOpenSettingsForMissingProviderKeyDialog: {}
+    )
+    .preferredColorScheme(.light)
+}
+
+#Preview(
+    "Recording Finished Dialog (Extracting)",
+    traits: .fixedLayout(width: PreviewFrames.recordingDialog.width, height: PreviewFrames.recordingDialog.height)
+) {
+    let recording = RecordingRecord(
+        id: UUID().uuidString,
+        fileName: "ClickCherry-Recording-Example.mov",
+        addedAt: Date(),
+        fileURL: URL(fileURLWithPath: "/tmp/clickcherry-preview-example.mov"),
+        fileSizeBytes: 123_456_789
+    )
+    return RecordingFinishedDialogView(
+        recording: recording,
+        isExtracting: true,
+        statusMessage: "Extracting task from ClickCherry-Recording-Example.mov...",
+        errorMessage: nil,
+        missingProviderKeyDialog: nil,
+        onRecordAgain: {},
+        onExtractTask: {},
+        onDismissMissingProviderKeyDialog: {},
+        onOpenSettingsForMissingProviderKeyDialog: {}
+    )
+    .preferredColorScheme(.light)
+}
+
+#Preview(
+    "Extraction Progress Canvas",
+    traits: .fixedLayout(width: PreviewFrames.extractionCanvas.width, height: PreviewFrames.extractionCanvas.height)
+) {
+    ZStack {
+        VisualEffectView(material: .underWindowBackground, blendingMode: .withinWindow)
+
+        TaskExtractionProgressCanvasView(
+            title: "Extracting task from recording",
+            detail: "Analyzing content and preparing HEARTBEAT.md"
+        )
+        .padding(24)
+    }
+    .preferredColorScheme(.light)
+}
+
+#Preview(
+    "Recording Preflight Dialog",
+    traits: .fixedLayout(width: PreviewFrames.recordingDialog.width, height: PreviewFrames.recordingDialog.height)
+) {
+    RecordingPreflightDialogCanvasView(
+        state: RecordingPreflightDialogState(
+            missingRequirements: [.geminiAPIKey, .screenRecording, .microphone, .inputMonitoring]
+        ),
+        apiKeyStatusMessage: nil,
+        apiKeyErrorMessage: nil,
+        onDismiss: {},
+        onOpenSettingsForRequirement: { _ in },
+        onSaveGeminiKey: { _ in },
+        onContinue: {}
+    )
+    .preferredColorScheme(.light)
+}
+
+#Preview(
+    "Run Task Preflight Dialog",
+    traits: .fixedLayout(width: PreviewFrames.recordingDialog.width, height: PreviewFrames.recordingDialog.height)
+) {
+    RunTaskPreflightDialogCanvasView(
+        state: RunTaskPreflightDialogState(
+            missingRequirements: [.openAIAPIKey, .accessibility]
+        ),
+        apiKeyStatusMessage: nil,
+        apiKeyErrorMessage: nil,
+        onDismiss: {},
+        onOpenSettingsForRequirement: { _ in },
+        onSaveOpenAIKey: { _ in },
+        onContinue: {}
     )
     .preferredColorScheme(.light)
 }

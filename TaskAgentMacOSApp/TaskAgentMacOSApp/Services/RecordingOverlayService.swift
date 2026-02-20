@@ -35,7 +35,8 @@ final class ScreenRecordingOverlayService: RecordingOverlayService {
         }
 
         hideBorder()
-        guard let screen = ScreenDisplayIndexService.screenForScreencaptureDisplayIndex(displayID) else {
+        guard let screen = ScreenDisplayIndexService.screenForScreencaptureDisplayIndex(displayID)
+            ?? NSScreen.screens.first else {
             return
         }
 
@@ -54,7 +55,8 @@ final class ScreenRecordingOverlayService: RecordingOverlayService {
         window.hidesOnDeactivate = false
         // Keep visible to the user but do not include in recording output.
         window.sharingType = .none
-        window.level = .statusBar
+        // Use a high level so the border remains visible above full-screen and presentation layers.
+        window.level = .screenSaver
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
         window.contentView = BorderView(frame: NSRect(origin: .zero, size: screen.frame.size))
         window.orderFrontRegardless()

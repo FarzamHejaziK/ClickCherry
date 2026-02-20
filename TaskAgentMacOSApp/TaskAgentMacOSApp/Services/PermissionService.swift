@@ -32,11 +32,17 @@ protocol PermissionService {
     func openSystemSettings(for permission: AppPermission)
     func currentStatus(for permission: AppPermission) -> PermissionGrantStatus
     func requestAccessIfNeeded(for permission: AppPermission) -> PermissionGrantStatus
+    func requestAccessAndOpenSystemSettings(for permission: AppPermission)
 }
 
 extension PermissionService {
     func requestAccessIfNeeded(for permission: AppPermission) -> PermissionGrantStatus {
         currentStatus(for: permission)
+    }
+
+    func requestAccessAndOpenSystemSettings(for permission: AppPermission) {
+        _ = requestAccessIfNeeded(for: permission)
+        openSystemSettings(for: permission)
     }
 }
 
@@ -99,7 +105,35 @@ final class MacPermissionService: PermissionService {
                 return .granted
             }
             _ = CGRequestListenEventAccess()
+            _ = probeInputMonitoringEventTap()
+            probeInputMonitoringGlobalKeyMonitor()
             return CGPreflightListenEventAccess() ? .granted : .notGranted
+        }
+    }
+
+    func requestAccessAndOpenSystemSettings(for permission: AppPermission) {
+        switch permission {
+        case .microphone:
+            let status = AVCaptureDevice.authorizationStatus(for: .audio)
+            if status == .notDetermined {
+                AVCaptureDevice.requestAccess(for: .audio) { _ in
+                    DispatchQueue.main.async {
+                        self.openSystemSettings(for: permission)
+                    }
+                }
+                return
+            }
+            _ = requestAccessIfNeeded(for: permission)
+            openSystemSettings(for: permission)
+        case .inputMonitoring:
+            _ = requestAccessIfNeeded(for: permission)
+            // Let the privacy subsystem update app registration before navigating to the pane.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                self.openSystemSettings(for: permission)
+            }
+        case .screenRecording, .accessibility:
+            _ = requestAccessIfNeeded(for: permission)
+            openSystemSettings(for: permission)
         }
     }
 
@@ -137,6 +171,43 @@ final class MacPermissionService: PermissionService {
             return .notGranted
         @unknown default:
             return .unknown
+        }
+    }
+
+    private func probeInputMonitoringEventTap() -> Bool {
+        let mask = (1 as CGEventMask) << CGEventType.keyDown.rawValue
+        let callback: CGEventTapCallBack = { _, _, event, _ in
+            Unmanaged.passUnretained(event)
+        }
+        guard let tap = CGEvent.tapCreate(
+            tap: .cgSessionEventTap,
+            place: .headInsertEventTap,
+            options: .listenOnly,
+            eventsOfInterest: mask,
+            callback: callback,
+            userInfo: nil
+        ) else {
+            return false
+        }
+
+        CFMachPortInvalidate(tap)
+        return true
+    }
+
+    private func probeInputMonitoringGlobalKeyMonitor() {
+        let installMonitor = {
+            guard let monitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown, handler: { _ in }) else {
+                return
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                NSEvent.removeMonitor(monitor)
+            }
+        }
+
+        if Thread.isMainThread {
+            installMonitor()
+        } else {
+            DispatchQueue.main.async(execute: installMonitor)
         }
     }
 }

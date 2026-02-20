@@ -206,6 +206,32 @@ private final class AlwaysGrantedPermissionService: PermissionService {
     }
 }
 
+private final class ConfigurablePermissionService: PermissionService {
+    var screenRecording: PermissionGrantStatus = .granted
+    var microphone: PermissionGrantStatus = .granted
+    var accessibility: PermissionGrantStatus = .granted
+    var inputMonitoring: PermissionGrantStatus = .granted
+
+    func openSystemSettings(for permission: AppPermission) {}
+
+    func currentStatus(for permission: AppPermission) -> PermissionGrantStatus {
+        switch permission {
+        case .screenRecording:
+            return screenRecording
+        case .microphone:
+            return microphone
+        case .accessibility:
+            return accessibility
+        case .inputMonitoring:
+            return inputMonitoring
+        }
+    }
+
+    func requestAccessIfNeeded(for permission: AppPermission) -> PermissionGrantStatus {
+        currentStatus(for: permission)
+    }
+}
+
 private final class MockAgentControlOverlayService: AgentControlOverlayService {
     private(set) var showCount = 0
     private(set) var hideCount = 0
@@ -474,7 +500,8 @@ struct MainShellStateStoreTests {
 
         let store = MainShellStateStore(
             taskService: service,
-            apiKeyStore: MockAPIKeyStore(),
+            apiKeyStore: MockAPIKeyStore(initialValues: [.gemini: "gemini-key"]),
+            permissionService: AlwaysGrantedPermissionService(),
             captureService: captureService,
             overlayService: overlayService
         )
@@ -525,7 +552,8 @@ struct MainShellStateStoreTests {
 
         let store = MainShellStateStore(
             taskService: service,
-            apiKeyStore: MockAPIKeyStore(),
+            apiKeyStore: MockAPIKeyStore(initialValues: [.gemini: "gemini-key"]),
+            permissionService: AlwaysGrantedPermissionService(),
             captureService: captureService,
             overlayService: overlayService
         )
@@ -543,6 +571,89 @@ struct MainShellStateStoreTests {
         #expect(!store.isCapturing)
         #expect(store.errorMessage == "Screen Recording permission denied. Grant access in System Settings and retry.")
         #expect(overlayService.hideCallCount == 1)
+    }
+
+    @Test
+    func startCaptureRefreshesInvalidDisplaySelectionBeforeShowingBorder() async throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let service = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let created = try service.createTask(title: "Invalid display selection task")
+        let captureService = MockRecordingCaptureService()
+        captureService.displays = [
+            CaptureDisplayOption(id: 1, label: "Display 1"),
+            CaptureDisplayOption(id: 2, label: "Display 2")
+        ]
+        let overlayService = MockRecordingOverlayService()
+
+        let store = MainShellStateStore(
+            taskService: service,
+            apiKeyStore: MockAPIKeyStore(initialValues: [.gemini: "gemini-key"]),
+            permissionService: AlwaysGrantedPermissionService(),
+            captureService: captureService,
+            overlayService: overlayService
+        )
+        store.reloadTasks()
+        store.selectTask(created.id)
+        store.refreshCaptureDisplays()
+        store.selectedCaptureDisplayID = 99
+
+        store.startCapture()
+        for _ in 0..<50 {
+            if captureService.startedDisplayID != nil { break }
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+
+        #expect(captureService.startedDisplayID == 1)
+        #expect(overlayService.shownDisplayIDs == [1])
+        #expect(store.errorMessage == nil)
+    }
+
+    @Test
+    func startCaptureShowsCombinedRecordingPreflightDialogForMissingItems() throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let service = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let created = try service.createTask(title: "Preflight task")
+        let permissionService = ConfigurablePermissionService()
+        permissionService.screenRecording = .granted
+        permissionService.microphone = .notGranted
+        permissionService.inputMonitoring = .notGranted
+
+        let store = MainShellStateStore(
+            taskService: service,
+            apiKeyStore: MockAPIKeyStore(),
+            permissionService: permissionService,
+            captureService: MockRecordingCaptureService(),
+            overlayService: MockRecordingOverlayService()
+        )
+        store.reloadTasks()
+        store.selectTask(created.id)
+        store.refreshCaptureDisplays()
+        store.refreshCaptureAudioInputs()
+
+        store.startCapture()
+
+        #expect(!store.isCapturing)
+        #expect(store.recordingPreflightDialogState != nil)
+        #expect(
+            store.recordingPreflightDialogState?.missingRequirements ==
+                [.geminiAPIKey, .microphone, .inputMonitoring]
+        )
     }
 
     @Test
@@ -602,7 +713,7 @@ struct MainShellStateStoreTests {
         let store = MainShellStateStore(
             taskService: taskService,
             taskExtractionService: extractionService,
-            apiKeyStore: MockAPIKeyStore(),
+            apiKeyStore: MockAPIKeyStore(initialValues: [.gemini: "gemini-test-key"]),
             captureService: MockRecordingCaptureService(),
             overlayService: MockRecordingOverlayService()
         )
@@ -670,7 +781,7 @@ struct MainShellStateStoreTests {
         let store = MainShellStateStore(
             taskService: taskService,
             taskExtractionService: extractionService,
-            apiKeyStore: MockAPIKeyStore(),
+            apiKeyStore: MockAPIKeyStore(initialValues: [.gemini: "gemini-test-key"]),
             captureService: MockRecordingCaptureService(),
             overlayService: MockRecordingOverlayService()
         )
@@ -755,7 +866,7 @@ struct MainShellStateStoreTests {
         let store = MainShellStateStore(
             taskService: taskService,
             taskExtractionService: extractionService,
-            apiKeyStore: MockAPIKeyStore(),
+            apiKeyStore: MockAPIKeyStore(initialValues: [.gemini: "gemini-test-key"]),
             captureService: MockRecordingCaptureService(),
             overlayService: MockRecordingOverlayService()
         )
@@ -823,7 +934,7 @@ struct MainShellStateStoreTests {
         let store = MainShellStateStore(
             taskService: taskService,
             taskExtractionService: extractionService,
-            apiKeyStore: MockAPIKeyStore(),
+            apiKeyStore: MockAPIKeyStore(initialValues: [.gemini: "gemini-test-key"]),
             captureService: MockRecordingCaptureService(),
             overlayService: MockRecordingOverlayService()
         )
@@ -869,6 +980,150 @@ struct MainShellStateStoreTests {
         #expect(heartbeat.contains("Extracted Title"))
         // Title line is normalized to a plain title for task-list parsing.
         #expect(heartbeat.contains("\nExtracted Title\n"))
+    }
+
+    @Test
+    func extractTaskWithoutGeminiKeyShowsSettingsDialog() async throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let task = try taskService.createTask(title: "Needs Gemini key")
+        let sourceRecording = tempRoot.appendingPathComponent("sample.mp4", isDirectory: false)
+        try Data("video".utf8).write(to: sourceRecording)
+        _ = try taskService.importRecording(taskId: task.id, sourceURL: sourceRecording)
+        let recording = try #require(taskService.listRecordings(taskId: task.id).first)
+
+        let store = MainShellStateStore(
+            taskService: taskService,
+            apiKeyStore: MockAPIKeyStore(),
+            captureService: MockRecordingCaptureService(),
+            overlayService: MockRecordingOverlayService()
+        )
+
+        store.reloadTasks()
+        store.selectTask(task.id)
+        await store.extractTask(from: recording)
+
+        #expect(store.isExtractingTask == false)
+        #expect(store.missingProviderKeyDialog?.provider == .gemini)
+        #expect(store.missingProviderKeyDialog?.action == .extractTask)
+    }
+
+    @Test
+    @MainActor
+    func startRunTaskNowWithoutOpenAIKeyShowsRunPreflightDialog() throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let task = try taskService.createTask(title: "Needs OpenAI key")
+        let engine = MockAutomationEngine(
+            nextResult: AutomationRunResult(
+                outcome: .success,
+                executedSteps: [],
+                generatedQuestions: [],
+                errorMessage: nil,
+                llmSummary: nil
+            )
+        )
+        let store = MainShellStateStore(
+            taskService: taskService,
+            automationEngine: engine,
+            apiKeyStore: MockAPIKeyStore(),
+            permissionService: AlwaysGrantedPermissionService(),
+            captureService: MockRecordingCaptureService(),
+            overlayService: MockRecordingOverlayService()
+        )
+
+        store.reloadTasks()
+        store.selectTask(task.id)
+        store.startRunTaskNow()
+
+        #expect(store.isRunningTask == false)
+        #expect(store.runTaskPreflightDialogState != nil)
+        #expect(store.runTaskPreflightDialogState?.missingRequirements == [.openAIAPIKey])
+        #expect(engine.receivedMarkdowns.isEmpty)
+    }
+
+    @Test
+    @MainActor
+    func startRunTaskNowWithMissingAccessibilityShowsRunPreflightDialog() throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let task = try taskService.createTask(title: "Needs accessibility")
+        let engine = MockAutomationEngine(
+            nextResult: AutomationRunResult(
+                outcome: .success,
+                executedSteps: [],
+                generatedQuestions: [],
+                errorMessage: nil,
+                llmSummary: nil
+            )
+        )
+        let permissionService = ConfigurablePermissionService()
+        permissionService.accessibility = .notGranted
+
+        let store = MainShellStateStore(
+            taskService: taskService,
+            automationEngine: engine,
+            apiKeyStore: MockAPIKeyStore(initialValues: [.openAI: "openai-test-key"]),
+            permissionService: permissionService,
+            captureService: MockRecordingCaptureService(),
+            overlayService: MockRecordingOverlayService()
+        )
+
+        store.reloadTasks()
+        store.selectTask(task.id)
+        store.startRunTaskNow()
+
+        #expect(store.isRunningTask == false)
+        #expect(store.runTaskPreflightDialogState?.missingRequirements == [.accessibility])
+        #expect(engine.receivedMarkdowns.isEmpty)
+    }
+
+    @Test
+    func openSettingsForMissingProviderKeyDialogRoutesToSettings() throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let store = MainShellStateStore(
+            taskService: taskService,
+            apiKeyStore: MockAPIKeyStore()
+        )
+
+        store.missingProviderKeyDialog = MissingProviderKeyDialog(provider: .openAI, action: .runTask)
+        store.openSettingsForMissingProviderKeyDialog()
+
+        #expect(store.route == .settings)
+        #expect(store.missingProviderKeyDialog == nil)
     }
 
     @Test
@@ -1186,7 +1441,7 @@ struct MainShellStateStoreTests {
         let store = MainShellStateStore(
             taskService: taskService,
             automationEngine: engine,
-            apiKeyStore: MockAPIKeyStore(),
+            apiKeyStore: MockAPIKeyStore(initialValues: [.openAI: "openai-test-key"]),
             permissionService: AlwaysGrantedPermissionService(),
             captureService: MockRecordingCaptureService(),
             overlayService: MockRecordingOverlayService()
@@ -1233,7 +1488,7 @@ struct MainShellStateStoreTests {
         let store = MainShellStateStore(
             taskService: taskService,
             automationEngine: engine,
-            apiKeyStore: MockAPIKeyStore(),
+            apiKeyStore: MockAPIKeyStore(initialValues: [.openAI: "openai-test-key"]),
             permissionService: AlwaysGrantedPermissionService(),
             captureService: MockRecordingCaptureService(),
             overlayService: MockRecordingOverlayService(),
@@ -1285,7 +1540,7 @@ struct MainShellStateStoreTests {
         let store = MainShellStateStore(
             taskService: taskService,
             automationEngine: engine,
-            apiKeyStore: MockAPIKeyStore(),
+            apiKeyStore: MockAPIKeyStore(initialValues: [.openAI: "openai-test-key"]),
             permissionService: AlwaysGrantedPermissionService(),
             captureService: MockRecordingCaptureService(),
             overlayService: MockRecordingOverlayService()
@@ -1324,7 +1579,7 @@ struct MainShellStateStoreTests {
         let store = MainShellStateStore(
             taskService: taskService,
             automationEngine: engine,
-            apiKeyStore: MockAPIKeyStore(),
+            apiKeyStore: MockAPIKeyStore(initialValues: [.openAI: "openai-test-key"]),
             permissionService: AlwaysGrantedPermissionService(),
             captureService: MockRecordingCaptureService(),
             overlayService: borderOverlay,
@@ -1395,7 +1650,7 @@ struct MainShellStateStoreTests {
         let store = MainShellStateStore(
             taskService: taskService,
             automationEngine: engine,
-            apiKeyStore: MockAPIKeyStore(),
+            apiKeyStore: MockAPIKeyStore(initialValues: [.openAI: "openai-test-key"]),
             permissionService: AlwaysGrantedPermissionService(),
             captureService: MockRecordingCaptureService(),
             overlayService: borderOverlay,

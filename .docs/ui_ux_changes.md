@@ -26,6 +26,403 @@ description: Canonical log for UI/UX plans, decisions, and implementation alignm
 ## Entries
 
 ## Entry
+- Date: 2026-02-20
+- Area: Run Task preflight gating (OpenAI key + Accessibility)
+- Change Summary:
+  - Added a new combined run-task preflight dialog with the same visual pattern as recording preflight:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/RunTaskPreflightDialogCanvasView.swift`
+  - Added run preflight state model + missing-requirements logic in:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
+  - Wired run preflight sheet in:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/MainShellView.swift`
+  - Added preview entry:
+    - `Run Task Preflight Dialog` in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift`
+  - Removed the old direct run-permission gate method (`ensureExecutionPermissions`) so run gating is handled by this single preflight flow.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` by consolidating runtime setup checks into one deterministic user-facing gate.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` consistency goals by matching existing preflight canvas structure and action patterns.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-run-preflight build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-run-preflight test -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
+  - Manual tests:
+    - Pending user-side runtime verification of run-task dialog behavior.
+
+## Entry
+- Date: 2026-02-20
+- Area: Extraction progress UX (recording finished dialog)
+- Change Summary:
+  - Replaced the small spinner overlay during task extraction with a high-visibility animated progress canvas.
+  - Added a new reusable component:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/TaskExtractionProgressCanvasView.swift`
+  - Integrated the new animation into:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/RecordingFinishedDialogView.swift`
+  - Added root previews for visual validation:
+    - `Recording Finished Dialog (Extracting)`
+    - `Extraction Progress Canvas`
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` UX clarity and feedback reliability goals for long-running user actions.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` by making async processing state explicit, legible, and visually consistent with app accent styling.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-extraction-progress test -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
+  - Manual tests:
+    - Pending user-side runtime confirmation in recording-finished extraction flow and preview canvas inspection.
+
+## Entry
+- Date: 2026-02-20
+- Area: Recording border visibility hardening
+- Change Summary:
+  - Added a record-start display refresh/validation guard so stale display selections cannot skip border placement.
+  - Raised recording border window level in `RecordingOverlayService` and added a fallback screen path when index-to-screen lookup fails.
+  - Added regression coverage for invalid display selection recovery in `MainShellStateStoreTests`.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` reliability goals for recording preflight/start behavior and visible user feedback.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` principle that active recording state must remain clearly signaled on the selected display.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests -only-testing:TaskAgentMacOSAppTests/ScreenDisplayIndexServiceTests test` (pass).
+  - Manual tests:
+    - Pending user-side runtime verification on multi-display hardware.
+
+## Entry
+- Date: 2026-02-20
+- Area: Recording display targeting consistency (multi-display)
+- Change Summary:
+  - Fixed display-index mapping so selected recording display maps to the same physical display used by `screencapture -D`.
+  - Replaced `NSScreen.main`-driven ordering with `CGMainDisplayID`-driven primary-display ordering in `ScreenDisplayIndexService`.
+  - Added mapping unit tests in `ScreenDisplayIndexServiceTests` to prevent future regressions.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` reliability goals for deterministic recording behavior before/after start.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` by ensuring UI display selection is trustworthy and consistent with actual capture output.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/ScreenDisplayIndexServiceTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests test` (pass).
+  - Manual tests:
+    - Pending user-side runtime verification on multi-display hardware.
+
+## Entry
+- Date: 2026-02-20
+- Area: Recording preflight action reliability (explicit sheet dismissal)
+- Change Summary:
+  - Made preflight backdrop explicitly non-hit-testable in sheet context.
+  - Updated preflight actions to force close sheet using `@Environment(\\.dismiss)` for deterministic dismissal:
+    - `Not now`
+    - `Open Settings`
+  - Purpose: ensure action buttons do not appear unresponsive due sheet/presentation state retention.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` reliability-first flow for recording setup.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` principle that gating dialogs must remain clearly actionable.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests test` (pass).
+  - Manual tests:
+    - Pending user-side runtime verification.
+
+## Entry
+- Date: 2026-02-20
+- Area: Recording preflight sheet polish (remove white host box + restore button hit targets)
+- Change Summary:
+  - Updated recording preflight presentation to render with transparent sheet host background to remove the white box behind the dialog.
+  - Marked decorative dialog overlays as non-hit-testable so controls beneath remain clickable.
+  - Kept preflight content structure and actions unchanged.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` by restoring expected modal behavior and reducing visual/interaction regressions.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` by preserving visual intent while ensuring interaction reliability.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests test` (pass).
+  - Manual tests:
+    - Pending user-side runtime verification.
+
+## Entry
+- Date: 2026-02-20
+- Area: Recording preflight interaction fallback to native sheet presentation
+- Change Summary:
+  - Replaced in-window preflight overlay presentation with native `.sheet` presentation in `MainShellView` to avoid custom-layer hit-testing conflicts.
+  - Kept the same `RecordingPreflightDialogCanvasView` content and actions; rendered with `showsBackdrop: false` inside sheet context.
+  - Retained missing-provider-key dialog behavior as overlay.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` by prioritizing functional reliability over custom modal layering.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` principle of predictable and operable setup flows.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests test` (pass on rerun; first run hit transient bundle-instance creation error).
+  - Manual tests:
+    - Pending user-side runtime verification that all controls are interactive.
+
+## Entry
+- Date: 2026-02-20
+- Area: Recording preflight interaction prioritization (controls over backdrop dismiss)
+- Change Summary:
+  - Removed backdrop tap-to-dismiss from recording preflight dialog after repeated reports that controls were non-interactive.
+  - Current behavior prioritizes interactive controls (`Save`, `Open Settings`, `Not now`, `Check again`, text input) with dismissal via explicit actions.
+  - Outside-click dismiss can be reintroduced after stable control interactivity is confirmed.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` reliability-first sequencing for runtime setup flows.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` principle that primary dialog actions must always be operable before adding convenience gestures.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests test` (pass).
+  - Manual tests:
+    - Pending user-side runtime verification that dialog controls now respond.
+
+## Entry
+- Date: 2026-02-20
+- Area: Recording preflight modal architecture change (`overlay` -> root `ZStack` layer)
+- Change Summary:
+  - Moved recording preflight modal rendering from `.overlay` to an explicit top layer inside `MainShellView` root `ZStack`.
+  - Restored backdrop outside-click dismiss behavior for the preflight dialog.
+  - Added a no-op tap handler on the dialog surface to prevent backdrop taps from dismissing while interacting inside the card.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` runtime interaction reliability goals for gating dialogs.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` by preserving modal UX intent while using a more deterministic event-routing structure.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests test` (pass on rerun; first run hit transient bundle-instance creation error).
+  - Manual tests:
+    - Pending user-side runtime validation that dialog controls are clickable/editable and outside click dismisses.
+
+## Entry
+- Date: 2026-02-20
+- Area: Recording preflight modal hit-testing hardening
+- Change Summary:
+  - Updated preflight dialog hit-testing behavior to prevent non-interactive states:
+    - backdrop dim layer is now explicitly non-hit-testable
+    - dialog card is explicitly hit-testable
+    - dialog root has explicit rectangular content-shape for consistent event routing
+  - Goal: ensure text input focus and button actions remain interactive across macOS runtime variants.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` reliability goals for core recording setup interactions.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` requirement that modal setup surfaces remain predictable and actionable.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests test` (pass).
+  - Manual tests:
+    - Pending user-side runtime verification that dialog controls are now interactive.
+
+## Entry
+- Date: 2026-02-20
+- Area: Recording preflight dialog interaction reliability (click/focus fix)
+- Change Summary:
+  - Removed backdrop tap-to-dismiss gesture from recording preflight canvas overlay to avoid intercepting click/focus interactions on dialog controls.
+  - Dialog dismissal now relies on explicit actions (`Not now`, `Check again`) rather than background tap.
+  - Scoped inline API-key messaging in the Gemini row to Gemini-specific messages only, preventing unrelated OpenAI key errors from appearing in this dialog context.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` runtime reliability goals for setup gating dialogs.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` principle of predictable interaction behavior and context-appropriate messaging.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests test` (pass).
+  - Manual tests:
+    - Pending user-side runtime validation that text field focus and button clicks work normally.
+
+## Entry
+- Date: 2026-02-20
+- Area: Recording preflight footer alignment grid + compact action widths
+- Change Summary:
+  - Reduced recording preflight action widths from the previous overly wide values.
+  - Updated footer action row (`Not now`, `Check again`) to align to the same inner horizontal grid as panel row content by adding matching inset.
+  - Kept `Save` and `Open Settings` parity while using compact width values.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` UI polish objectives for balanced dialog actions and clear alignment rhythm.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` consistency goals by keeping control sizing restrained and aligned to shared layout rails.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests test` (pass on rerun; first run failed due transient test-bundle instance creation error).
+  - Manual tests:
+    - Pending user-side visual verification.
+
+## Entry
+- Date: 2026-02-20
+- Area: Recording preflight button-width parity fix
+- Change Summary:
+  - Fixed visual width mismatch by moving fixed-width behavior into styled button content.
+  - `Save` and `Open Settings` now render with the same visible button width.
+  - Footer actions now use matched widths as well:
+    - `Not now`
+    - `Check again`
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` polish and consistency goals for setup dialogs.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` by enforcing consistent control geometry and reducing visual imbalance.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests test` (pass).
+  - Manual tests:
+    - Pending user-side visual confirmation.
+
+## Entry
+- Date: 2026-02-20
+- Area: Recording preflight dialog row alignment + Gemini entry styling pass
+- Change Summary:
+  - Updated recording preflight row alignment so right-side action controls share one consistent action-column width across missing requirements.
+  - Updated Gemini API key entry row to match model key entry style without a saved/unsaved status tag:
+    - Gemini icon + title
+    - key field with visibility toggle and clipboard paste actions
+    - `Save` action aligned to the same right action column as permission rows
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` consistency goals for setup/preflight UI and predictable control placement.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` by reusing existing component language and removing non-essential status chrome in this dialog context.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests test` (pass).
+  - Manual tests:
+    - Pending user-side visual validation for final alignment acceptance.
+
+## Entry
+- Date: 2026-02-20
+- Area: Recording preflight dialog visual alignment with Settings
+- Change Summary:
+  - Restyled the combined recording preflight dialog to match Settings visual language:
+    - title/body typography aligned with existing settings/dialog rhythm
+    - missing-item list kept in a single rounded `ultraThinMaterial` panel with settings-style separators
+    - retained missing-only requirement rendering behavior
+  - Standardized dialog actions to app button style:
+    - `Not now`, `Check again`, `Open Settings`, and Gemini `Save` all now use `ccPrimaryActionButton()`
+  - Kept the dialog available in root previews (`Recording Preflight Dialog`) for visual inspection in the same preview set as other shell surfaces.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` UI consistency and preflight clarity goals by making runtime setup gating visually consistent with existing settings surfaces.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` principle of consistent controls and reusable shell patterns across dialogs/settings.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests test` (pass).
+  - Manual tests:
+    - Pending user-side visual/runtime verification that dialog now matches Settings style and app-standard buttons.
+
+## Entry
+- Date: 2026-02-20
+- Area: Combined recording preflight dialog (missing-only requirements)
+- Change Summary:
+  - Added a single combined canvas dialog shown before recording starts when required setup items are missing.
+  - Dialog aggregates and displays only missing items from:
+    - Gemini API key
+    - Screen Recording permission
+    - Microphone permission
+    - Input Monitoring permission
+  - Added inline Gemini key entry/save in dialog and per-permission `Open Settings` actions.
+  - Added `Check again` action that re-evaluates missing items and starts recording only when all required items are resolved.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` onboarding/runtime reliability goals by consolidating setup gating into one clear preflight surface.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` principles for explicit guidance, predictable gating, and reducing fragmented setup UX.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-recpreflight-build2 build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-recpreflight-test2 test -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
+  - Manual tests:
+    - Pending user-side runtime validation:
+      - click `Record` with missing combinations and confirm one combined dialog appears.
+      - confirm only missing requirements render and resolved items disappear from the dialog.
+
+## Entry
+- Date: 2026-02-20
+- Area: Input Monitoring preflight registration reliability
+- Change Summary:
+  - Hardened Input Monitoring permission request flow to improve app registration visibility in macOS Privacy list.
+  - Added an explicit temporary event-tap probe after `CGRequestListenEventAccess()` so the app attempts the same API path used for Escape monitoring.
+  - Increased delay before opening Input Monitoring settings pane to reduce race conditions where Settings opens before registration state updates.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` setup reliability goals by reducing false-negative permission onboarding outcomes.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` by keeping setup behavior predictable and lowering user confusion during permission preflight.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-inputmon-build build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-inputmon-test test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
+  - Manual tests:
+    - Pending user-side runtime verification that clicking Input Monitoring in Settings/Preflight now shows `ClickCherry` in `Privacy & Security > Input Monitoring`.
+
+## Entry
+- Date: 2026-02-20
+- Area: Permissions preflight registration flow for Microphone and Input Monitoring
+- Change Summary:
+  - Updated permission preflight behavior so clicking permission rows now triggers access requests before navigating to System Settings.
+  - Added a request-and-open flow in `MacPermissionService`:
+    - Microphone: request access first when status is `notDetermined`, then open Settings.
+    - Input Monitoring: request access first, then open Settings after a short delay so the app registration appears in the pane.
+  - Updated onboarding/settings callers to use the new request-first flow through `MainShellStateStore` and `OnboardingStateStore`.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` onboarding reliability and permission validation goals by reducing false-negative preflight experiences.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` principle of predictable user feedback and reducing confusing setup states.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-permfix-build build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-permfix-test test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
+  - Manual tests:
+    - Pending user-side runtime validation:
+      - preflight `Microphone` click should show `ClickCherry` in Privacy > Microphone after the access request.
+      - preflight `Input Monitoring` click should register `ClickCherry` in Privacy > Input Monitoring.
+
+## Entry
+- Date: 2026-02-20
+- Area: Missing-provider-key guard dialogs for extraction/run
+- Change Summary:
+  - Added a shared modal canvas dialog (`MissingProviderKeyDialogCanvasView`) with modern glass styling and bottom action pattern (`Not now` + `Open Settings`).
+  - Added provider-key preflight guards:
+    - extraction now requires Gemini key
+    - run now requires OpenAI key
+  - When required key is missing, the app now prompts the user to enter the key first and offers direct redirect to Settings.
+  - Wired the same dialog behavior for extraction from the recording-finished sheet and from task pages.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` setup reliability and run/extraction safety goals by preventing invalid provider execution paths.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` direction for explicit user feedback, predictable gating, and consistent modern UI surfaces.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-missingkeys-build CODE_SIGNING_ALLOWED=NO build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-missingkeys-test3 -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - Manual tests:
+    - Pending user-side runtime validation:
+      - try Extract without Gemini key and confirm missing-key dialog appears, then `Open Settings` routes to Settings.
+      - try Run without OpenAI key and confirm matching dialog + Settings redirect.
+
+## Entry
+- Date: 2026-02-20
+- Area: DMG install dialog arrow simplification
+- Change Summary:
+  - Updated release DMG background generation to replace the long drawn arrow (`-->` visual) with a single `>` chevron glyph between the app icon and Applications drop-link.
+  - Keeps the same centered layout while reducing visual noise in the install dialog artwork.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` installer UX polish goals by simplifying key visual guidance in the install surface.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` preference for cleaner, lower-chrome UI communication.
+- Validation:
+  - Automated tests:
+    - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass).
+  - Manual tests:
+    - Pending user-side Finder validation on the next produced DMG to confirm `>` appears instead of long arrow.
+
+## Entry
 - Date: 2026-02-19
 - Area: Settings reset flow for onboarding restart
 - Change Summary:

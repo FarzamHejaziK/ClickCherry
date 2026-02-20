@@ -233,21 +233,12 @@ jobs:
           NSAttributedString(string: "Drop the app into Applications", attributes: subtitleAttrs)
               .draw(at: NSPoint(x: 250, y: 282))
 
-          let arrowPath = NSBezierPath()
-          arrowPath.move(to: NSPoint(x: 220, y: 216))
-          arrowPath.line(to: NSPoint(x: 542, y: 216))
-          arrowPath.lineWidth = 6
-          NSColor(calibratedWhite: 1.0, alpha: 0.78).setStroke()
-          arrowPath.stroke()
-
-          let arrowHead = NSBezierPath()
-          arrowHead.move(to: NSPoint(x: 542, y: 216))
-          arrowHead.line(to: NSPoint(x: 514, y: 235))
-          arrowHead.move(to: NSPoint(x: 542, y: 216))
-          arrowHead.line(to: NSPoint(x: 514, y: 197))
-          arrowHead.lineWidth = 6
-          NSColor(calibratedWhite: 1.0, alpha: 0.78).setStroke()
-          arrowHead.stroke()
+          let chevronAttrs: [NSAttributedString.Key: Any] = [
+              .font: NSFont.systemFont(ofSize: 76, weight: .bold),
+              .foregroundColor: NSColor(calibratedWhite: 1.0, alpha: 0.78)
+          ]
+          NSAttributedString(string: ">", attributes: chevronAttrs)
+              .draw(at: NSPoint(x: 366, y: 172))
 
           image.unlockFocus()
 

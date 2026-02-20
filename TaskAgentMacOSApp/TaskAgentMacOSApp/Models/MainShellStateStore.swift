@@ -9,6 +9,149 @@ enum MainShellRoute: Equatable {
     case settings
 }
 
+struct MissingProviderKeyDialog: Equatable {
+    enum Action: Equatable {
+        case extractTask
+        case runTask
+    }
+
+    let provider: ProviderIdentifier
+    let action: Action
+
+    var title: String {
+        switch provider {
+        case .gemini:
+            return "Gemini API key required"
+        case .openAI:
+            return "OpenAI API key required"
+        }
+    }
+
+    var message: String {
+        switch action {
+        case .extractTask:
+            return "Enter your \(providerDisplayName) API key before extracting. Open Settings to add it."
+        case .runTask:
+            return "Enter your \(providerDisplayName) API key before running the task. Open Settings to add it."
+        }
+    }
+
+    private var providerDisplayName: String {
+        switch provider {
+        case .openAI:
+            return "OpenAI"
+        case .gemini:
+            return "Gemini"
+        }
+    }
+}
+
+enum RecordingPreflightRequirement: String, Identifiable, Equatable {
+    case geminiAPIKey
+    case screenRecording
+    case microphone
+    case inputMonitoring
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .geminiAPIKey:
+            return "Gemini API key"
+        case .screenRecording:
+            return "Screen Recording"
+        case .microphone:
+            return "Microphone (Voice)"
+        case .inputMonitoring:
+            return "Input Monitoring"
+        }
+    }
+
+    var detail: String {
+        switch self {
+        case .geminiAPIKey:
+            return "Required to extract tasks after recording."
+        case .screenRecording:
+            return "Required to capture your screen."
+        case .microphone:
+            return "Required to record voice audio."
+        case .inputMonitoring:
+            return "Required so Escape can stop recording."
+        }
+    }
+
+    var permission: AppPermission? {
+        switch self {
+        case .screenRecording:
+            return .screenRecording
+        case .microphone:
+            return .microphone
+        case .inputMonitoring:
+            return .inputMonitoring
+        case .geminiAPIKey:
+            return nil
+        }
+    }
+}
+
+struct RecordingPreflightDialogState: Equatable {
+    var missingRequirements: [RecordingPreflightRequirement]
+
+    var title: String {
+        "Recording Setup Required"
+    }
+
+    var message: String {
+        "Complete the missing items below before starting a recording."
+    }
+}
+
+enum RunTaskPreflightRequirement: String, Identifiable, Equatable {
+    case openAIAPIKey
+    case accessibility
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .openAIAPIKey:
+            return "OpenAI API key"
+        case .accessibility:
+            return "Accessibility"
+        }
+    }
+
+    var detail: String {
+        switch self {
+        case .openAIAPIKey:
+            return "Required to run tasks with the agent."
+        case .accessibility:
+            return "Required so the agent can click and type."
+        }
+    }
+
+    var permission: AppPermission? {
+        switch self {
+        case .accessibility:
+            return .accessibility
+        case .openAIAPIKey:
+            return nil
+        }
+    }
+}
+
+struct RunTaskPreflightDialogState: Equatable {
+    var missingRequirements: [RunTaskPreflightRequirement]
+
+    var title: String {
+        "Run Task Setup Required"
+    }
+
+    var message: String {
+        "Complete the missing items below before running this task."
+    }
+}
+
 @Observable
 final class MainShellStateStore {
     private enum CaptureWindowHideMode {
@@ -99,6 +242,9 @@ final class MainShellStateStore {
     var apiKeyStatusMessage: String?
     var apiKeyErrorMessage: String?
     var errorMessage: String?
+    var missingProviderKeyDialog: MissingProviderKeyDialog?
+    var recordingPreflightDialogState: RecordingPreflightDialogState?
+    var runTaskPreflightDialogState: RunTaskPreflightDialogState?
     var finishedRecordingReview: FinishedRecordingReview?
     var llmCallLog: [LLMCallLogEntry]
     var executionTrace: [ExecutionTraceEntry]
@@ -201,6 +347,9 @@ final class MainShellStateStore {
         self.apiKeyStatusMessage = nil
         self.apiKeyErrorMessage = nil
         self.errorMessage = nil
+        self.missingProviderKeyDialog = nil
+        self.recordingPreflightDialogState = nil
+        self.runTaskPreflightDialogState = nil
         self.finishedRecordingReview = nil
         self.llmCallLog = []
         self.executionTrace = []
@@ -331,7 +480,7 @@ final class MainShellStateStore {
     }
 
     func openPermissionSettings(for permission: AppPermission) {
-        permissionService.openSystemSettings(for: permission)
+        permissionService.requestAccessAndOpenSystemSettings(for: permission)
     }
 
     func resetOnboardingAndReturnToSetup() {
@@ -649,6 +798,69 @@ final class MainShellStateStore {
         openTask(taskID)
     }
 
+    func dismissMissingProviderKeyDialog() {
+        missingProviderKeyDialog = nil
+    }
+
+    func dismissRecordingPreflightDialog() {
+        recordingPreflightDialogState = nil
+    }
+
+    func dismissRunTaskPreflightDialog() {
+        runTaskPreflightDialogState = nil
+    }
+
+    func openSettingsForMissingProviderKeyDialog() {
+        openSettings()
+        dismissMissingProviderKeyDialog()
+    }
+
+    func openSettingsForRecordingPreflightRequirement(_ requirement: RecordingPreflightRequirement) {
+        guard let permission = requirement.permission else {
+            openSettings()
+            return
+        }
+        openPermissionSettings(for: permission)
+    }
+
+    func openSettingsForRunTaskPreflightRequirement(_ requirement: RunTaskPreflightRequirement) {
+        guard let permission = requirement.permission else {
+            openSettings()
+            return
+        }
+        openPermissionSettings(for: permission)
+    }
+
+    @discardableResult
+    func saveGeminiKeyFromRecordingPreflight(_ rawKey: String) -> Bool {
+        let didSave = saveProviderKey(rawKey, for: .gemini)
+        refreshRecordingPreflightDialogState()
+        return didSave
+    }
+
+    func continueAfterRecordingPreflightDialog() {
+        refreshRecordingPreflightDialogState()
+        guard recordingPreflightDialogState == nil else {
+            return
+        }
+        startCapture()
+    }
+
+    @discardableResult
+    func saveOpenAIKeyFromRunTaskPreflight(_ rawKey: String) -> Bool {
+        let didSave = saveProviderKey(rawKey, for: .openAI)
+        refreshRunTaskPreflightDialogState()
+        return didSave
+    }
+
+    func continueAfterRunTaskPreflightDialog() {
+        refreshRunTaskPreflightDialogState()
+        guard runTaskPreflightDialogState == nil else {
+            return
+        }
+        startRunTaskNow()
+    }
+
     func loadSelectedTaskHeartbeat() {
         guard let selectedTaskID else {
             heartbeatMarkdown = ""
@@ -835,6 +1047,10 @@ final class MainShellStateStore {
         guard let selectedTaskID else {
             return
         }
+        guard requireProviderKey(for: .gemini, action: .extractTask) else {
+            extractionStatusMessage = nil
+            return
+        }
         guard !isExtractingTask else {
             return
         }
@@ -881,7 +1097,7 @@ final class MainShellStateStore {
             return
         }
 
-        guard ensureExecutionPermissions() else {
+        guard ensureRunTaskPreflightRequirements() else {
             return
         }
 
@@ -955,7 +1171,7 @@ final class MainShellStateStore {
             return
         }
 
-        guard ensureExecutionPermissions() else {
+        guard ensureRunTaskPreflightRequirements() else {
             return
         }
 
@@ -1169,37 +1385,6 @@ final class MainShellStateStore {
         )
     }
 
-    private func ensureExecutionPermissions() -> Bool {
-        let screenRecording = permissionService.requestAccessIfNeeded(for: .screenRecording)
-        if screenRecording != .granted {
-            runStatusMessage = nil
-            errorMessage = "Screen Recording permission is required to capture screenshots for the execution agent. Enable TaskAgentMacOSApp in System Settings > Privacy & Security > Screen Recording."
-            executionTraceRecorder.record(ExecutionTraceEntry(kind: .error, message: "Missing Screen Recording permission."))
-            permissionService.openSystemSettings(for: .screenRecording)
-            return false
-        }
-
-        let accessibility = permissionService.requestAccessIfNeeded(for: .accessibility)
-        if accessibility != .granted {
-            runStatusMessage = nil
-            errorMessage = "Accessibility permission is required to perform clicks and typing. Enable TaskAgentMacOSApp in System Settings > Privacy & Security > Accessibility."
-            executionTraceRecorder.record(ExecutionTraceEntry(kind: .error, message: "Missing Accessibility permission."))
-            permissionService.openSystemSettings(for: .accessibility)
-            return false
-        }
-
-        let inputMonitoring = permissionService.requestAccessIfNeeded(for: .inputMonitoring)
-        if inputMonitoring != .granted {
-            runStatusMessage = nil
-            errorMessage = "Input Monitoring permission is required so Escape can stop the agent. Enable TaskAgentMacOSApp in System Settings > Privacy & Security > Input Monitoring."
-            executionTraceRecorder.record(ExecutionTraceEntry(kind: .error, message: "Missing Input Monitoring permission."))
-            permissionService.openSystemSettings(for: .inputMonitoring)
-            return false
-        }
-
-        return true
-    }
-
     @MainActor
     private static func prepareDesktopByHidingRunningApps() -> Int {
         let currentPID = ProcessInfo.processInfo.processIdentifier
@@ -1240,7 +1425,12 @@ final class MainShellStateStore {
     }
 
     func startCapture() {
-        guard let selectedCaptureDisplayID else {
+        guard ensureRecordingPreflightRequirements() else {
+            return
+        }
+        refreshCaptureDisplays()
+        guard let captureDisplayID = selectedCaptureDisplayID,
+              availableCaptureDisplays.contains(where: { $0.id == captureDisplayID }) else {
             errorMessage = "No display detected for capture."
             return
         }
@@ -1256,7 +1446,7 @@ final class MainShellStateStore {
             self?.handleUserInterruptionDuringCapture()
         }
         if didStartMonitor {
-            recordingControlOverlayService.showRecordingHint(displayID: selectedCaptureDisplayID)
+            recordingControlOverlayService.showRecordingHint(displayID: captureDisplayID)
         } else {
             recordingControlOverlayService.hideRecordingHint()
             // Keep the UI visible so the user can stop recording via the button.
@@ -1265,7 +1455,7 @@ final class MainShellStateStore {
         }
 
         // Show overlays immediately (border + HUD).
-        overlayService.showBorder(displayID: selectedCaptureDisplayID)
+        overlayService.showBorder(displayID: captureDisplayID)
 
         // Hide our own UI windows early (especially for multi-display), but avoid hiding before the
         // Screen Recording permission prompt can be shown.
@@ -1318,7 +1508,7 @@ final class MainShellStateStore {
             do {
                 try self.captureService.startCapture(
                     outputURL: outputURL,
-                    displayID: selectedCaptureDisplayID,
+                    displayID: captureDisplayID,
                     audioInput: requestedAudioInput
                 )
 
@@ -1330,15 +1520,15 @@ final class MainShellStateStore {
 
                     if self.captureService.lastCaptureIncludesMicrophone,
                        let warning = self.captureService.lastCaptureStartWarning {
-                        self.recordingStatusMessage = "Capture started on Display \(selectedCaptureDisplayID) with microphone audio. \(warning)"
+                        self.recordingStatusMessage = "Capture started on Display \(captureDisplayID) with microphone audio. \(warning)"
                     } else if self.captureService.lastCaptureIncludesMicrophone {
-                        self.recordingStatusMessage = "Capture started on Display \(selectedCaptureDisplayID) with audio input: \(self.selectedAudioInputLabel)."
+                        self.recordingStatusMessage = "Capture started on Display \(captureDisplayID) with audio input: \(self.selectedAudioInputLabel)."
                     } else if let warning = self.captureService.lastCaptureStartWarning {
-                        self.recordingStatusMessage = "Capture started on Display \(selectedCaptureDisplayID) without microphone audio. \(warning)"
+                        self.recordingStatusMessage = "Capture started on Display \(captureDisplayID) without microphone audio. \(warning)"
                     } else if requestedAudioInput == .none {
-                        self.recordingStatusMessage = "Capture started on Display \(selectedCaptureDisplayID) without microphone audio."
+                        self.recordingStatusMessage = "Capture started on Display \(captureDisplayID) without microphone audio."
                     } else {
-                        self.recordingStatusMessage = "Capture started on Display \(selectedCaptureDisplayID)."
+                        self.recordingStatusMessage = "Capture started on Display \(captureDisplayID)."
                     }
                 }
             } catch let error as RecordingCaptureError {
@@ -1601,6 +1791,10 @@ final class MainShellStateStore {
         guard let review = finishedRecordingReview else {
             return
         }
+        guard requireProviderKey(for: .gemini, action: .extractTask) else {
+            extractionStatusMessage = nil
+            return
+        }
         guard !isExtractingTask else {
             return
         }
@@ -1626,6 +1820,12 @@ final class MainShellStateStore {
     }
 
     private func extractAndCreateTaskFromStagedRecording(_ recording: RecordingRecord) async {
+        guard requireProviderKey(for: .gemini, action: .extractTask) else {
+            await MainActor.run {
+                extractionStatusMessage = nil
+            }
+            return
+        }
         guard !isExtractingTask else {
             return
         }
@@ -1798,6 +1998,89 @@ final class MainShellStateStore {
         case .gemini:
             return "Gemini"
         }
+    }
+
+    private func requireProviderKey(for provider: ProviderIdentifier, action: MissingProviderKeyDialog.Action) -> Bool {
+        refreshProviderKeysState()
+        guard apiKeyStore.hasKey(for: provider) else {
+            missingProviderKeyDialog = MissingProviderKeyDialog(provider: provider, action: action)
+            return false
+        }
+        return true
+    }
+
+    private func ensureRecordingPreflightRequirements() -> Bool {
+        let missing = missingRecordingPreflightRequirements()
+        guard !missing.isEmpty else {
+            recordingPreflightDialogState = nil
+            return true
+        }
+        recordingPreflightDialogState = RecordingPreflightDialogState(missingRequirements: missing)
+        recordingStatusMessage = nil
+        return false
+    }
+
+    private func ensureRunTaskPreflightRequirements() -> Bool {
+        let missing = missingRunTaskPreflightRequirements()
+        guard !missing.isEmpty else {
+            runTaskPreflightDialogState = nil
+            return true
+        }
+        runTaskPreflightDialogState = RunTaskPreflightDialogState(missingRequirements: missing)
+        runStatusMessage = nil
+        return false
+    }
+
+    private func refreshRecordingPreflightDialogState() {
+        let missing = missingRecordingPreflightRequirements()
+        if missing.isEmpty {
+            recordingPreflightDialogState = nil
+        } else {
+            recordingPreflightDialogState = RecordingPreflightDialogState(missingRequirements: missing)
+        }
+    }
+
+    private func refreshRunTaskPreflightDialogState() {
+        let missing = missingRunTaskPreflightRequirements()
+        if missing.isEmpty {
+            runTaskPreflightDialogState = nil
+        } else {
+            runTaskPreflightDialogState = RunTaskPreflightDialogState(missingRequirements: missing)
+        }
+    }
+
+    private func missingRecordingPreflightRequirements() -> [RecordingPreflightRequirement] {
+        refreshProviderKeysState()
+
+        var missing: [RecordingPreflightRequirement] = []
+        if !apiKeyStore.hasKey(for: .gemini) {
+            missing.append(.geminiAPIKey)
+        }
+
+        if permissionService.currentStatus(for: .screenRecording) != .granted {
+            missing.append(.screenRecording)
+        }
+        if permissionService.currentStatus(for: .microphone) != .granted {
+            missing.append(.microphone)
+        }
+        if permissionService.currentStatus(for: .inputMonitoring) != .granted {
+            missing.append(.inputMonitoring)
+        }
+
+        return missing
+    }
+
+    private func missingRunTaskPreflightRequirements() -> [RunTaskPreflightRequirement] {
+        refreshProviderKeysState()
+
+        var missing: [RunTaskPreflightRequirement] = []
+        if !apiKeyStore.hasKey(for: .openAI) {
+            missing.append(.openAIAPIKey)
+        }
+        if permissionService.currentStatus(for: .accessibility) != .granted {
+            missing.append(.accessibility)
+        }
+        return missing
     }
 }
 

@@ -6,8 +6,11 @@ struct RecordingFinishedDialogView: View {
     let isExtracting: Bool
     let statusMessage: String?
     let errorMessage: String?
+    let missingProviderKeyDialog: MissingProviderKeyDialog?
     let onRecordAgain: () -> Void
     let onExtractTask: () -> Void
+    let onDismissMissingProviderKeyDialog: () -> Void
+    let onOpenSettingsForMissingProviderKeyDialog: () -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var player: AVPlayer?
@@ -50,6 +53,19 @@ struct RecordingFinishedDialogView: View {
             playerSetupWorkItem = nil
             player?.pause()
             player = nil
+        }
+        .overlay {
+            if let missingProviderKeyDialog {
+                MissingProviderKeyDialogCanvasView(
+                    dialog: missingProviderKeyDialog,
+                    onDismiss: {
+                        onDismissMissingProviderKeyDialog()
+                    },
+                    onOpenSettings: {
+                        onOpenSettingsForMissingProviderKeyDialog()
+                    }
+                )
+            }
         }
     }
 
@@ -148,16 +164,14 @@ struct RecordingFinishedDialogView: View {
 
             if isExtracting {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.black.opacity(0.22))
+                    .fill(Color.black.opacity(0.26))
                     .overlay(
-                        VStack(spacing: 10) {
-                            ProgressView()
-                                .progressViewStyle(.circular)
-                                .scaleEffect(1.05)
-                            Text("Extracting…")
-                                .font(.callout.weight(.semibold))
-                                .foregroundStyle(.primary.opacity(0.95))
-                        }
+                        TaskExtractionProgressCanvasView(
+                            title: "Extracting task from recording",
+                            detail: statusMessage ?? "Analyzing content and preparing HEARTBEAT.md"
+                        )
+                        .padding(.horizontal, 34)
+                        .padding(.vertical, 20)
                     )
             }
         }

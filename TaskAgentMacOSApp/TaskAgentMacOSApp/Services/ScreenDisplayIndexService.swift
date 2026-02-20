@@ -6,22 +6,30 @@ import CoreGraphics
 /// - `NSScreen` instances (AppKit ordering)
 /// - `CGDirectDisplayID` (for thumbnails / display-ID based APIs)
 ///
-/// Important: We intentionally derive ordering from `NSScreen` (main first) because it is the
-/// user-facing display ordering in AppKit, and empirically aligns with `screencapture -D`.
+/// Important: Do not use `NSScreen.main` here. `NSScreen.main` tracks the key window's display,
+/// not the system primary display used by `screencapture -D 1`.
 enum ScreenDisplayIndexService {
     static func orderedScreensMainFirst() -> [NSScreen] {
         let screens = NSScreen.screens
         guard !screens.isEmpty else { return [] }
 
-        if let main = NSScreen.main,
-           let mainIndex = screens.firstIndex(where: { $0 == main }) {
-            var ordered = screens
-            ordered.remove(at: mainIndex)
-            ordered.insert(main, at: 0)
-            return ordered
+        let screenMappings = screens.compactMap { screen -> (displayID: CGDirectDisplayID, screen: NSScreen)? in
+            guard let displayID = cgDisplayID(for: screen) else {
+                return nil
+            }
+            return (displayID, screen)
         }
+        guard screenMappings.count == screens.count else { return screens }
 
-        return screens
+        let appKitOrder = screenMappings.map(\.displayID)
+        let orderedIDs = orderedDisplayIDsForScreencapture(mainDisplayID: CGMainDisplayID(), appKitOrder: appKitOrder)
+        guard orderedIDs != appKitOrder else { return screens }
+
+        let orderedScreens = orderedIDs.compactMap { displayID in
+            screenMappings.first(where: { $0.displayID == displayID })?.screen
+        }
+        guard orderedScreens.count == screens.count else { return screens }
+        return orderedScreens
     }
 
     /// 1-based display index used by `screencapture -D`.
@@ -55,5 +63,21 @@ enum ScreenDisplayIndexService {
             }
         }
         return nil
+    }
+
+    /// Produces `screencapture -D` index order from AppKit screen order.
+    /// `screencapture -D 1` maps to the system primary display (`CGMainDisplayID()`).
+    static func orderedDisplayIDsForScreencapture(
+        mainDisplayID: CGDirectDisplayID,
+        appKitOrder: [CGDirectDisplayID]
+    ) -> [CGDirectDisplayID] {
+        guard let mainIndex = appKitOrder.firstIndex(of: mainDisplayID), mainIndex > 0 else {
+            return appKitOrder
+        }
+
+        var ordered = appKitOrder
+        let primary = ordered.remove(at: mainIndex)
+        ordered.insert(primary, at: 0)
+        return ordered
     }
 }
