@@ -17,6 +17,7 @@ struct AutomationRunResult: Equatable {
     var generatedQuestions: [String]
     var errorMessage: String?
     var llmSummary: String?
+    var llmUserFacingIssue: LLMUserFacingIssue? = nil
 }
 
 struct AutomationRunSummary: Equatable {

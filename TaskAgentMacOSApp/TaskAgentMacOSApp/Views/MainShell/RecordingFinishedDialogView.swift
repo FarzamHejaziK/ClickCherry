@@ -6,11 +6,14 @@ struct RecordingFinishedDialogView: View {
     let isExtracting: Bool
     let statusMessage: String?
     let errorMessage: String?
+    let llmUserFacingIssue: LLMUserFacingIssue?
     let missingProviderKeyDialog: MissingProviderKeyDialog?
     let onRecordAgain: () -> Void
     let onExtractTask: () -> Void
     let onDismissMissingProviderKeyDialog: () -> Void
     let onOpenSettingsForMissingProviderKeyDialog: () -> Void
+    let onOpenSettingsForLLMIssue: () -> Void
+    let onOpenProviderConsoleForLLMIssue: () -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var player: AVPlayer?
@@ -100,7 +103,14 @@ struct RecordingFinishedDialogView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                if let errorMessage, !errorMessage.isEmpty {
+                if let llmUserFacingIssue {
+                    LLMUserFacingIssueCanvasView(
+                        issue: llmUserFacingIssue,
+                        onOpenSettings: onOpenSettingsForLLMIssue,
+                        onOpenProviderConsole: onOpenProviderConsoleForLLMIssue
+                    )
+                    .padding(.top, 4)
+                } else if let errorMessage, !errorMessage.isEmpty {
                     Text(errorMessage)
                         .font(.caption)
                         .foregroundStyle(.red.opacity(0.9))

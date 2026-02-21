@@ -60,14 +60,23 @@ enum DesktopActionExecutorError: Error, Equatable, LocalizedError {
 }
 
 struct SystemDesktopActionExecutor: DesktopActionExecutor {
+    private static let windowRelocationAttempts = 12
+    private static let windowRelocationIntervalSeconds = 0.15
+    private static let windowRelocationEdgeInset: CGFloat = 24
+
     func openApp(named appName: String) throws {
         guard let appURL = resolveAppURL(named: appName) else {
             throw DesktopActionExecutorError.appOpenFailed(appName)
         }
+        let targetScreenFrame = targetDisplayVisibleFrameAtPointer()
+        let targetBundleIdentifier = Bundle(url: appURL)?.bundleIdentifier
         let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+        var openedApplication: NSRunningApplication?
         var launchError: Error?
         let semaphore = DispatchSemaphore(value: 0)
-        NSWorkspace.shared.openApplication(at: appURL, configuration: configuration) { _, error in
+        NSWorkspace.shared.openApplication(at: appURL, configuration: configuration) { app, error in
+            openedApplication = app
             launchError = error
             semaphore.signal()
         }
@@ -75,12 +84,28 @@ struct SystemDesktopActionExecutor: DesktopActionExecutor {
         if launchError != nil {
             throw DesktopActionExecutorError.appOpenFailed(appName)
         }
+
+        guard let targetScreenFrame else {
+            return
+        }
+
+        if let app = openedApplication ?? runningApplication(bundleIdentifier: targetBundleIdentifier) {
+            relocateFrontWindowIfPossible(for: app, targetVisibleFrame: targetScreenFrame)
+        }
     }
 
     func openURL(_ url: URL) throws {
+        let targetScreenFrame = targetDisplayVisibleFrameAtPointer()
         guard NSWorkspace.shared.open(url) else {
             throw DesktopActionExecutorError.invalidURL
         }
+
+        let currentPID = ProcessInfo.processInfo.processIdentifier
+        guard let targetScreenFrame,
+              let frontmostApp = waitForFrontmostRegularApp(excluding: currentPID) else {
+            return
+        }
+        relocateFrontWindowIfPossible(for: frontmostApp, targetVisibleFrame: targetScreenFrame)
     }
 
     func sendShortcut(key: String, command: Bool, option: Bool, control: Bool, shift: Bool) throws {
@@ -394,5 +419,175 @@ struct SystemDesktopActionExecutor: DesktopActionExecutor {
         }
         return nil
     }
-}
 
+    private func targetDisplayVisibleFrameAtPointer() -> CGRect? {
+        let pointer = CGEvent(source: nil)?.location ?? runOnMain { NSEvent.mouseLocation }
+
+        return runOnMain {
+            if let screen = NSScreen.screens.first(where: { $0.frame.insetBy(dx: -1, dy: -1).contains(pointer) }) {
+                return screen.visibleFrame
+            }
+            if let main = NSScreen.main {
+                return main.visibleFrame
+            }
+            return NSScreen.screens.first?.visibleFrame
+        }
+    }
+
+    private func runningApplication(bundleIdentifier: String?) -> NSRunningApplication? {
+        guard let bundleIdentifier, !bundleIdentifier.isEmpty else {
+            return nil
+        }
+
+        return runOnMain {
+            NSWorkspace.shared.runningApplications.first(where: { app in
+                app.bundleIdentifier == bundleIdentifier && app.activationPolicy == .regular
+            })
+        }
+    }
+
+    private func waitForFrontmostRegularApp(excluding excludedPID: pid_t? = nil) -> NSRunningApplication? {
+        for attempt in 0..<Self.windowRelocationAttempts {
+            if let app = runOnMain({ NSWorkspace.shared.frontmostApplication }),
+               app.activationPolicy == .regular,
+               app.processIdentifier != excludedPID {
+                return app
+            }
+
+            if attempt < Self.windowRelocationAttempts - 1 {
+                Thread.sleep(forTimeInterval: Self.windowRelocationIntervalSeconds)
+            }
+        }
+
+        return nil
+    }
+
+    private func relocateFrontWindowIfPossible(for application: NSRunningApplication, targetVisibleFrame: CGRect) {
+        guard AXIsProcessTrusted() else {
+            return
+        }
+
+        _ = application.activate(options: [.activateAllWindows])
+        let appElement = AXUIElementCreateApplication(application.processIdentifier)
+
+        for attempt in 0..<Self.windowRelocationAttempts {
+            if moveFrontWindow(of: appElement, into: targetVisibleFrame) {
+                return
+            }
+
+            if attempt < Self.windowRelocationAttempts - 1 {
+                Thread.sleep(forTimeInterval: Self.windowRelocationIntervalSeconds)
+            }
+        }
+    }
+
+    private func moveFrontWindow(of appElement: AXUIElement, into targetVisibleFrame: CGRect) -> Bool {
+        guard let window = focusedWindow(of: appElement) ?? firstWindow(of: appElement) else {
+            return false
+        }
+
+        _ = setAXBool(window, attribute: kAXMinimizedAttribute as CFString, value: false)
+
+        let windowSize = windowSize(of: window) ?? CGSize(
+            width: max(420, targetVisibleFrame.width * 0.72),
+            height: max(320, targetVisibleFrame.height * 0.72)
+        )
+        let destination = centeredWindowOrigin(for: windowSize, in: targetVisibleFrame)
+        guard setAXPosition(window, destination) else {
+            return false
+        }
+
+        _ = AXUIElementPerformAction(window, kAXRaiseAction as CFString)
+        _ = setAXBool(window, attribute: kAXMainAttribute as CFString, value: true)
+        _ = setAXBool(window, attribute: kAXFocusedAttribute as CFString, value: true)
+        return true
+    }
+
+    private func focusedWindow(of appElement: AXUIElement) -> AXUIElement? {
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(appElement, kAXFocusedWindowAttribute as CFString, &value) == .success else {
+            return nil
+        }
+        guard let value, CFGetTypeID(value) == AXUIElementGetTypeID() else {
+            return nil
+        }
+        return unsafeBitCast(value, to: AXUIElement.self)
+    }
+
+    private func firstWindow(of appElement: AXUIElement) -> AXUIElement? {
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &value) == .success,
+              let value, CFGetTypeID(value) == CFArrayGetTypeID() else {
+            return nil
+        }
+
+        let windowCandidates = unsafeBitCast(value, to: NSArray.self)
+        for candidate in windowCandidates {
+            let cfCandidate = candidate as CFTypeRef
+            guard CFGetTypeID(cfCandidate) == AXUIElementGetTypeID() else {
+                continue
+            }
+            return unsafeBitCast(cfCandidate, to: AXUIElement.self)
+        }
+
+        return nil
+    }
+
+    private func windowSize(of window: AXUIElement) -> CGSize? {
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(window, kAXSizeAttribute as CFString, &value) == .success,
+              let axValue = value, CFGetTypeID(axValue) == AXValueGetTypeID() else {
+            return nil
+        }
+
+        let typedValue = unsafeBitCast(axValue, to: AXValue.self)
+        guard AXValueGetType(typedValue) == .cgSize else {
+            return nil
+        }
+
+        var size = CGSize.zero
+        guard AXValueGetValue(typedValue, .cgSize, &size) else {
+            return nil
+        }
+
+        return size
+    }
+
+    private func setAXPosition(_ window: AXUIElement, _ point: CGPoint) -> Bool {
+        var target = point
+        guard let value = AXValueCreate(.cgPoint, &target) else {
+            return false
+        }
+        return AXUIElementSetAttributeValue(window, kAXPositionAttribute as CFString, value) == .success
+    }
+
+    private func setAXBool(_ element: AXUIElement, attribute: CFString, value: Bool) -> Bool {
+        let boolValue: CFBoolean = value ? kCFBooleanTrue : kCFBooleanFalse
+        return AXUIElementSetAttributeValue(element, attribute, boolValue) == .success
+    }
+
+    private func centeredWindowOrigin(for windowSize: CGSize, in targetVisibleFrame: CGRect) -> CGPoint {
+        let inset = Self.windowRelocationEdgeInset
+        let minX = targetVisibleFrame.minX + inset
+        let minY = targetVisibleFrame.minY + inset
+        let maxX = targetVisibleFrame.maxX - windowSize.width - inset
+        let maxY = targetVisibleFrame.maxY - windowSize.height - inset
+
+        var centeredX = targetVisibleFrame.midX - (windowSize.width / 2)
+        var centeredY = targetVisibleFrame.midY - (windowSize.height / 2)
+
+        if maxX >= minX {
+            centeredX = min(max(centeredX, minX), maxX)
+        } else {
+            centeredX = minX
+        }
+
+        if maxY >= minY {
+            centeredY = min(max(centeredY, minY), maxY)
+        } else {
+            centeredY = minY
+        }
+
+        return CGPoint(x: centeredX, y: centeredY)
+    }
+}

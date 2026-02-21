@@ -6,6 +6,7 @@ private enum PreviewFrames {
     static let `default` = CGSize(width: 1100, height: 720)
     static let recordingDialog = CGSize(width: 780, height: 560)
     static let extractionCanvas = CGSize(width: 780, height: 260)
+    static let llmIssueCanvas = CGSize(width: 860, height: 270)
 }
 
 private final class PreviewAPIKeyStore: APIKeyStore {
@@ -140,10 +141,10 @@ private enum PreviewMainShellFactory {
             store.openTask(task.id)
 
             store.availableCaptureDisplays = [
-                CaptureDisplayOption(id: 1, label: "Display 1"),
-                CaptureDisplayOption(id: 2, label: "Display 2")
+                CaptureDisplayOption(id: 1001, label: "Display 1", screencaptureDisplayIndex: 1),
+                CaptureDisplayOption(id: 1002, label: "Display 2", screencaptureDisplayIndex: 2)
             ]
-            store.selectedRunDisplayID = 1
+            store.selectedRunDisplayID = 1001
             let now = Date()
             store.runHistory = [
                 AgentRunRecord(
@@ -286,11 +287,14 @@ private struct PreviewMainShellView: View {
         isExtracting: false,
         statusMessage: nil,
         errorMessage: nil,
+        llmUserFacingIssue: nil,
         missingProviderKeyDialog: nil,
         onRecordAgain: {},
         onExtractTask: {},
         onDismissMissingProviderKeyDialog: {},
-        onOpenSettingsForMissingProviderKeyDialog: {}
+        onOpenSettingsForMissingProviderKeyDialog: {},
+        onOpenSettingsForLLMIssue: {},
+        onOpenProviderConsoleForLLMIssue: {}
     )
     .preferredColorScheme(.light)
 }
@@ -311,11 +315,14 @@ private struct PreviewMainShellView: View {
         isExtracting: true,
         statusMessage: "Extracting task from ClickCherry-Recording-Example.mov...",
         errorMessage: nil,
+        llmUserFacingIssue: nil,
         missingProviderKeyDialog: nil,
         onRecordAgain: {},
         onExtractTask: {},
         onDismissMissingProviderKeyDialog: {},
-        onOpenSettingsForMissingProviderKeyDialog: {}
+        onOpenSettingsForMissingProviderKeyDialog: {},
+        onOpenSettingsForLLMIssue: {},
+        onOpenProviderConsoleForLLMIssue: {}
     )
     .preferredColorScheme(.light)
 }
@@ -330,6 +337,122 @@ private struct PreviewMainShellView: View {
         TaskExtractionProgressCanvasView(
             title: "Extracting task from recording",
             detail: "Analyzing content and preparing HEARTBEAT.md"
+        )
+        .padding(24)
+    }
+    .preferredColorScheme(.light)
+}
+
+#Preview(
+    "LLM Issue - Invalid Credentials",
+    traits: .fixedLayout(width: PreviewFrames.llmIssueCanvas.width, height: PreviewFrames.llmIssueCanvas.height)
+) {
+    ZStack {
+        VisualEffectView(material: .underWindowBackground, blendingMode: .withinWindow)
+        LinearGradient(
+            colors: [Color.accentColor.opacity(0.08), Color.clear],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+        LLMUserFacingIssueCanvasView(
+            issue: LLMUserFacingIssue(
+                provider: .openAI,
+                operation: .execution,
+                kind: .invalidCredentials,
+                providerMessage: "Incorrect API key provided: sk-... is invalid",
+                httpStatus: 401,
+                providerCode: "invalid_api_key",
+                requestID: "req_preview_invalid_key"
+            ),
+            onOpenSettings: {},
+            onOpenProviderConsole: {}
+        )
+        .padding(24)
+    }
+    .preferredColorScheme(.light)
+}
+
+#Preview(
+    "LLM Issue - Rate Limited",
+    traits: .fixedLayout(width: PreviewFrames.llmIssueCanvas.width, height: PreviewFrames.llmIssueCanvas.height)
+) {
+    ZStack {
+        VisualEffectView(material: .underWindowBackground, blendingMode: .withinWindow)
+        LinearGradient(
+            colors: [Color.accentColor.opacity(0.08), Color.clear],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+        LLMUserFacingIssueCanvasView(
+            issue: LLMUserFacingIssue(
+                provider: .openAI,
+                operation: .execution,
+                kind: .rateLimited,
+                providerMessage: "Rate limit reached for requests per minute.",
+                httpStatus: 429,
+                providerCode: "rate_limit_exceeded",
+                requestID: "req_preview_rate_limit"
+            ),
+            onOpenSettings: {},
+            onOpenProviderConsole: {}
+        )
+        .padding(24)
+    }
+    .preferredColorScheme(.light)
+}
+
+#Preview(
+    "LLM Issue - Quota Exhausted",
+    traits: .fixedLayout(width: PreviewFrames.llmIssueCanvas.width, height: PreviewFrames.llmIssueCanvas.height)
+) {
+    ZStack {
+        VisualEffectView(material: .underWindowBackground, blendingMode: .withinWindow)
+        LinearGradient(
+            colors: [Color.accentColor.opacity(0.08), Color.clear],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+        LLMUserFacingIssueCanvasView(
+            issue: LLMUserFacingIssue(
+                provider: .openAI,
+                operation: .execution,
+                kind: .quotaOrBudgetExhausted,
+                providerMessage: "You exceeded your current quota, please check your plan and billing details.",
+                httpStatus: 429,
+                providerCode: "insufficient_quota",
+                requestID: "req_preview_quota"
+            ),
+            onOpenSettings: {},
+            onOpenProviderConsole: {}
+        )
+        .padding(24)
+    }
+    .preferredColorScheme(.light)
+}
+
+#Preview(
+    "LLM Issue - Billing or Tier",
+    traits: .fixedLayout(width: PreviewFrames.llmIssueCanvas.width, height: PreviewFrames.llmIssueCanvas.height)
+) {
+    ZStack {
+        VisualEffectView(material: .underWindowBackground, blendingMode: .withinWindow)
+        LinearGradient(
+            colors: [Color.accentColor.opacity(0.08), Color.clear],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+        LLMUserFacingIssueCanvasView(
+            issue: LLMUserFacingIssue(
+                provider: .gemini,
+                operation: .taskExtraction,
+                kind: .billingOrTierNotEnabled,
+                providerMessage: "FAILED_PRECONDITION: Billing account not configured for requested model tier.",
+                httpStatus: 400,
+                providerCode: "FAILED_PRECONDITION",
+                requestID: nil
+            ),
+            onOpenSettings: {},
+            onOpenProviderConsole: {}
         )
         .padding(24)
     }

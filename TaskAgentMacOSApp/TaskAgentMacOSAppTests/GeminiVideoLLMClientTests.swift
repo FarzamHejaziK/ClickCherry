@@ -251,6 +251,220 @@ struct GeminiVideoLLMClientTests {
         }
     }
 
+    @Test
+    func analyzeVideoMapsInvalidCredentialsToUserFacingIssue() async throws {
+        QueueURLProtocol.reset()
+        let session = makeSession()
+
+        let uploadSessionURL = URL(string: "https://upload.example/session-invalid-credentials")!
+        QueueURLProtocol.enqueue { request in
+            let response = Self.httpResponse(
+                url: request.url!,
+                statusCode: 200,
+                headers: ["X-Goog-Upload-URL": uploadSessionURL.absoluteString]
+            )
+            return (response, Data())
+        }
+        QueueURLProtocol.enqueue { request in
+            let body = """
+            {"file":{"name":"files/mock-video","uri":"https://files.example/mock-video","state":"ACTIVE"}}
+            """
+            let response = Self.httpResponse(url: request.url!, statusCode: 200)
+            return (response, Data(body.utf8))
+        }
+        QueueURLProtocol.enqueue { request in
+            let body = """
+            {"error":{"code":403,"message":"API key not valid. Please pass a valid API key.","status":"PERMISSION_DENIED"}}
+            """
+            let response = Self.httpResponse(url: request.url!, statusCode: 403)
+            return (response, Data(body.utf8))
+        }
+
+        let client = GeminiVideoLLMClient(
+            apiKeyStore: StubAPIKeyStore(values: [.gemini: "gemini-key-123"]),
+            session: session,
+            pollIntervalNanoseconds: 1,
+            maxPollAttempts: 1
+        )
+
+        let tempRoot = try makeTempRoot()
+        defer {
+            QueueURLProtocol.reset()
+            try? FileManager.default.removeItem(at: tempRoot)
+        }
+        let videoURL = tempRoot.appendingPathComponent("sample.mp4", isDirectory: false)
+        try Data("video".utf8).write(to: videoURL)
+
+        do {
+            _ = try await client.analyzeVideo(at: videoURL, prompt: "Prompt", model: "gemini-3-pro-preview")
+            #expect(Bool(false))
+        } catch let error as GeminiLLMClientError {
+            guard case .userFacingIssue(let issue) = error else {
+                #expect(Bool(false))
+                return
+            }
+            #expect(issue.kind == .invalidCredentials)
+            #expect(issue.provider == .gemini)
+            #expect(issue.operation == .taskExtraction)
+            #expect(issue.httpStatus == 403)
+        }
+    }
+
+    @Test
+    func analyzeVideoMapsRateLimitToUserFacingIssue() async throws {
+        QueueURLProtocol.reset()
+        let session = makeSession()
+
+        let uploadSessionURL = URL(string: "https://upload.example/session-rate-limit")!
+        QueueURLProtocol.enqueue { request in
+            let response = Self.httpResponse(
+                url: request.url!,
+                statusCode: 200,
+                headers: ["X-Goog-Upload-URL": uploadSessionURL.absoluteString]
+            )
+            return (response, Data())
+        }
+        QueueURLProtocol.enqueue { request in
+            let body = """
+            {"file":{"name":"files/mock-video","uri":"https://files.example/mock-video","state":"ACTIVE"}}
+            """
+            let response = Self.httpResponse(url: request.url!, statusCode: 200)
+            return (response, Data(body.utf8))
+        }
+        QueueURLProtocol.enqueue { request in
+            let body = """
+            {"error":{"code":429,"message":"Rate limit exceeded. Please retry later.","status":"RESOURCE_EXHAUSTED"}}
+            """
+            let response = Self.httpResponse(url: request.url!, statusCode: 429)
+            return (response, Data(body.utf8))
+        }
+
+        let client = GeminiVideoLLMClient(
+            apiKeyStore: StubAPIKeyStore(values: [.gemini: "gemini-key-123"]),
+            session: session,
+            pollIntervalNanoseconds: 1,
+            maxPollAttempts: 1
+        )
+
+        let tempRoot = try makeTempRoot()
+        defer {
+            QueueURLProtocol.reset()
+            try? FileManager.default.removeItem(at: tempRoot)
+        }
+        let videoURL = tempRoot.appendingPathComponent("sample.mp4", isDirectory: false)
+        try Data("video".utf8).write(to: videoURL)
+
+        do {
+            _ = try await client.analyzeVideo(at: videoURL, prompt: "Prompt", model: "gemini-3-pro-preview")
+            #expect(Bool(false))
+        } catch let error as GeminiLLMClientError {
+            guard case .userFacingIssue(let issue) = error else {
+                #expect(Bool(false))
+                return
+            }
+            #expect(issue.kind == .rateLimited)
+            #expect(issue.provider == .gemini)
+            #expect(issue.httpStatus == 429)
+        }
+    }
+
+    @Test
+    func analyzeVideoMapsQuotaAndBillingPreconditionToUserFacingIssue() async throws {
+        QueueURLProtocol.reset()
+        let session = makeSession()
+
+        let uploadSessionURL = URL(string: "https://upload.example/session-quota-billing")!
+        QueueURLProtocol.enqueue { request in
+            let response = Self.httpResponse(
+                url: request.url!,
+                statusCode: 200,
+                headers: ["X-Goog-Upload-URL": uploadSessionURL.absoluteString]
+            )
+            return (response, Data())
+        }
+        QueueURLProtocol.enqueue { request in
+            let body = """
+            {"file":{"name":"files/mock-video","uri":"https://files.example/mock-video","state":"ACTIVE"}}
+            """
+            let response = Self.httpResponse(url: request.url!, statusCode: 200)
+            return (response, Data(body.utf8))
+        }
+        QueueURLProtocol.enqueue { request in
+            let body = """
+            {"error":{"code":429,"message":"Quota exceeded for quota metric.","status":"RESOURCE_EXHAUSTED"}}
+            """
+            let response = Self.httpResponse(url: request.url!, statusCode: 429)
+            return (response, Data(body.utf8))
+        }
+
+        let client = GeminiVideoLLMClient(
+            apiKeyStore: StubAPIKeyStore(values: [.gemini: "gemini-key-123"]),
+            session: session,
+            pollIntervalNanoseconds: 1,
+            maxPollAttempts: 1
+        )
+
+        let tempRoot = try makeTempRoot()
+        defer {
+            QueueURLProtocol.reset()
+            try? FileManager.default.removeItem(at: tempRoot)
+        }
+        let videoURL = tempRoot.appendingPathComponent("sample.mp4", isDirectory: false)
+        try Data("video".utf8).write(to: videoURL)
+
+        do {
+            _ = try await client.analyzeVideo(at: videoURL, prompt: "Prompt", model: "gemini-3-pro-preview")
+            #expect(Bool(false))
+        } catch let error as GeminiLLMClientError {
+            guard case .userFacingIssue(let issue) = error else {
+                #expect(Bool(false))
+                return
+            }
+            #expect(issue.kind == .quotaOrBudgetExhausted)
+            #expect(issue.provider == .gemini)
+            #expect(issue.httpStatus == 429)
+        }
+
+        QueueURLProtocol.reset()
+
+        let uploadSessionURL2 = URL(string: "https://upload.example/session-billing-precondition")!
+        QueueURLProtocol.enqueue { request in
+            let response = Self.httpResponse(
+                url: request.url!,
+                statusCode: 200,
+                headers: ["X-Goog-Upload-URL": uploadSessionURL2.absoluteString]
+            )
+            return (response, Data())
+        }
+        QueueURLProtocol.enqueue { request in
+            let body = """
+            {"file":{"name":"files/mock-video","uri":"https://files.example/mock-video","state":"ACTIVE"}}
+            """
+            let response = Self.httpResponse(url: request.url!, statusCode: 200)
+            return (response, Data(body.utf8))
+        }
+        QueueURLProtocol.enqueue { request in
+            let body = """
+            {"error":{"code":400,"message":"FREE TIER IS NOT AVAILABLE in your country. Please enable billing.","status":"FAILED_PRECONDITION"}}
+            """
+            let response = Self.httpResponse(url: request.url!, statusCode: 400)
+            return (response, Data(body.utf8))
+        }
+
+        do {
+            _ = try await client.analyzeVideo(at: videoURL, prompt: "Prompt", model: "gemini-3-pro-preview")
+            #expect(Bool(false))
+        } catch let error as GeminiLLMClientError {
+            guard case .userFacingIssue(let issue) = error else {
+                #expect(Bool(false))
+                return
+            }
+            #expect(issue.kind == .billingOrTierNotEnabled)
+            #expect(issue.provider == .gemini)
+            #expect(issue.httpStatus == 400)
+        }
+    }
+
     private static func httpResponse(
         url: URL,
         statusCode: Int,

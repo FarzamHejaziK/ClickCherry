@@ -8,6 +8,7 @@ import AppKit
 struct CaptureDisplayOption: Identifiable, Equatable {
     let id: Int
     let label: String
+    let screencaptureDisplayIndex: Int
 }
 
 enum CaptureAudioInputMode: Equatable {
@@ -65,10 +66,16 @@ final class ShellRecordingCaptureService: RecordingCaptureService {
     func listDisplays() -> [CaptureDisplayOption] {
         let screens = ScreenDisplayIndexService.orderedScreensMainFirst()
         guard !screens.isEmpty else {
-            return [CaptureDisplayOption(id: 1, label: "Display 1")]
+            return [CaptureDisplayOption(id: 1, label: "Display 1", screencaptureDisplayIndex: 1)]
         }
-        return screens.enumerated().map { index, _ in
-            CaptureDisplayOption(id: index + 1, label: "Display \(index + 1)")
+        return screens.enumerated().map { index, screen in
+            let screencaptureIndex = index + 1
+            let stableDisplayID = ScreenDisplayIndexService.cgDisplayID(for: screen).map(Int.init) ?? screencaptureIndex
+            return CaptureDisplayOption(
+                id: stableDisplayID,
+                label: "Display \(screencaptureIndex)",
+                screencaptureDisplayIndex: screencaptureIndex
+            )
         }
     }
 

@@ -89,6 +89,19 @@ struct TaskDetailView: View {
             } else if let errorMessage = mainShellStateStore.errorMessage, !errorMessage.isEmpty {
                 StatusLine(kind: .error, text: errorMessage)
             }
+
+            if let issue = mainShellStateStore.activeLLMUserFacingIssue {
+                LLMUserFacingIssueCanvasView(
+                    issue: issue,
+                    onOpenSettings: {
+                        mainShellStateStore.openSettingsForActiveLLMUserFacingIssue()
+                    },
+                    onOpenProviderConsole: {
+                        mainShellStateStore.openProviderConsoleForActiveLLMUserFacingIssue()
+                    }
+                )
+                .frame(maxWidth: 880)
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 8)
@@ -156,13 +169,17 @@ struct TaskDetailView: View {
                         .font(.callout)
                         .padding(.vertical, 4)
                 } else {
+                    let totalRuns = mainShellStateStore.runHistory.count
                     VStack(alignment: .leading, spacing: 10) {
                         ForEach(Array(mainShellStateStore.runHistory.enumerated()), id: \.element.id) { idx, run in
                             DisclosureGroup {
-                                RunLogListView(events: run.events)
+                                RunLogListView(
+                                    events: run.events,
+                                    screenshots: mainShellStateStore.runScreenshotLogByRunID[run.id] ?? []
+                                )
                                     .padding(.top, 6)
                             } label: {
-                                RunHeaderView(title: "Run \(idx + 1)", run: run)
+                                RunHeaderView(title: "Run \(totalRuns - idx)", run: run)
                             }
                             .disclosureGroupStyle(.automatic)
                         }
@@ -235,17 +252,17 @@ private struct RunDisplayPickerView: View {
     }
 
     private func refreshThumbnails() {
-        let displayIndices = mainShellStateStore.availableCaptureDisplays.map(\.id)
-        guard !displayIndices.isEmpty else {
+        let displays = mainShellStateStore.availableCaptureDisplays
+        guard !displays.isEmpty else {
             thumbnailsByDisplayIndex = [:]
             return
         }
 
         Task.detached(priority: .utility) {
             var next: [Int: CGImage] = [:]
-            for displayIndex in displayIndices {
-                if let thumbnail = try? DisplayThumbnailService.captureThumbnailForDisplayIndex(displayIndex) {
-                    next[displayIndex] = thumbnail
+            for display in displays {
+                if let thumbnail = try? DisplayThumbnailService.captureThumbnailForDisplayIndex(display.screencaptureDisplayIndex) {
+                    next[display.id] = thumbnail
                 }
             }
             await MainActor.run {
@@ -384,6 +401,7 @@ private struct RunHeaderView: View {
 
 private struct RunLogListView: View {
     let events: [AgentRunEvent]
+    let screenshots: [LLMScreenshotLogEntry]
 
     private static let timeFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -411,30 +429,38 @@ private struct RunLogListView: View {
     }
 
     var body: some View {
-        if events.isEmpty {
+        if events.isEmpty && screenshots.isEmpty {
             Text("No log entries yet.")
                 .foregroundStyle(.secondary)
                 .font(.callout)
                 .padding(.vertical, 4)
         } else {
-            VStack(alignment: .leading, spacing: 8) {
-                ForEach(events) { event in
-                    HStack(alignment: .top, spacing: 10) {
-                        Text(Self.timeFormatter.string(from: event.timestamp))
-                            .font(.caption2.monospacedDigit())
-                            .foregroundStyle(.secondary)
-                            .frame(width: 56, alignment: .leading)
+            VStack(alignment: .leading, spacing: 12) {
+                if !events.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(events) { event in
+                            HStack(alignment: .top, spacing: 10) {
+                                Text(Self.timeFormatter.string(from: event.timestamp))
+                                    .font(.caption2.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 56, alignment: .leading)
 
-                        Text(event.kind.rawValue.uppercased())
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(kindColor(event.kind))
-                            .frame(width: 86, alignment: .leading)
+                                Text(event.kind.rawValue.uppercased())
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(kindColor(event.kind))
+                                    .frame(width: 86, alignment: .leading)
 
-                        Text(event.message)
-                            .font(.caption)
-                            .foregroundStyle(.primary.opacity(0.92))
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                                Text(event.message)
+                                    .font(.caption)
+                                    .foregroundStyle(.primary.opacity(0.92))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        }
                     }
+                }
+
+                if !screenshots.isEmpty {
+                    RunScreenshotStripView(entries: screenshots)
                 }
             }
             .padding(12)
@@ -446,6 +472,49 @@ private struct RunLogListView: View {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
             )
+        }
+    }
+}
+
+private struct RunScreenshotStripView: View {
+    let entries: [LLMScreenshotLogEntry]
+
+    private static let timeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm:ss"
+        return f
+    }()
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Screenshots (temporary)")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ForEach(entries) { entry in
+                        VStack(alignment: .leading, spacing: 6) {
+                            if let image = NSImage(data: entry.imageData) {
+                                Image(nsImage: image)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 180, height: 112)
+                                    .clipped()
+                                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            } else {
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .fill(Color.black.opacity(0.15))
+                                    .frame(width: 180, height: 112)
+                            }
+
+                            Text("\(entry.source.rawValue) • \(Self.timeFormatter.string(from: entry.timestamp))")
+                                .font(.caption2.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
         }
     }
 }

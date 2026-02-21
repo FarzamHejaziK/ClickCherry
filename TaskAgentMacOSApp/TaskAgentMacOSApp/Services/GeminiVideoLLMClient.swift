@@ -5,6 +5,7 @@ enum GeminiLLMClientError: Error, LocalizedError, Equatable {
     case missingAPIKey
     case failedToReadAPIKey
     case invalidRecording(String)
+    case userFacingIssue(LLMUserFacingIssue)
     case uploadInitializationFailed(String)
     case uploadFailed(String)
     case invalidUploadResponse
@@ -21,6 +22,8 @@ enum GeminiLLMClientError: Error, LocalizedError, Equatable {
             return "Failed to read Gemini API key from secure storage."
         case .invalidRecording(let reason):
             return "Recording is invalid for extraction: \(reason)"
+        case .userFacingIssue(let issue):
+            return issue.userMessage
         case .uploadInitializationFailed(let reason):
             return "Gemini upload initialization failed: \(reason)"
         case .uploadFailed(let reason):
@@ -41,7 +44,7 @@ enum GeminiLLMClientError: Error, LocalizedError, Equatable {
 
 final class GeminiVideoLLMClient: LLMClient {
     private let apiKeyStore: any APIKeyStore
-    private let session: URLSession
+    private let sessionFactory: @Sendable () -> URLSession
     private let pollIntervalNanoseconds: UInt64
     private let maxPollAttempts: Int
     private let jsonEncoder: JSONEncoder
@@ -54,7 +57,10 @@ final class GeminiVideoLLMClient: LLMClient {
         maxPollAttempts: Int = 45
     ) {
         self.apiKeyStore = apiKeyStore
-        self.session = session
+        let configurationTemplate = Self.copySessionConfiguration(from: session.configuration)
+        self.sessionFactory = {
+            URLSession(configuration: Self.copySessionConfiguration(from: configurationTemplate))
+        }
         self.pollIntervalNanoseconds = pollIntervalNanoseconds
         self.maxPollAttempts = maxPollAttempts
         self.jsonEncoder = JSONEncoder()
@@ -167,7 +173,7 @@ final class GeminiVideoLLMClient: LLMClient {
 
         let (data, response) = try await data(for: request, stage: .uploadInit)
         guard (200..<300).contains(response.statusCode) else {
-            throw GeminiLLMClientError.uploadInitializationFailed(serverMessage(from: data, statusCode: response.statusCode))
+            throw mappedServerError(for: .uploadInit, statusCode: response.statusCode, data: data)
         }
         guard let uploadURLString = response.value(forHTTPHeaderField: "X-Goog-Upload-URL"),
               let uploadURL = URL(string: uploadURLString) else {
@@ -192,7 +198,7 @@ final class GeminiVideoLLMClient: LLMClient {
 
         let (data, response) = try await upload(for: request, fromFile: recordingURL, stage: .upload)
         guard (200..<300).contains(response.statusCode) else {
-            throw GeminiLLMClientError.uploadFailed(serverMessage(from: data, statusCode: response.statusCode))
+            throw mappedServerError(for: .upload, statusCode: response.statusCode, data: data)
         }
 
         guard let uploadedFile = try decodeGeminiFile(from: data, stage: .upload) else {
@@ -230,7 +236,7 @@ final class GeminiVideoLLMClient: LLMClient {
 
         let (data, response) = try await data(for: request, stage: .poll)
         guard (200..<300).contains(response.statusCode) else {
-            throw GeminiLLMClientError.fileProcessingFailed(serverMessage(from: data, statusCode: response.statusCode))
+            throw mappedServerError(for: .poll, statusCode: response.statusCode, data: data)
         }
         guard let polledFile = try decodeGeminiFile(from: data, stage: .poll) else {
             throw GeminiLLMClientError.fileProcessingFailed("Gemini file poll response was invalid.")
@@ -261,7 +267,7 @@ final class GeminiVideoLLMClient: LLMClient {
 
         let (data, response) = try await data(for: request, stage: .generate)
         guard (200..<300).contains(response.statusCode) else {
-            throw GeminiLLMClientError.generateFailed(serverMessage(from: data, statusCode: response.statusCode))
+            throw mappedServerError(for: .generate, statusCode: response.statusCode, data: data)
         }
         guard let payload = try decode(GenerateContentResponse.self, from: data, stage: .generate) else {
             throw GeminiLLMClientError.generateFailed("Gemini response format was invalid.")
@@ -310,7 +316,11 @@ final class GeminiVideoLLMClient: LLMClient {
         for request: URLRequest,
         stage: RequestStage
     ) async throws -> (Data, HTTPURLResponse) {
+        let session = sessionFactory()
         do {
+            defer {
+                session.finishTasksAndInvalidate()
+            }
             let (data, response) = try await session.data(for: request)
             guard let httpResponse = response as? HTTPURLResponse else {
                 throw GeminiLLMClientError.generateFailed("Unexpected non-HTTP response.")
@@ -328,7 +338,11 @@ final class GeminiVideoLLMClient: LLMClient {
         fromFile fileURL: URL,
         stage: RequestStage
     ) async throws -> (Data, HTTPURLResponse) {
+        let session = sessionFactory()
         do {
+            defer {
+                session.finishTasksAndInvalidate()
+            }
             let (data, response) = try await session.upload(for: request, fromFile: fileURL)
             guard let httpResponse = response as? HTTPURLResponse else {
                 throw GeminiLLMClientError.uploadFailed("Unexpected non-HTTP upload response.")
@@ -339,6 +353,23 @@ final class GeminiVideoLLMClient: LLMClient {
         } catch {
             throw mappedTransportError(for: stage, underlyingError: error)
         }
+    }
+
+    private static func copySessionConfiguration(from configuration: URLSessionConfiguration) -> URLSessionConfiguration {
+        if let copied = configuration.copy() as? URLSessionConfiguration {
+            return copied
+        }
+
+        let fallback = URLSessionConfiguration.ephemeral
+        fallback.timeoutIntervalForRequest = configuration.timeoutIntervalForRequest
+        fallback.timeoutIntervalForResource = configuration.timeoutIntervalForResource
+        fallback.httpAdditionalHeaders = configuration.httpAdditionalHeaders
+        fallback.httpMaximumConnectionsPerHost = configuration.httpMaximumConnectionsPerHost
+        fallback.waitsForConnectivity = configuration.waitsForConnectivity
+        fallback.requestCachePolicy = configuration.requestCachePolicy
+        fallback.urlCache = configuration.urlCache
+        fallback.protocolClasses = configuration.protocolClasses
+        return fallback
     }
 
     private func decode<T: Decodable>(_ type: T.Type, from data: Data, stage: RequestStage) throws -> T? {
@@ -373,6 +404,75 @@ final class GeminiVideoLLMClient: LLMClient {
             return message
         }
         return "HTTP \(statusCode)"
+    }
+
+    private func mappedServerError(for stage: RequestStage, statusCode: Int, data: Data) -> GeminiLLMClientError {
+        let parsed = try? jsonDecoder.decode(GeminiErrorEnvelope.self, from: data)
+        let message = serverMessage(from: data, statusCode: statusCode)
+        if let issue = classifyGeminiUserFacingIssue(statusCode: statusCode, errorBody: parsed?.error) {
+            return .userFacingIssue(issue)
+        }
+        switch stage {
+        case .uploadInit:
+            return .uploadInitializationFailed(message)
+        case .upload:
+            return .uploadFailed(message)
+        case .poll:
+            return .fileProcessingFailed(message)
+        case .generate:
+            return .generateFailed(message)
+        }
+    }
+
+    private func classifyGeminiUserFacingIssue(
+        statusCode: Int,
+        errorBody: GeminiErrorEnvelope.GeminiErrorBody?
+    ) -> LLMUserFacingIssue? {
+        let message = errorBody?.message?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "HTTP \(statusCode)"
+        let statusText = errorBody?.status?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let statusCodeToken = errorBody?.code.map { String($0) }
+        let combined = [
+            message.lowercased(),
+            statusText?.lowercased() ?? "",
+            statusCodeToken ?? ""
+        ].joined(separator: " ")
+        let billingTokens = ["failed_precondition", "billing", "free tier is not available", "not enabled", "tier"]
+        let permissionTokens = ["permission_denied", "api key not valid", "invalid api key", "invalid authentication"]
+
+        let issueKind: LLMUserFacingIssueKind?
+        if (statusCode == 400 || statusCode == 403) && containsAnyToken(combined, tokens: billingTokens) {
+            issueKind = .billingOrTierNotEnabled
+        } else if statusCode == 403 || containsAnyToken(combined, tokens: permissionTokens) {
+            issueKind = .invalidCredentials
+        } else if statusCode == 429 || combined.contains("resource_exhausted") {
+            if containsAnyToken(combined, tokens: ["quota", "budget", "billing"]) {
+                issueKind = .quotaOrBudgetExhausted
+            } else {
+                issueKind = .rateLimited
+            }
+        } else {
+            issueKind = nil
+        }
+
+        guard let issueKind else {
+            return nil
+        }
+        return LLMUserFacingIssue(
+            provider: .gemini,
+            operation: .taskExtraction,
+            kind: issueKind,
+            providerMessage: message,
+            httpStatus: statusCode,
+            providerCode: statusText,
+            requestID: nil
+        )
+    }
+
+    private func containsAnyToken(_ text: String, tokens: [String]) -> Bool {
+        for token in tokens where text.contains(token.lowercased()) {
+            return true
+        }
+        return false
     }
 
     private func mappedTransportError(for stage: RequestStage, underlyingError: Error) -> GeminiLLMClientError {
@@ -491,6 +591,8 @@ private extension GeminiVideoLLMClient {
     struct GeminiErrorEnvelope: Decodable {
         struct GeminiErrorBody: Decodable {
             let message: String?
+            let status: String?
+            let code: Int?
         }
 
         let error: GeminiErrorBody

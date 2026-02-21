@@ -11,9 +11,9 @@ TASK_MARKDOWN:
 1. Use `desktop_action` for visual or spatial on-screen tasks:
    - finding apps/icons/buttons/fields/windows
    - moving mouse, hovering, clicking, scrolling
+   - opening apps and URLs in the target display context (`open_app`, `open_url`)
    - any action that depends on screenshot pixels or coordinates
 2. Use `terminal_exec` only for deterministic non-visual command-line tasks:
-   - launching apps (`open -a ...`)
    - reading process/system/file info
    - shell commands that do not require visual UI targeting
 3. Do NOT use `terminal_exec` for UI automation or visual targeting (for example Dock/UI-element scripting, cursor/hover/click behavior). Use `desktop_action` instead.
@@ -58,6 +58,7 @@ Actions:
 8. Keyboard Shortcut
    - Action: `key`
    - Provide shortcut string in `"key"` (or `"text"` / `"keys"`).
+   - Never use app switcher shortcuts (for example `cmd+tab`); use `open_app` to bring/open the target app.
    - Examples: `{"action":"key","key":"cmd+k"}`, `{"action":"key","key":"cmd+space"}`
 
 9. Open App
@@ -91,7 +92,6 @@ Input:
 - Optional: `"args"` (array of strings), `"timeout_seconds"` (number)
 
 Examples:
-- `{"executable":"open","args":["-a","Google Chrome"]}`
 - `{"executable":"ls","args":["-la"]}`
 
 Policy boundary:

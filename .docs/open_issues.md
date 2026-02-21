@@ -6,13 +6,14 @@ description: Active unresolved issues with concrete repro details, mitigation, a
 
 ## Issue OI-2026-02-20-014
 - Issue ID: OI-2026-02-20-014
-- Title: Multi-display recording can capture the wrong screen while border appears on selected screen
+- Title: Multi-display selection can target the wrong physical display for overlays and capture
 - Status: Mitigated
 - Severity: High
 - First Seen: 2026-02-20
 - Scope:
-  - Affects multi-display recording display selection in `New Task` and display-index-based overlays.
+  - Affects multi-display display selection in recording (`New Task`) and run-task overlays.
   - Reproduces when the app's key window display differs from the system primary display.
+  - Also affects app activation when the target app is already running on another display (for example Chrome already open on Display 1 while run target is Display 2).
 - Repro Steps:
   1. Connect 2+ displays.
   2. Move `ClickCherry` to a non-primary display.
@@ -20,20 +21,44 @@ description: Active unresolved issues with concrete repro details, mitigation, a
   4. Compare red border display vs resulting recorded video display.
 - Observed:
   - Border can appear on the chosen display while `screencapture` records a different display.
+  - In run flow, the `Agent is running` HUD and red border can appear on different screens.
 - Expected:
-  - Border, control overlays, and recorded output all target the same selected physical display.
+  - Border, run/record control overlays, and recorded output all target the same selected physical display.
 - Current Mitigation:
   - `ScreenDisplayIndexService` now maps `screencapture -D 1` to `CGMainDisplayID()` instead of using `NSScreen.main` (key-window display).
   - `MainShellStateStore.startCapture()` now refreshes/validates the selected display right before launching capture, so stale display indexes cannot suppress the border overlay.
   - Recording border window now uses a higher window level and fallback screen resolution path to keep the border visible during capture.
+  - Display selection now stores a stable physical display identity and maps to `screencapture` index only at execution time (`CaptureDisplayOption.id` + `screencaptureDisplayIndex`).
+  - Run HUD now targets the same selected run display index as the red border (`showAgentInControl(displayID:)`).
+  - OpenAI run loop now anchors pointer to selected display center at run start (move + click) so app focus/activation is primed on the selected screen before model actions.
+  - OpenAI run loop now re-focuses target display with move + click before `open_app` and `open_url` to keep launch/activation context pinned to the selected screen.
+  - OpenAI run loop now inserts a short focus-settle delay after pre-launch focus anchoring for `open_app` and `open_url` so LaunchServices resolves activation after display focus has switched.
+  - OpenAI run loop now primes selected-display focus before global Spotlight shortcut execution (`cmd+space`) to prevent launcher/UI surfacing on the wrong monitor.
+  - OpenAI run loop keeps move-only anchoring before `terminal_exec` to avoid accidental center-screen clicks while preserving display context alignment.
+  - OpenAI `desktop_action.key` now blocks app-switcher shortcut usage (`cmd+tab`) and returns a policy-violation response instructing `open_app` usage instead.
+  - OpenAI `terminal_exec` now blocks `open` executable so UI launches stay in `desktop_action` (which is display-coordinate aware).
+  - Run start desktop preparation now preserves Finder and force-activates it after hiding other apps, so keyboard/launcher context is not left tied to the app window’s previous display.
+  - `SystemDesktopActionExecutor.openApp` now performs post-launch window relocation (Accessibility API) to move the target app's front window onto the display currently anchored by the run loop (selected display center).
+  - `SystemDesktopActionExecutor.openURL` now applies the same post-open relocation to the frontmost regular app so browser URL opens align to the selected run display.
+  - Added temporary run-log screenshot strip (in-memory per active run) so runtime drift can be visually inspected directly from the Runs disclosure UI.
   - Added unit tests covering display-order mapping logic:
     - `ScreenDisplayIndexServiceTests.orderedDisplayIDsForScreencaptureMovesPrimaryDisplayToFront`
     - `ScreenDisplayIndexServiceTests.orderedDisplayIDsForScreencaptureLeavesOrderWhenPrimaryAlreadyFirst`
     - `ScreenDisplayIndexServiceTests.orderedDisplayIDsForScreencaptureLeavesOrderWhenPrimaryMissing`
     - `MainShellStateStoreTests.startCaptureRefreshesInvalidDisplaySelectionBeforeShowingBorder`
+    - `MainShellStateStoreTests.startRunTaskNowUsesSelectedDisplayScreencaptureIndexForBothOverlays`
+    - `OpenAIComputerUseRunnerTests.runToolLoopRejectsTerminalOpenCommandAndRequestsDesktopActionTool`
+    - `OpenAIComputerUseRunnerTests.runToolLoopRejectsCmdTabShortcutAndRequestsOpenAppAction`
+    - `OpenAIComputerUseRunnerTests.runToolLoopPrimesDisplayBeforeCmdSpaceShortcut`
 - Next Action:
   - User-side runtime validation on a multi-display setup:
     - select each display and confirm the red border + final recording match the same display.
+    - run a task on each display and confirm `Agent is running` HUD + red border appear on the same selected display.
+    - confirm app launches/navigation triggered during run stay on the selected display (no cross-screen drift), specifically:
+      - no app switcher UI appears during run actions.
+      - `open_app` for Chrome opens/activates on the selected run display.
+      - with Chrome pre-opened on the other monitor before run start, `open_app` moves/activates Chrome on the selected run display.
+    - confirm temporary run-log screenshot strip shows the same target screen/action context; remove strip once validation is complete.
 - Owner: Codex + user validation in local runtime
 
 ## Issue OI-2026-02-19-013
@@ -296,8 +321,17 @@ description: Active unresolved issues with concrete repro details, mitigation, a
   - Added a temporary in-app `Diagnostics (LLM + Screenshot)` panel that:
     - shows successful + failed LLM calls (attempt number, HTTP status, request-id, duration, error snippet)
     - provides a `Test Screenshot` button with a live screenshot preview for Screen Recording validation
+  - Hardened LLM transport to use a fresh `URLSession` per request call (OpenAI + Gemini), reducing pooled-connection reuse exposure on unstable VPN paths.
+  - Added normalized provider-error classification for actionable user remediation:
+    - `invalid_credentials`
+    - `rate_limited`
+    - `quota_or_budget_exhausted`
+    - `billing_or_tier_not_enabled`
+  - Added dedicated in-app error canvas rendering for these classes in run-task and extraction flows, with direct actions to open Settings/provider console.
 - Next Action:
-  - If this continues in user local runtime, investigate per-app proxy/VPN/TLS inspection and consider additional mitigations (fresh session on retry, larger retry budget, or payload size reduction).
+  - User-side runtime validation with VPN on:
+    - run multiple sequential tool-loop turns and confirm reduced transport failures.
+    - verify each of the 4 provider error classes renders the new actionable canvas and buttons.
 - Owner: Codex + user network environment validation
 
 ## Issue OI-2026-02-09-004

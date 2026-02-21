@@ -200,6 +200,7 @@ final class MainShellStateStore {
     private let agentCursorPresentationService: any AgentCursorPresentationService
     private let prepareDesktopForRun: @MainActor () -> Int
     private let llmCallRecorder: LLMCallRecorder
+    private let llmScreenshotRecorder: LLMScreenshotRecorder
     private let executionTraceRecorder: ExecutionTraceRecorder
     private let userDefaults: UserDefaults
     private var runTaskHandle: Task<Void, Never>?
@@ -242,6 +243,7 @@ final class MainShellStateStore {
     var apiKeyStatusMessage: String?
     var apiKeyErrorMessage: String?
     var errorMessage: String?
+    var llmUserFacingIssue: LLMUserFacingIssue?
     var missingProviderKeyDialog: MissingProviderKeyDialog?
     var recordingPreflightDialogState: RecordingPreflightDialogState?
     var runTaskPreflightDialogState: RunTaskPreflightDialogState?
@@ -249,6 +251,7 @@ final class MainShellStateStore {
     var llmCallLog: [LLMCallLogEntry]
     var executionTrace: [ExecutionTraceEntry]
     var runHistory: [AgentRunRecord]
+    var runScreenshotLogByRunID: [UUID: [LLMScreenshotLogEntry]]
     var isCapturingDiagnosticScreenshot: Bool
     var diagnosticScreenshotStatusMessage: String?
     var diagnosticTraceStatusMessage: String?
@@ -277,6 +280,7 @@ final class MainShellStateStore {
     ) {
         self.userDefaults = userDefaults
         let callRecorder = LLMCallRecorder(maxEntries: 200)
+        let screenshotRecorder = LLMScreenshotRecorder(maxEntries: 120)
         let traceRecorder = ExecutionTraceRecorder(maxEntries: 400)
         let runDisplayIndexBox = LockedBox<Int>(1)
         self.taskService = taskService
@@ -291,6 +295,9 @@ final class MainShellStateStore {
             apiKeyStore: apiKeyStore,
             callLogSink: { entry in
                 callRecorder.record(entry)
+            },
+            screenshotLogSink: { entry in
+                screenshotRecorder.record(entry)
             },
             traceSink: { entry in
                 traceRecorder.record(entry)
@@ -314,6 +321,7 @@ final class MainShellStateStore {
         self.agentCursorPresentationService = agentCursorPresentationService
         self.prepareDesktopForRun = prepareDesktopForRun
         self.llmCallRecorder = callRecorder
+        self.llmScreenshotRecorder = screenshotRecorder
         self.executionTraceRecorder = traceRecorder
         self.runTaskHandle = nil
         self.tasks = []
@@ -347,6 +355,7 @@ final class MainShellStateStore {
         self.apiKeyStatusMessage = nil
         self.apiKeyErrorMessage = nil
         self.errorMessage = nil
+        self.llmUserFacingIssue = nil
         self.missingProviderKeyDialog = nil
         self.recordingPreflightDialogState = nil
         self.runTaskPreflightDialogState = nil
@@ -354,6 +363,7 @@ final class MainShellStateStore {
         self.llmCallLog = []
         self.executionTrace = []
         self.runHistory = []
+        self.runScreenshotLogByRunID = [:]
         self.isCapturingDiagnosticScreenshot = false
         self.diagnosticScreenshotStatusMessage = nil
         self.diagnosticTraceStatusMessage = nil
@@ -378,6 +388,12 @@ final class MainShellStateStore {
                 self?.appendTraceEventToActiveRun(entry)
             }
         }
+
+        screenshotRecorder.onRecord = { [weak self] entry in
+            DispatchQueue.main.async {
+                self?.appendScreenshotLogToActiveRun(entry)
+            }
+        }
     }
 
     deinit {
@@ -390,6 +406,16 @@ final class MainShellStateStore {
             return nil
         }
         return tasks.first(where: { $0.id == selectedTaskID })
+    }
+
+    var activeLLMUserFacingIssue: LLMUserFacingIssue? {
+        guard let llmUserFacingIssue else {
+            return nil
+        }
+        guard errorMessage == llmUserFacingIssue.userMessage else {
+            return nil
+        }
+        return llmUserFacingIssue
     }
 
     var unresolvedClarificationQuestions: [HeartbeatQuestion] {
@@ -452,12 +478,14 @@ final class MainShellStateStore {
         clarificationAnswerDraft = ""
         recordings = []
         runHistory = []
+        runScreenshotLogByRunID = [:]
         saveStatusMessage = nil
         recordingStatusMessage = nil
         extractionStatusMessage = nil
         runStatusMessage = nil
         clarificationStatusMessage = nil
         errorMessage = nil
+        llmUserFacingIssue = nil
     }
 
     func openSettings() {
@@ -815,6 +843,18 @@ final class MainShellStateStore {
         dismissMissingProviderKeyDialog()
     }
 
+    func openSettingsForActiveLLMUserFacingIssue() {
+        openSettings()
+    }
+
+    func openProviderConsoleForActiveLLMUserFacingIssue() {
+        guard let issue = activeLLMUserFacingIssue,
+              let url = issue.providerConsoleURL else {
+            return
+        }
+        NSWorkspace.shared.open(url)
+    }
+
     func openSettingsForRecordingPreflightRequirement(_ requirement: RecordingPreflightRequirement) {
         guard let permission = requirement.permission else {
             openSettings()
@@ -901,13 +941,16 @@ final class MainShellStateStore {
     func loadSelectedTaskRunHistory() {
         guard let selectedTaskID else {
             runHistory = []
+            runScreenshotLogByRunID = [:]
             return
         }
 
         do {
             runHistory = try taskService.listAgentRunLogs(taskId: selectedTaskID)
+            runScreenshotLogByRunID = [:]
         } catch {
             runHistory = []
+            runScreenshotLogByRunID = [:]
             // Don't hard-fail the whole page if history is malformed.
         }
     }
@@ -928,6 +971,14 @@ final class MainShellStateStore {
         } else {
             selectedRunDisplayID = displays.first?.id
         }
+    }
+
+    private func resolvedDisplayOption(selectedID: Int?) -> CaptureDisplayOption? {
+        if let selectedID,
+           let selectedDisplay = availableCaptureDisplays.first(where: { $0.id == selectedID }) {
+            return selectedDisplay
+        }
+        return availableCaptureDisplays.first
     }
 
     func refreshCaptureAudioInputs() {
@@ -1060,6 +1111,7 @@ final class MainShellStateStore {
         extractingRecordingID = recording.id
         extractionStatusMessage = "Extracting task from \(recording.fileName)..."
         errorMessage = nil
+        llmUserFacingIssue = nil
 
         do {
             let result = try await taskExtractionService.extractHeartbeatMarkdown(from: recording.fileURL)
@@ -1071,18 +1123,28 @@ final class MainShellStateStore {
                 extractionStatusMessage = "No actionable task detected. HEARTBEAT.md was not changed (\(result.llm), \(result.promptVersion))."
             }
             errorMessage = nil
+            llmUserFacingIssue = nil
         } catch TaskExtractionServiceError.invalidModelOutput {
             extractionStatusMessage = nil
             errorMessage = "Extraction output was invalid. HEARTBEAT.md was not changed."
+            llmUserFacingIssue = nil
         } catch let error as GeminiLLMClientError {
             extractionStatusMessage = nil
-            errorMessage = error.errorDescription ?? "Gemini request failed."
+            if case .userFacingIssue(let issue) = error {
+                llmUserFacingIssue = issue
+                errorMessage = issue.userMessage
+            } else {
+                llmUserFacingIssue = nil
+                errorMessage = error.errorDescription ?? "Gemini request failed."
+            }
         } catch LLMClientError.notConfigured {
             extractionStatusMessage = nil
             errorMessage = "Task extraction LLM client is not configured yet."
+            llmUserFacingIssue = nil
         } catch {
             extractionStatusMessage = nil
             errorMessage = "Failed to extract task from recording."
+            llmUserFacingIssue = nil
         }
 
         isExtractingTask = false
@@ -1104,7 +1166,12 @@ final class MainShellStateStore {
 
         // Ensure the runner uses the selected display for screenshots/tool coordinates.
         refreshCaptureDisplays()
-        let runDisplayIndex = selectedRunDisplayID ?? availableCaptureDisplays.first?.id ?? 1
+        guard let runDisplay = resolvedDisplayOption(selectedID: selectedRunDisplayID) else {
+            errorMessage = "No display detected for run."
+            return
+        }
+        selectedRunDisplayID = runDisplay.id
+        let runDisplayIndex = runDisplay.screencaptureDisplayIndex
         runScreenshotDisplayIndexBox.value = runDisplayIndex
 
         // Show a red border on the selected display while the agent is running.
@@ -1124,10 +1191,11 @@ final class MainShellStateStore {
         isRunningTask = true
         runStatusMessage = "Running task..."
         errorMessage = nil
+        llmUserFacingIssue = nil
         let startedAt = Date()
 
         executionTraceRecorder.record(ExecutionTraceEntry(kind: .info, message: "Run requested for task \(selectedTaskID)."))
-        agentControlOverlayService.showAgentInControl()
+        agentControlOverlayService.showAgentInControl(displayID: runDisplayIndex)
         if agentCursorPresentationService.activateTakeoverCursor() {
             executionTraceRecorder.record(ExecutionTraceEntry(kind: .info, message: "Cursor presentation left unchanged during agent takeover."))
         } else {
@@ -1177,7 +1245,12 @@ final class MainShellStateStore {
         }
 
         refreshCaptureDisplays()
-        let runDisplayIndex = selectedRunDisplayID ?? availableCaptureDisplays.first?.id ?? 1
+        guard let runDisplay = resolvedDisplayOption(selectedID: selectedRunDisplayID) else {
+            errorMessage = "No display detected for run."
+            return
+        }
+        selectedRunDisplayID = runDisplay.id
+        let runDisplayIndex = runDisplay.screencaptureDisplayIndex
         runScreenshotDisplayIndexBox.value = runDisplayIndex
 
         await MainActor.run {
@@ -1195,6 +1268,7 @@ final class MainShellStateStore {
         isRunningTask = true
         runStatusMessage = "Running task..."
         errorMessage = nil
+        llmUserFacingIssue = nil
         let startedAt = Date()
 
         executionTraceRecorder.record(ExecutionTraceEntry(kind: .info, message: "Run requested for task \(selectedTaskID)."))
@@ -1276,8 +1350,16 @@ final class MainShellStateStore {
             runStatusMessage = "Run cancelled."
         }
 
-        if result.outcome != .cancelled, let resultError = result.errorMessage, !resultError.isEmpty {
+        if result.outcome == .cancelled {
+            llmUserFacingIssue = nil
+        } else if let issue = result.llmUserFacingIssue {
+            llmUserFacingIssue = issue
+            errorMessage = issue.userMessage
+        } else if let resultError = result.errorMessage, !resultError.isEmpty {
+            llmUserFacingIssue = nil
             errorMessage = resultError
+        } else if result.outcome == .success {
+            llmUserFacingIssue = nil
         }
 
         if let finished = finishActiveRun(outcome: result.outcome) {
@@ -1311,6 +1393,7 @@ final class MainShellStateStore {
     private func beginRun(displayIndex: Int) {
         let run = AgentRunRecord(startedAt: Date(), displayIndex: displayIndex)
         runHistory.insert(run, at: 0)
+        runScreenshotLogByRunID[run.id] = []
         activeRunID = run.id
     }
 
@@ -1386,18 +1469,36 @@ final class MainShellStateStore {
         )
     }
 
+    private func appendScreenshotLogToActiveRun(_ entry: LLMScreenshotLogEntry) {
+        guard let activeRunID else { return }
+        var entries = runScreenshotLogByRunID[activeRunID] ?? []
+        entries.append(entry)
+        if entries.count > 40 {
+            entries.removeFirst(entries.count - 40)
+        }
+        runScreenshotLogByRunID[activeRunID] = entries
+    }
+
     @MainActor
     private static func prepareDesktopByHidingRunningApps() -> Int {
         let currentPID = ProcessInfo.processInfo.processIdentifier
+        let finderBundleID = "com.apple.finder"
         var hiddenCount = 0
 
         for app in NSWorkspace.shared.runningApplications {
             guard app.processIdentifier != currentPID else { continue }
             guard app.activationPolicy == .regular else { continue }
+            if app.bundleIdentifier == finderBundleID {
+                continue
+            }
             guard !app.isHidden else { continue }
             if app.hide() {
                 hiddenCount += 1
             }
+        }
+
+        if let finder = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == finderBundleID }) {
+            _ = finder.activate(options: [.activateIgnoringOtherApps])
         }
 
         return hiddenCount
@@ -1430,11 +1531,12 @@ final class MainShellStateStore {
             return
         }
         refreshCaptureDisplays()
-        guard let captureDisplayID = selectedCaptureDisplayID,
-              availableCaptureDisplays.contains(where: { $0.id == captureDisplayID }) else {
+        guard let captureDisplay = resolvedDisplayOption(selectedID: selectedCaptureDisplayID) else {
             errorMessage = "No display detected for capture."
             return
         }
+        selectedCaptureDisplayID = captureDisplay.id
+        let captureDisplayIndex = captureDisplay.screencaptureDisplayIndex
         guard !isRunningTask else {
             errorMessage = "Cannot start recording while a task is running."
             return
@@ -1447,7 +1549,7 @@ final class MainShellStateStore {
             self?.handleUserInterruptionDuringCapture()
         }
         if didStartMonitor {
-            recordingControlOverlayService.showRecordingHint(displayID: captureDisplayID)
+            recordingControlOverlayService.showRecordingHint(displayID: captureDisplayIndex)
         } else {
             recordingControlOverlayService.hideRecordingHint()
             // Keep the UI visible so the user can stop recording via the button.
@@ -1456,7 +1558,7 @@ final class MainShellStateStore {
         }
 
         // Show overlays immediately (border + HUD).
-        overlayService.showBorder(displayID: captureDisplayID)
+        overlayService.showBorder(displayID: captureDisplayIndex)
 
         // Hide our own UI windows early (especially for multi-display), but avoid hiding before the
         // Screen Recording permission prompt can be shown.
@@ -1509,7 +1611,7 @@ final class MainShellStateStore {
             do {
                 try self.captureService.startCapture(
                     outputURL: outputURL,
-                    displayID: captureDisplayID,
+                    displayID: captureDisplayIndex,
                     audioInput: requestedAudioInput
                 )
 
@@ -1521,15 +1623,15 @@ final class MainShellStateStore {
 
                     if self.captureService.lastCaptureIncludesMicrophone,
                        let warning = self.captureService.lastCaptureStartWarning {
-                        self.recordingStatusMessage = "Capture started on Display \(captureDisplayID) with microphone audio. \(warning)"
+                        self.recordingStatusMessage = "Capture started on Display \(captureDisplayIndex) with microphone audio. \(warning)"
                     } else if self.captureService.lastCaptureIncludesMicrophone {
-                        self.recordingStatusMessage = "Capture started on Display \(captureDisplayID) with audio input: \(self.selectedAudioInputLabel)."
+                        self.recordingStatusMessage = "Capture started on Display \(captureDisplayIndex) with audio input: \(self.selectedAudioInputLabel)."
                     } else if let warning = self.captureService.lastCaptureStartWarning {
-                        self.recordingStatusMessage = "Capture started on Display \(captureDisplayID) without microphone audio. \(warning)"
+                        self.recordingStatusMessage = "Capture started on Display \(captureDisplayIndex) without microphone audio. \(warning)"
                     } else if requestedAudioInput == .none {
-                        self.recordingStatusMessage = "Capture started on Display \(captureDisplayID) without microphone audio."
+                        self.recordingStatusMessage = "Capture started on Display \(captureDisplayIndex) without microphone audio."
                     } else {
-                        self.recordingStatusMessage = "Capture started on Display \(captureDisplayID)."
+                        self.recordingStatusMessage = "Capture started on Display \(captureDisplayIndex)."
                     }
                 }
             } catch let error as RecordingCaptureError {
@@ -1865,40 +1967,50 @@ final class MainShellStateStore {
             )
             try taskService.saveHeartbeat(taskId: task.id, markdown: normalizedHeartbeat)
 
-            await MainActor.run { [weak self] in
-                guard let self else { return }
-                self.finishedRecordingDidCreateTask = true
+                await MainActor.run { [weak self] in
+                    guard let self else { return }
+                    self.finishedRecordingDidCreateTask = true
                 self.selectedTaskID = task.id
                 self.reloadTasks()
                 self.openTask(task.id)
                 self.loadSelectedTaskHeartbeat()
                 self.loadSelectedTaskRecordings()
-                self.extractionStatusMessage = "Extraction complete (\(result.llm), \(result.promptVersion))."
-                self.errorMessage = nil
-                self.finishedRecordingReview = nil
-            }
-        } catch TaskExtractionServiceError.invalidModelOutput {
-            await MainActor.run { [weak self] in
-                self?.extractionStatusMessage = nil
-                self?.errorMessage = "Extraction output was invalid. Nothing was created."
-            }
-        } catch let error as GeminiLLMClientError {
-            await MainActor.run { [weak self] in
-                self?.extractionStatusMessage = nil
-                self?.errorMessage = error.errorDescription ?? "Gemini request failed."
-            }
-        } catch LLMClientError.notConfigured {
-            await MainActor.run { [weak self] in
-                self?.extractionStatusMessage = nil
-                self?.errorMessage = "Task extraction LLM client is not configured yet."
-            }
-        } catch {
-            await MainActor.run { [weak self] in
-                self?.extractionStatusMessage = nil
-                self?.errorMessage = "Failed to extract task from recording."
+                    self.extractionStatusMessage = "Extraction complete (\(result.llm), \(result.promptVersion))."
+                    self.errorMessage = nil
+                    self.llmUserFacingIssue = nil
+                    self.finishedRecordingReview = nil
+                }
+            } catch TaskExtractionServiceError.invalidModelOutput {
+                await MainActor.run { [weak self] in
+                    self?.extractionStatusMessage = nil
+                    self?.errorMessage = "Extraction output was invalid. Nothing was created."
+                    self?.llmUserFacingIssue = nil
+                }
+            } catch let error as GeminiLLMClientError {
+                await MainActor.run { [weak self] in
+                    self?.extractionStatusMessage = nil
+                    if case .userFacingIssue(let issue) = error {
+                        self?.llmUserFacingIssue = issue
+                        self?.errorMessage = issue.userMessage
+                    } else {
+                        self?.llmUserFacingIssue = nil
+                        self?.errorMessage = error.errorDescription ?? "Gemini request failed."
+                    }
+                }
+            } catch LLMClientError.notConfigured {
+                await MainActor.run { [weak self] in
+                    self?.extractionStatusMessage = nil
+                    self?.errorMessage = "Task extraction LLM client is not configured yet."
+                    self?.llmUserFacingIssue = nil
+                }
+            } catch {
+                await MainActor.run { [weak self] in
+                    self?.extractionStatusMessage = nil
+                    self?.errorMessage = "Failed to extract task from recording."
+                    self?.llmUserFacingIssue = nil
+                }
             }
         }
-    }
 
     private func deriveTaskTitle(from heartbeatMarkdown: String) -> String {
         let lines = heartbeatMarkdown.components(separatedBy: .newlines)

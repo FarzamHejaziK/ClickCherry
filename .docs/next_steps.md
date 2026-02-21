@@ -4,6 +4,131 @@ description: Short, continuously updated plan of the immediate next implementati
 
 # Next Steps
 
+1. Step: Validate post-launch app-window relocation for cross-display `open_app`/`open_url` scenarios (in progress).
+2. Why now: User still reproduces wrong-display app activation when the target app is already open on another monitor before run start.
+3. Code tasks:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/DesktopActionExecutor.swift`.
+  - Added AX-based post-launch relocation:
+    - `openApp(named:)` now activates and repositions the target app's front window onto the display currently under the anchored pointer (selected run display context).
+    - `openURL(_:)` now repositions the resulting frontmost regular app window to the same display context after URL open.
+  - Kept failure mode non-blocking: if AX window mutation is unavailable for a specific app/window state, app launch still succeeds.
+4. Automated tests:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass on 2026-02-21 local run).
+5. Manual tests:
+  - Pending user-side runtime checks on 2+ displays:
+    - pre-open Chrome on Display 1.
+    - set run display to Display 2 and trigger a run with `open_app` Chrome action.
+    - confirm Chrome activates/moves to Display 2 before subsequent agent actions.
+    - repeat inverse direction (pre-open on Display 2, run on Display 1).
+6. Exit criteria:
+  - App launches/URL opens no longer remain pinned to the previous display when app windows already exist on another monitor.
+
+1. Step: Validate temporary run-log screenshot visibility for multi-display drift debugging (in progress).
+2. Why now: User requested temporary screenshot thumbnails directly in run logs to inspect where the agent is actually acting.
+3. Code tasks:
+  - Wired OpenAI runner `screenshotLogSink` into `MainShellStateStore` runtime state:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
+  - Added per-run in-memory screenshot buckets (`runScreenshotLogByRunID`) for active runs only.
+  - Added temporary screenshot strip rendering under run logs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/TaskDetailPageView.swift`
+4. Automated tests:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-run-screenshots build` (pass on 2026-02-21 local run).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-run-screenshots test -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests` (pass on 2026-02-21 local run).
+5. Manual tests:
+  - Pending user-side runtime checks:
+    - start a run and expand the newest run disclosure; confirm screenshot thumbnails are visible under logs.
+    - verify screenshots correspond to where the agent is actually acting.
+6. Exit criteria:
+  - User confirms screenshot strip helped validate display/action drift; then remove this temporary debug surface.
+
+1. Step: Validate multi-display task execution stays on selected run screen after run-start focus handoff and launch-settle hardening (in progress).
+2. Why now: User still observed actions surfacing on the other monitor (app launcher/app open), even after overlay/screenshot display fixes.
+3. Code tasks:
+  - Updated run desktop preparation to preserve + activate Finder after hiding other regular apps so frontmost context is not left on the app window’s previous display:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
+  - Added pre-launch focus-settle delay after selected-display anchor for `open_app` and `open_url`:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomationEngine.swift`
+  - Added selected-display focus priming for global Spotlight shortcut path (`cmd+space`) before shortcut injection:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomationEngine.swift`
+  - Added regression coverage:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests.swift`
+    - `runToolLoopPrimesDisplayBeforeCmdSpaceShortcut`
+4. Automated tests:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-display-rootcause-fix-r4 test -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass on 2026-02-21 local run).
+5. Manual tests:
+  - Pending user-side runtime checks on 2+ displays:
+    - run task on display A, verify launcher/app-open actions happen on display A.
+    - run task on display B, verify launcher/app-open actions happen on display B.
+    - verify no unexpected app-switcher/launcher UI appears on the non-selected monitor during run.
+6. Exit criteria:
+  - No cross-screen drift for app/launcher actions during repeated runs on both displays.
+
+1. Step: Validate run-history numbering in Runs panel after descending-label fix (in progress).
+2. Why now: User reported numbering semantics were reversed relative to visible newest-first ordering.
+3. Code tasks:
+  - Updated run label calculation:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/TaskDetailPageView.swift`
+  - Labels now use `Run (totalRuns - idx)` so top row is the latest/highest run number.
+4. Automated tests:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-run-label-fix build` (pass on 2026-02-21 local run).
+5. Manual tests:
+  - Pending user-side runtime check:
+    - open any task with 2+ runs and confirm numbering decreases top to bottom.
+6. Exit criteria:
+  - Runs panel numbering matches newest-first list order semantics (latest run has highest number at top).
+
+1. Step: Validate multi-display run/record overlay targeting after stable display-ID fix (in progress).
+2. Why now: User reported run-task HUD and red border appearing on different screens despite selecting a single screen.
+3. Code tasks:
+  - Updated stable display modeling and screencapture-index mapping:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/RecordingCaptureService.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
+  - Updated run HUD overlay targeting:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AgentControlOverlayService.swift`
+  - Updated display picker thumbnail loading to use explicit screencapture indexes:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/NewTaskPageView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/TaskDetailPageView.swift`
+  - Added regression coverage:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift` (`startRunTaskNowUsesSelectedDisplayScreencaptureIndexForBothOverlays`).
+4. Automated tests:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-display-fix build` (pass on 2026-02-21 local run).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-display-fix test -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass on 2026-02-21 local run).
+5. Manual tests:
+  - Pending user-side runtime checks on 2+ displays:
+    - choose each run display and confirm `Agent is running` HUD + red border stay on the same selected display.
+    - choose each recording display and confirm red border + produced recording target the same selected display.
+6. Exit criteria:
+  - No remaining cross-screen mismatch between selected display and run/record overlays/capture output.
+
+1. Step: Validate LLM transport hardening + new provider-error canvases in local runtime (in progress).
+2. Why now: LLM calls now use a fresh session per request and provider-specific actionable errors; runtime confirmation is needed for VPN-heavy scenarios.
+3. Code tasks:
+  - Added decision record:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/LLM_calls_hardening.md`
+  - Added normalized provider error model:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/LLMUserFacingIssue.swift`
+  - Added UI canvas for actionable LLM failures:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/LLMUserFacingIssueCanvasView.swift`
+  - Updated OpenAI/Gemini transport and mapping:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomationEngine.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/GeminiVideoLLMClient.swift`
+  - Updated run/extraction state + UI wiring:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/TaskDetailPageView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/RecordingFinishedDialogView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/MainShellView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift`
+4. Automated tests:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-llm-hardening build` (pass on 2026-02-21 local run).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-llm-hardening test -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests -only-testing:TaskAgentMacOSAppTests/GeminiVideoLLMClientTests` (pass on 2026-02-21 local run).
+5. Manual tests:
+  - Pending user-side runtime checks:
+    - run-task flow: validate invalid credentials, rate limit, quota, and billing/tier errors render the canvas with expected actions.
+    - recording extraction flow: validate same four classes render in the recording-finished dialog.
+    - preview inspection: verify `LLM Issue - *` canvases in `RootViewPreviews`.
+6. Exit criteria:
+  - Fresh-session transport behavior is confirmed stable in repeated VPN-on runs and all four provider error classes are shown via canvas with actionable remediation paths.
+
 1. Step: Validate run-task preflight dialog behavior in runtime (in progress).
 2. Why now: Run-task gating changed to a combined preflight flow (OpenAI key + Accessibility) and needs user-side interaction confirmation.
 3. Code tasks:

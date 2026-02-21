@@ -8,6 +8,7 @@ enum OpenAIExecutionPlannerError: Error, LocalizedError, Equatable {
     case failedToLoadPrompt(String)
     case invalidResponse
     case requestFailed(String)
+    case userFacingIssue(LLMUserFacingIssue)
     case screenshotCaptureFailed
     case invalidToolLoopResponse
 
@@ -23,6 +24,8 @@ enum OpenAIExecutionPlannerError: Error, LocalizedError, Equatable {
             return "OpenAI response format was invalid."
         case .requestFailed(let reason):
             return "OpenAI task execution request failed: \(reason)"
+        case .userFacingIssue(let issue):
+            return issue.userMessage
         case .screenshotCaptureFailed:
             return "Failed to capture current desktop screenshot."
         case .invalidToolLoopResponse:
@@ -150,7 +153,8 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
     private static let terminalExecMaxTimeoutSeconds = 120.0
     private static let terminalExecAlwaysVisualExecutables: Set<String> = [
         "osascript",
-        "cliclick"
+        "cliclick",
+        "open"
     ]
     private static let terminalExecVisualCommandKeywords: [String] = [
         "system events",
@@ -171,7 +175,7 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
     private let apiKeyStore: any APIKeyStore
     private let promptCatalog: PromptCatalogService
     private let promptName: String
-    private let session: URLSession
+    private let sessionFactory: @Sendable () -> URLSession
     private let transportRetryPolicy: TransportRetryPolicy
     private let sleepNanoseconds: @Sendable (UInt64) async -> Void
     private let screenshotProvider: () throws -> OpenAICapturedScreenshot
@@ -215,7 +219,10 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
         self.callLogSink = callLogSink
         self.screenshotLogSink = screenshotLogSink
         self.traceSink = traceSink
-        self.session = session
+        let configurationTemplate = Self.copySessionConfiguration(from: session.configuration)
+        self.sessionFactory = {
+            URLSession(configuration: Self.copySessionConfiguration(from: configurationTemplate))
+        }
         self.transportRetryPolicy = transportRetryPolicy
         self.sleepNanoseconds = sleepNanoseconds
         self.screenshotProvider = {
@@ -251,6 +258,9 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
             coordinateScaleX = 1.0
             coordinateScaleY = 1.0
         }
+
+        // Prime focus on the selected display so subsequent app launches and input stay screen-aligned.
+        anchorInteractionTarget(executor: executor, reason: "run_start", performClick: true)
 
         recordTrace(kind: .info, "Execution started (model=\(promptTemplate.config.llm), tools=desktop_action,terminal_exec).")
 
@@ -430,7 +440,9 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
             throw OpenAIExecutionPlannerError.requestFailed(describeTransportError(error))
         }
 
+        let requestID = headerValue(response, name: "x-request-id")
         guard (200..<300).contains(response.statusCode) else {
+            let parsedError = try? jsonDecoder.decode(OpenAIErrorEnvelope.self, from: data)
             let message = serverMessage(from: data, statusCode: response.statusCode)
             recordCall(
                 startedAt: attemptStartedAt,
@@ -438,12 +450,19 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
                 attempt: attempt,
                 url: urlString,
                 httpStatus: response.statusCode,
-                requestId: headerValue(response, name: "x-request-id"),
+                requestId: requestID,
                 bytesSent: bytesSent,
                 bytesReceived: data.count,
                 outcome: .failure,
                 message: message
             )
+            if let issue = classifyOpenAIUserFacingIssue(
+                statusCode: response.statusCode,
+                payload: parsedError?.error,
+                requestID: requestID
+            ) {
+                throw OpenAIExecutionPlannerError.userFacingIssue(issue)
+            }
             throw OpenAIExecutionPlannerError.requestFailed(message)
         }
 
@@ -454,7 +473,7 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
                 attempt: attempt,
                 url: urlString,
                 httpStatus: response.statusCode,
-                requestId: headerValue(response, name: "x-request-id"),
+                requestId: requestID,
                 bytesSent: bytesSent,
                 bytesReceived: data.count,
                 outcome: .failure,
@@ -475,7 +494,7 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
             attempt: attempt,
             url: urlString,
             httpStatus: response.statusCode,
-            requestId: headerValue(response, name: "x-request-id"),
+            requestId: requestID,
             bytesSent: bytesSent,
             bytesReceived: data.count,
             outcome: .success,
@@ -488,7 +507,11 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
         let maxAttempts = max(1, transportRetryPolicy.maxAttempts)
         for attempt in 1...maxAttempts {
             let startedAt = Date()
+            let session = sessionFactory()
             do {
+                defer {
+                    session.finishTasksAndInvalidate()
+                }
                 let pair = try await session.data(for: request)
                 return (pair.0, pair.1, attempt, startedAt)
             } catch {
@@ -535,6 +558,23 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
         }
 
         throw URLError(.unknown)
+    }
+
+    private static func copySessionConfiguration(from configuration: URLSessionConfiguration) -> URLSessionConfiguration {
+        if let copied = configuration.copy() as? URLSessionConfiguration {
+            return copied
+        }
+
+        let fallback = URLSessionConfiguration.ephemeral
+        fallback.timeoutIntervalForRequest = configuration.timeoutIntervalForRequest
+        fallback.timeoutIntervalForResource = configuration.timeoutIntervalForResource
+        fallback.httpAdditionalHeaders = configuration.httpAdditionalHeaders
+        fallback.httpMaximumConnectionsPerHost = configuration.httpMaximumConnectionsPerHost
+        fallback.waitsForConnectivity = configuration.waitsForConnectivity
+        fallback.requestCachePolicy = configuration.requestCachePolicy
+        fallback.urlCache = configuration.urlCache
+        fallback.protocolClasses = configuration.protocolClasses
+        return fallback
     }
 
     private func computeRetryDelaySeconds(attempt: Int) -> Double {
@@ -702,7 +742,7 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
         }
 
         if toolName == "terminal_exec" {
-            return await executeTerminalExecFunctionCall(callID: functionCall.callID, input: object)
+            return await executeTerminalExecFunctionCall(callID: functionCall.callID, input: object, executor: executor)
         }
 
         let action = (object["action"]?.stringValue ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -795,6 +835,19 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
                       let shortcut = parseShortcut(raw) else {
                     return invalidInputResult(callID: functionCall.callID, action: action)
                 }
+                if let policyViolationMessage = validateDesktopShortcutPolicy(rawShortcut: raw, shortcut: shortcut) {
+                    return ToolExecutionResult(
+                        callID: functionCall.callID,
+                        output: makeToolOutput(ok: false, message: policyViolationMessage, error: "policy_violation"),
+                        isError: true,
+                        stepDescription: nil,
+                        generatedQuestions: []
+                    )
+                }
+                if shouldPrimeDisplayFocusBeforeShortcut(shortcut) {
+                    anchorInteractionTarget(executor: executor, reason: "key_shortcut_focus_prime", performClick: true)
+                    await sleepNanoseconds(140_000_000)
+                }
                 try executor.sendShortcut(
                     key: shortcut.key,
                     command: shortcut.command,
@@ -807,6 +860,8 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
                 guard let appName = firstStringValue(from: object, keys: ["app", "name"]) else {
                     return invalidInputResult(callID: functionCall.callID, action: action)
                 }
+                anchorInteractionTarget(executor: executor, reason: "open_app", performClick: true)
+                await sleepNanoseconds(180_000_000)
                 try executor.openApp(named: appName)
                 return successResult(callID: functionCall.callID, stepDescription: "Open app '\(appName)'")
             case "open_url":
@@ -814,6 +869,8 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
                       let url = URL(string: urlRaw) else {
                     return invalidInputResult(callID: functionCall.callID, action: action)
                 }
+                anchorInteractionTarget(executor: executor, reason: "open_url", performClick: true)
+                await sleepNanoseconds(180_000_000)
                 try executor.openURL(url)
                 return successResult(callID: functionCall.callID, stepDescription: "Open URL '\(url.absoluteString)'")
             case "scroll":
@@ -886,7 +943,8 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
 
     private func executeTerminalExecFunctionCall(
         callID: String,
-        input: [String: OpenAIJSONValue]
+        input: [String: OpenAIJSONValue],
+        executor: any DesktopActionExecutor
     ) async -> ToolExecutionResult {
         guard let executableRaw = input["executable"]?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines),
               !executableRaw.isEmpty else {
@@ -953,6 +1011,8 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
 
         let commandSummary = summarizeTerminalCommand(executablePath: resolvedExecutable, args: args)
         recordTrace(kind: .info, "Terminal exec requested: \(commandSummary)")
+        // Keep pointer anchored to selected display before terminal side-effects (for example app/process activation).
+        anchorInteractionTarget(executor: executor, reason: "terminal_exec", performClick: false)
 
         do {
             let exec = try await runTerminalCommand(executablePath: resolvedExecutable, args: args, timeoutSeconds: timeoutSeconds)
@@ -1032,6 +1092,30 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
     private func summarizeTerminalCommand(executablePath: String, args: [String]) -> String {
         let cmd = ([URL(fileURLWithPath: executablePath).lastPathComponent] + args).joined(separator: " ")
         return truncate(cmd, limit: 220)
+    }
+
+    private func validateDesktopShortcutPolicy(
+        rawShortcut: String,
+        shortcut: (key: String, command: Bool, option: Bool, control: Bool, shift: Bool)
+    ) -> String? {
+        let normalizedKey = shortcut.key.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if shortcut.command && normalizedKey == "tab" {
+            return "Shortcut '\(rawShortcut)' is blocked for display stability. Do not use app switcher (cmd+tab). Use action 'open_app' instead."
+        }
+        return nil
+    }
+
+    private func shouldPrimeDisplayFocusBeforeShortcut(
+        _ shortcut: (key: String, command: Bool, option: Bool, control: Bool, shift: Bool)
+    ) -> Bool {
+        if shortcut.key == " " {
+            return shortcut.command && !shortcut.option && !shortcut.control
+        }
+
+        let key = shortcut.key.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        // Spotlight is global and can appear on whichever display currently owns focus.
+        // Prime focus on the selected run display first.
+        return shortcut.command && !shortcut.option && !shortcut.control && (key == "space" || key == "spacebar")
     }
 
     private func runTerminalCommand(
@@ -1166,6 +1250,36 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
         }
 
         return (scaledX + coordinateSpaceOriginX, scaledY + coordinateSpaceOriginY)
+    }
+
+    private func targetDisplayCenterPoint() -> (x: Int, y: Int)? {
+        guard coordinateSpaceWidthPx > 0, coordinateSpaceHeightPx > 0 else {
+            return nil
+        }
+        let centerX = coordinateSpaceOriginX + (coordinateSpaceWidthPx / 2)
+        let centerY = coordinateSpaceOriginY + (coordinateSpaceHeightPx / 2)
+        return (centerX, centerY)
+    }
+
+    private func anchorInteractionTarget(
+        executor: any DesktopActionExecutor,
+        reason: String,
+        performClick: Bool
+    ) {
+        guard let center = targetDisplayCenterPoint() else {
+            return
+        }
+
+        do {
+            try executor.moveMouse(x: center.x, y: center.y)
+            if performClick {
+                try executor.click(x: center.x, y: center.y)
+            }
+            let clickLabel = performClick ? " + click" : ""
+            recordTrace(kind: .info, "Anchored pointer to selected display center at (\(center.x), \(center.y))\(clickLabel) [\(reason)].")
+        } catch {
+            recordTrace(kind: .error, "Failed to anchor pointer to selected display [\(reason)]: \(error.localizedDescription)")
+        }
     }
 
     private func firstStringValue(from object: [String: OpenAIJSONValue], keys: [String]) -> String? {
@@ -1413,7 +1527,7 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
         [
             "type": "function",
             "name": "terminal_exec",
-            "description": "Execute a terminal command and return stdout/stderr/exit_code. Use this for deterministic command-line tasks and reliable app launching.",
+            "description": "Execute a terminal command and return stdout/stderr/exit_code. Use this only for deterministic non-visual command-line tasks.",
             "parameters": [
                 "type": "object",
                 "properties": [
@@ -1564,6 +1678,60 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
             return message
         }
         return "HTTP \(statusCode)"
+    }
+
+    private func classifyOpenAIUserFacingIssue(
+        statusCode: Int,
+        payload: OpenAIErrorEnvelope.Payload?,
+        requestID: String?
+    ) -> LLMUserFacingIssue? {
+        let rawMessage = payload?.message?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "HTTP \(statusCode)"
+        let providerCode = payload?.code?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let providerType = payload?.type?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let combined = [
+            rawMessage.lowercased(),
+            providerCode?.lowercased() ?? "",
+            providerType?.lowercased() ?? ""
+        ].joined(separator: " ")
+
+        let kind: LLMUserFacingIssueKind?
+        if statusCode == 401 || combined.contains("invalid_api_key") || combined.contains("incorrect api key") {
+            kind = .invalidCredentials
+        } else if statusCode == 429 {
+            if containsAnyToken(
+                combined,
+                tokens: ["insufficient_quota", "quota", "budget", "billing_hard_limit", "exceeded your current quota", "usage limit"]
+            ) {
+                kind = .quotaOrBudgetExhausted
+            } else {
+                kind = .rateLimited
+            }
+        } else if (statusCode == 400 || statusCode == 403) &&
+            containsAnyToken(combined, tokens: ["billing", "tier", "payment", "not enabled", "verification"]) {
+            kind = .billingOrTierNotEnabled
+        } else {
+            kind = nil
+        }
+
+        guard let kind else {
+            return nil
+        }
+        return LLMUserFacingIssue(
+            provider: .openAI,
+            operation: .execution,
+            kind: kind,
+            providerMessage: rawMessage,
+            httpStatus: statusCode,
+            providerCode: providerCode?.isEmpty == true ? nil : providerCode,
+            requestID: requestID
+        )
+    }
+
+    private func containsAnyToken(_ text: String, tokens: [String]) -> Bool {
+        for token in tokens where text.contains(token.lowercased()) {
+            return true
+        }
+        return false
     }
 
     private func dedupe(_ questions: [String]) -> [String] {
@@ -1809,12 +1977,19 @@ struct OpenAIAutomationEngine: AutomationEngine {
         do {
             return try await runner.runToolLoop(taskMarkdown: taskMarkdown, executor: executor)
         } catch let error as OpenAIExecutionPlannerError {
+            let userFacingIssue: LLMUserFacingIssue?
+            if case .userFacingIssue(let issue) = error {
+                userFacingIssue = issue
+            } else {
+                userFacingIssue = nil
+            }
             return AutomationRunResult(
                 outcome: .failed,
                 executedSteps: [],
                 generatedQuestions: [],
                 errorMessage: error.errorDescription,
-                llmSummary: nil
+                llmSummary: nil,
+                llmUserFacingIssue: userFacingIssue
             )
         } catch is CancellationError {
             return AutomationRunResult(
@@ -1822,7 +1997,8 @@ struct OpenAIAutomationEngine: AutomationEngine {
                 executedSteps: [],
                 generatedQuestions: [],
                 errorMessage: nil,
-                llmSummary: "Cancelled by user."
+                llmSummary: "Cancelled by user.",
+                llmUserFacingIssue: nil
             )
         } catch {
             return AutomationRunResult(
@@ -1830,7 +2006,8 @@ struct OpenAIAutomationEngine: AutomationEngine {
                 executedSteps: [],
                 generatedQuestions: [],
                 errorMessage: "Failed during execution tool loop.",
-                llmSummary: nil
+                llmSummary: nil,
+                llmUserFacingIssue: nil
             )
         }
     }
@@ -1876,6 +2053,8 @@ private struct OpenAIResponseMessageContent: Decodable {
 private struct OpenAIErrorEnvelope: Decodable {
     struct Payload: Decodable {
         var message: String?
+        var type: String?
+        var code: String?
     }
 
     var error: Payload?

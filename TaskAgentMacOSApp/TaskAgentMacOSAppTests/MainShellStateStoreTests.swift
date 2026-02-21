@@ -9,7 +9,7 @@ private final class MockRecordingCaptureService: RecordingCaptureService {
     var shouldFailStart = false
     var shouldFailStop = false
     var shouldDenyPermission = false
-    var displays: [CaptureDisplayOption] = [CaptureDisplayOption(id: 1, label: "Display 1")]
+    var displays: [CaptureDisplayOption] = [CaptureDisplayOption(id: 1, label: "Display 1", screencaptureDisplayIndex: 1)]
     var audioInputs: [CaptureAudioInputOption] = [
         CaptureAudioInputOption(id: "default", label: "System Default Microphone", mode: .systemDefault),
         CaptureAudioInputOption(id: "device-42", label: "Test Mic (ID 42)", mode: .device(42)),
@@ -235,9 +235,11 @@ private final class ConfigurablePermissionService: PermissionService {
 private final class MockAgentControlOverlayService: AgentControlOverlayService {
     private(set) var showCount = 0
     private(set) var hideCount = 0
+    private(set) var shownDisplayIDs: [Int?] = []
 
-    func showAgentInControl() {
+    func showAgentInControl(displayID: Int?) {
         showCount += 1
+        shownDisplayIDs.append(displayID)
     }
 
     func hideAgentInControl() {
@@ -588,8 +590,8 @@ struct MainShellStateStoreTests {
         let created = try service.createTask(title: "Invalid display selection task")
         let captureService = MockRecordingCaptureService()
         captureService.displays = [
-            CaptureDisplayOption(id: 1, label: "Display 1"),
-            CaptureDisplayOption(id: 2, label: "Display 2")
+            CaptureDisplayOption(id: 1001, label: "Display 1", screencaptureDisplayIndex: 1),
+            CaptureDisplayOption(id: 1002, label: "Display 2", screencaptureDisplayIndex: 2)
         ]
         let overlayService = MockRecordingOverlayService()
 
@@ -1623,6 +1625,54 @@ struct MainShellStateStoreTests {
         }
         #expect(store.isRunningTask == false)
         #expect(store.runStatusMessage == "Run cancelled.")
+    }
+
+    @Test
+    @MainActor
+    func startRunTaskNowUsesSelectedDisplayScreencaptureIndexForBothOverlays() throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let task = try taskService.createTask(title: "Selected run display task")
+
+        let captureService = MockRecordingCaptureService()
+        captureService.displays = [
+            CaptureDisplayOption(id: 1001, label: "Display 1", screencaptureDisplayIndex: 1),
+            CaptureDisplayOption(id: 1002, label: "Display 2", screencaptureDisplayIndex: 2)
+        ]
+        let overlay = MockAgentControlOverlayService()
+        let borderOverlay = MockRecordingOverlayService()
+        let monitor = MockUserInterruptionMonitor()
+        monitor.shouldStartSucceed = false
+
+        let store = MainShellStateStore(
+            taskService: taskService,
+            automationEngine: BlockingAutomationEngine(),
+            apiKeyStore: MockAPIKeyStore(initialValues: [.openAI: "openai-test-key"]),
+            permissionService: AlwaysGrantedPermissionService(),
+            captureService: captureService,
+            overlayService: borderOverlay,
+            agentControlOverlayService: overlay,
+            userInterruptionMonitor: monitor
+        )
+
+        store.reloadTasks()
+        store.selectTask(task.id)
+        store.refreshCaptureDisplays()
+        store.selectedRunDisplayID = 1002
+
+        store.startRunTaskNow()
+
+        #expect(borderOverlay.shownDisplayIDs == [2])
+        #expect(overlay.shownDisplayIDs == [2])
+        #expect(store.isRunningTask == false)
     }
 
     @Test

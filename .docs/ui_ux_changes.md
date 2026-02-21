@@ -26,6 +26,146 @@ description: Canonical log for UI/UX plans, decisions, and implementation alignm
 ## Entries
 
 ## Entry
+- Date: 2026-02-21
+- Area: Temporary run-log screenshot strip for execution debugging
+- Change Summary:
+  - Enabled temporary screenshot retention during active runs by wiring OpenAI runner `screenshotLogSink` into `MainShellStateStore`.
+  - Added per-run in-memory screenshot grouping (`runScreenshotLogByRunID`) and reset behavior on task switch/new task.
+  - Added a temporary screenshot thumbnail strip under each run's log list:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/TaskDetailPageView.swift`
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` debugging/validation workflow by exposing richer runtime observability for multi-display execution drift.
+- Design Decision Alignment:
+  - Intentionally scoped as temporary diagnostics; does not alter primary task-run workflow controls and can be removed once validation is complete.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-run-screenshots build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-run-screenshots test -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests` (pass).
+  - Manual tests:
+    - Pending user-side runtime confirmation of screenshot visibility and utility.
+
+## Entry
+- Date: 2026-02-21
+- Area: Multi-display run stability (shortcut policy + stronger pre-launch focus)
+- Change Summary:
+  - Updated OpenAI execution loop to enforce stronger selected-display focus before global side-effect actions:
+    - `open_app` and `open_url` now anchor with move + click before execution.
+    - `terminal_exec` remains move-only anchored (no click) to avoid accidental center-screen UI clicks while still preserving display-context alignment.
+  - Added keyboard policy to block app-switcher shortcuts (`cmd+tab`) in `desktop_action.key`, with a deterministic policy-violation response directing the model to `open_app`.
+  - Updated prompt/tool guidance so terminal usage is explicitly non-visual only and no longer suggests terminal-based app launching:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/execution_agent_openai/prompt.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomationEngine.swift`
+  - Added regression coverage:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests.swift`
+    - `runToolLoopRejectsCmdTabShortcutAndRequestsOpenAppAction`
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` reliability objective for deterministic execution on the user-selected display.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` expectation that run-time interaction context should map to the selected display and avoid ambiguous cross-screen state changes.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-display-sync-2 test -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests` (pass).
+  - Manual tests:
+    - Pending user-side multi-display runtime validation (`open_app`/Chrome placement and absence of app-switcher drift).
+
+## Entry
+- Date: 2026-02-21
+- Area: Run display focus anchoring + terminal/UI action separation
+- Change Summary:
+  - Added run-start pointer anchoring to selected display center (move + click) in OpenAI tool loop so UI focus is primed on the chosen run screen:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomationEngine.swift`
+  - Added pre-action pointer anchoring (move-only) for `open_app`, `open_url`, and `terminal_exec` paths in the same runner.
+  - Hardened terminal policy to block `open` command for execution agent and force UI launches through `desktop_action`.
+  - Updated execution prompt guidance so app/URL launches are treated as `desktop_action` responsibilities:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/execution_agent_openai/prompt.md`
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` reliability goals for deterministic multi-display task execution.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` by ensuring action execution context matches the selected display and reducing ambiguous cross-screen behavior.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-display-sync test -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests` (pass).
+    - Added assertions/tests:
+      - `OpenAIComputerUseRunnerTests.runToolLoopExecutesToolUseAndReturnsSuccess` (anchor move/click assertions).
+      - `OpenAIComputerUseRunnerTests.runToolLoopRejectsTerminalOpenCommandAndRequestsDesktopActionTool`.
+  - Manual tests:
+    - Pending user-side runtime validation on multi-display task runs.
+
+## Entry
+- Date: 2026-02-21
+- Area: Run history numbering order in task detail
+- Change Summary:
+  - Fixed run labels so numbering decreases from top to bottom when runs are shown newest-first.
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/TaskDetailPageView.swift`
+  - Behavior change:
+    - Before: top row showed `Run 1`, next row `Run 2` (ascending top-down).
+    - After: top row shows latest/highest run number, then decreases downward.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` UX clarity goals by keeping list order and numbering semantics consistent.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` principle of deterministic, easy-to-scan status history.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-run-label-fix build` (pass).
+  - Manual tests:
+    - Pending user-side runtime confirmation in Runs panel.
+
+## Entry
+- Date: 2026-02-21
+- Area: Run/record display-target consistency across multi-display setups
+- Change Summary:
+  - Made display selection stable by physical display identity instead of transient `Display N` ordering:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/RecordingCaptureService.swift`
+  - Updated run/capture flows to resolve selected display by stable ID and use `screencaptureDisplayIndex` only at execution time:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
+  - Updated the run HUD overlay API to target a specific display index so HUD and red border are aligned:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AgentControlOverlayService.swift`
+  - Updated run/record display picker thumbnails to render from `screencaptureDisplayIndex` while selection stays bound to stable display IDs:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/NewTaskPageView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/TaskDetailPageView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift`
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` reliability goals for deterministic display targeting in run/capture flows.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` expectation that status overlays and actions clearly match user-selected context.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-display-fix build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-display-fix test -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
+  - Manual tests:
+    - Pending user-side runtime validation on 2+ displays for run HUD/border and recording border/capture alignment.
+
+## Entry
+- Date: 2026-02-21
+- Area: LLM failure UX hardening (provider-aware error canvas)
+- Change Summary:
+  - Added a new reusable canvas surface for actionable LLM failures:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/LLMUserFacingIssueCanvasView.swift`
+  - Added normalized provider error model:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/LLMUserFacingIssue.swift`
+  - Integrated canvas rendering into:
+    - run-task hero status area in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/TaskDetailPageView.swift`
+    - recording-finished extraction header in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/RecordingFinishedDialogView.swift`
+    - sheet wiring in `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/MainShellView.swift`
+  - Added four dedicated previews in:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift`
+    - `LLM Issue - Invalid Credentials`
+    - `LLM Issue - Rate Limited`
+    - `LLM Issue - Quota Exhausted`
+    - `LLM Issue - Billing or Tier`
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` reliability/observability goals by making provider failures immediately actionable at the point of failure.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` principles of clear state feedback and deterministic user actions (`Open Settings`, provider console links) instead of opaque inline error text.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-llm-hardening build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-llm-hardening test -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests -only-testing:TaskAgentMacOSAppTests/GeminiVideoLLMClientTests` (pass).
+  - Manual tests:
+    - Pending user-side runtime validation of the four preview canvases and in-flow CTA behavior.
+
+## Entry
 - Date: 2026-02-20
 - Area: Run Task preflight gating (OpenAI key + Accessibility)
 - Change Summary:

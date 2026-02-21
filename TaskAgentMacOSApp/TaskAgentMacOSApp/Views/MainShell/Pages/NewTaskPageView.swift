@@ -123,17 +123,17 @@ private struct CaptureDisplayPickerView: View {
     }
 
     private func refreshThumbnails() {
-        let displayIndices = mainShellStateStore.availableCaptureDisplays.map(\.id)
-        guard !displayIndices.isEmpty else {
+        let displays = mainShellStateStore.availableCaptureDisplays
+        guard !displays.isEmpty else {
             thumbnailsByDisplayIndex = [:]
             return
         }
 
         Task.detached(priority: .utility) {
             var next: [Int: CGImage] = [:]
-            for displayIndex in displayIndices {
-                if let thumbnail = try? DisplayThumbnailService.captureThumbnailForDisplayIndex(displayIndex) {
-                    next[displayIndex] = thumbnail
+            for display in displays {
+                if let thumbnail = try? DisplayThumbnailService.captureThumbnailForDisplayIndex(display.screencaptureDisplayIndex) {
+                    next[display.id] = thumbnail
                 }
             }
             await MainActor.run {

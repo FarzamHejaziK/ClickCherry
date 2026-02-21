@@ -1,7 +1,7 @@
 import AppKit
 
 protocol AgentControlOverlayService {
-    func showAgentInControl()
+    func showAgentInControl(displayID: Int?)
     func hideAgentInControl()
     /// If non-nil, callers may exclude this window from screenshots (e.g. for LLM tool-loop captures).
     func windowNumberForScreenshotExclusion() -> Int?
@@ -16,15 +16,15 @@ final class HUDWindowAgentControlOverlayService: AgentControlOverlayService {
     private var overlayWindow: HUDPanel?
     private var activationObserver: NSObjectProtocol?
 
-    func showAgentInControl() {
+    func showAgentInControl(displayID: Int?) {
         guard Thread.isMainThread else {
             DispatchQueue.main.async { [weak self] in
-                self?.showAgentInControl()
+                self?.showAgentInControl(displayID: displayID)
             }
             return
         }
 
-        let targetScreen = preferredScreen()
+        let targetScreen = preferredScreen(displayID: displayID)
         let size = NSSize(width: 360, height: 84)
         let frame = centeredFrame(size: size, on: targetScreen.visibleFrame)
 
@@ -155,7 +155,11 @@ final class HUDWindowAgentControlOverlayService: AgentControlOverlayService {
         return root
     }
 
-    private func preferredScreen() -> NSScreen {
+    private func preferredScreen(displayID: Int?) -> NSScreen {
+        if let displayID, let match = ScreenDisplayIndexService.screenForScreencaptureDisplayIndex(displayID) {
+            return match
+        }
+
         let screens = NSScreen.screens
         let mouseLocation = NSEvent.mouseLocation
         if let screen = screens.first(where: { $0.frame.contains(mouseLocation) }) {
