@@ -36,13 +36,13 @@ If any secret is missing, release fails fast.
 ## Current Artifact/Platform Notes
 
 - Current release artifacts:
-  - `ClickCherry-macos.dmg` (premium styled drag-to-install Finder layout with:
+  - `ClickCherry-macos-vMAJOR.MINOR.PATCH.dmg` (for example: `ClickCherry-macos-v0.1.23.dmg`) with premium styled drag-to-install Finder layout:
     - custom branded background art
     - single-icon install composition (background avoids duplicating app icon art)
     - tuned icon/text placement and centered Finder icon/drop geometry (no bottom-clipped icon layout)
     - app volume icon
     - `ClickCherry.app` + Applications drop link)
-- GitHub automatically adds `Source code (zip)` and `Source code (tar.gz)` to releases; these are platform-provided and not controlled by this workflow.
+- GitHub automatically adds `Source code (zip)` and `Source code (tar.gz)` to releases; these platform-provided source archives cannot be disabled by workflow uploads.
 - Release page notes are auto-generated from commit history between tags.
 - Current release runner/build target is arm64 macOS
 - Universal (arm64+x86_64) delivery can be added as a follow-up release enhancement

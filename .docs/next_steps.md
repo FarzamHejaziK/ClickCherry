@@ -4,6 +4,26 @@ description: Short, continuously updated plan of the immediate next implementati
 
 # Next Steps
 
+1. Step: Validate release artifact naming update (versioned DMG filename) on next tagged release run (in progress).
+2. Why now: User requested versioned DMG names and clarified that release page should emphasize DMG-only uploaded artifact.
+3. Code tasks:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`:
+    - DMG output name now includes tag version (for example `ClickCherry-macos-v0.1.23.dmg`).
+    - release artifact upload path switched to `ClickCherry-macos-*.dmg`.
+    - release notes artifact line now references the versioned DMG name.
+    - publish step now releases `ClickCherry-macos-*.dmg`.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md` to document versioned DMG naming and clarify GitHub source archives cannot be removed.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md` release strategy wording to match versioned DMG output.
+4. Automated tests:
+  - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass on 2026-02-21 local run).
+5. Manual tests:
+  - Pending next tag-based release verification:
+    - release asset filename includes version (for example `ClickCherry-macos-vX.Y.Z.dmg`).
+    - uploaded workflow artifact is DMG-only.
+    - GitHub platform source archives are still visible (expected platform behavior).
+6. Exit criteria:
+  - Next release run publishes a versioned DMG filename and release notes reflect the same artifact name.
+
 1. Step: Validate DMG-installed permission registration visibility after follow-up non-AX registration hardening (in progress).
 2. Why now: User confirmed follow-up failure where only Accessibility showed `ClickCherry`; Screen Recording, Microphone, and Input Monitoring still missed the app row after `Open Settings`.
 3. Code tasks:

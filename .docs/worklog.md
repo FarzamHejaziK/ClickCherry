@@ -8,6 +8,26 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-21
+- Step: Release artifact naming update (versioned DMG filename in workflow + docs alignment)
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+  - Release workflow now emits and publishes versioned DMG names (`ClickCherry-macos-vMAJOR.MINOR.PATCH.dmg`) and release notes artifact line matches the versioned filename.
+  - Confirmed/retained platform constraint note: GitHub default source archives (`zip`/`tar.gz`) remain visible and cannot be removed by workflow uploads.
+- Automated tests run:
+  - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass).
+- Manual tests run:
+  - Pending next tag-based release run to verify final asset naming on release page.
+- Result:
+  - Complete (workflow/docs implementation + local validation), pending release-run confirmation.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-21
 - Step: Permission policy correction (restore required native dialogs for registration reliability)
 - Changes made:
   - Updated:
@@ -229,30 +249,4 @@ description: Running implementation log of completed work, test evidence, blocke
   - Complete (implementation + automated validation), pending user runtime confirmation.
 - Issues/blockers:
   - None.
-
-## Entry
-- Date: 2026-02-21
-- Step: Multi-display run sync hardening follow-up (`cmd+tab` policy block + click-based pre-launch focus)
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomationEngine.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/execution_agent_openai/prompt.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-  - Hardened focus synchronization by changing pre-action anchoring for `open_app` and `open_url` from move-only to move + click on selected display center.
-  - Kept `terminal_exec` anchoring move-only (no click) to avoid accidental UI interaction while preserving display-context alignment.
-  - Added keyboard policy rejection for `desktop_action.key` `cmd+tab`, returning `policy_violation` with explicit guidance to use `open_app`.
-  - Removed remaining terminal-app-launch guidance from OpenAI execution prompt and terminal tool description (terminal now non-visual deterministic only).
-  - Added regression test:
-    - `OpenAIComputerUseRunnerTests.runToolLoopRejectsCmdTabShortcutAndRequestsOpenAppAction`.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-display-sync-2 test -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests` (pass).
-- Manual tests run:
-  - Pending user-side multi-display runtime validation.
-- Result:
-  - Complete (implementation + targeted automated tests + docs), pending local runtime confirmation.
-- Issues/blockers:
-  - Physical-display validation required for final confirmation of Chrome/app activation placement behavior.
 

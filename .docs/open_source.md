@@ -30,8 +30,8 @@ description: Open-source strategy decisions, governance, contribution model, and
 - Release strategy:
   - GitHub Releases with version tags (`vMAJOR.MINOR.PATCH`)
   - Release workflow performs Developer ID signing + notarization + stapling
-  - Release workflow uploads only DMG (`ClickCherry-macos.dmg`)
-  - GitHub's default source archives (`Source code (zip)` and `Source code (tar.gz)`) remain visible and are not controlled by workflow file uploads
+  - Release workflow uploads only a versioned DMG (`ClickCherry-macos-vMAJOR.MINOR.PATCH.dmg`)
+  - GitHub's default source archives (`Source code (zip)` and `Source code (tar.gz)`) remain visible and cannot be removed via workflow file uploads
   - DMG distribution uses a premium styled Finder drag-to-install layout:
     - branded background art
     - background intentionally avoids duplicate app icon rendering

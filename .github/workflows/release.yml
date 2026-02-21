@@ -267,6 +267,13 @@ jobs:
             VOLICON_ARGS=(--volicon "$VOLICON_PATH")
           fi
 
+          CURRENT_TAG="${GITHUB_REF_NAME:-}"
+          if [[ "$CURRENT_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            DMG_NAME="ClickCherry-macos-${CURRENT_TAG}.dmg"
+          else
+            DMG_NAME="ClickCherry-macos-${GITHUB_RUN_NUMBER}.dmg"
+          fi
+
           create-dmg \
             --volname "ClickCherry" \
             "${VOLICON_ARGS[@]}" \
@@ -281,7 +288,7 @@ jobs:
             --format UDZO \
             --hdiutil-quiet \
             --no-internet-enable \
-            "ClickCherry-macos.dmg" \
+            "$DMG_NAME" \
             "$DMG_STAGING_DIR"
 
       - name: Upload release artifact
@@ -289,7 +296,7 @@ jobs:
         with:
           name: clickcherry-release
           path: |
-            ClickCherry-macos.dmg
+            ClickCherry-macos-*.dmg
 
   publish:
     runs-on: ubuntu-latest
@@ -306,6 +313,7 @@ jobs:
         run: |
           CURRENT_TAG="${GITHUB_REF_NAME}"
           CURRENT_VERSION="${CURRENT_TAG#v}"
+          DMG_NAME="ClickCherry-macos-${CURRENT_TAG}.dmg"
 
           PREV_TAG=$(git tag --sort=-v:refname | grep -v "^${CURRENT_TAG}$" | head -n1 || true)
 
@@ -341,7 +349,7 @@ jobs:
             echo
             echo "### Artifacts"
             echo
-            echo "- \`ClickCherry-macos.dmg\`"
+            echo "- \`${DMG_NAME}\`"
             echo
             echo "**Full Changelog**: ${CHANGELOG_URL}"
           } > RELEASE_NOTES.md
@@ -351,6 +359,6 @@ jobs:
         with:
           name: ClickCherry ${{ github.ref_name }}
           files: |
-            ClickCherry-macos.dmg
+            ClickCherry-macos-*.dmg
           generate_release_notes: false
           body_path: RELEASE_NOTES.md
