@@ -27,6 +27,61 @@ description: Canonical log for UI/UX plans, decisions, and implementation alignm
 
 ## Entry
 - Date: 2026-02-21
+- Area: Permissions UX policy update (no native dialogs on click)
+- Change Summary:
+  - Applied explicit UX requirement: clicking permission rows should not trigger native macOS permission popups.
+  - Updated permission action flow to open System Settings lists only for all required permissions:
+    - Screen Recording
+    - Microphone
+    - Accessibility
+    - Input Monitoring
+  - Updated onboarding refresh path to passive status reads so polling cannot trigger prompts.
+  - Updated onboarding/settings helper copy to match Settings-list-only behavior.
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/OnboardingStateStore.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/PermissionsStepView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` setup clarity objective by removing dual-surface permission interactions.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` requirement for predictable setup flow and reduced user confusion during permission grants.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-dialog-deconflict-build build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-dialogless-test test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
+  - Manual tests:
+    - Pending user-side runtime confirmation that permission clicks show Settings lists without native dialogs.
+
+## Entry
+- Date: 2026-02-21
+- Area: Permission grant UX de-confliction (native dialog vs Settings pane overlap)
+- Change Summary:
+  - Removed confusing dual-surface behavior where the app opened System Settings while macOS native permission dialog was still active.
+  - Updated permission request-open behavior:
+    - Screen Recording, Accessibility, Input Monitoring:
+      - first click now triggers native request path only.
+      - subsequent click opens target System Settings pane if still not granted.
+    - Microphone:
+      - first-time `.notDetermined` prompt no longer auto-opens Settings.
+      - denied/restricted follow-up clicks still route to Settings.
+  - Added explicit explanatory helper copy in onboarding/settings permissions sections so first-click behavior is expected.
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/PermissionsStepView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` setup reliability and usability goals by making permission interactions deterministic and less confusing.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` requirement for clear, predictable setup state transitions and user-visible guidance.
+- Validation:
+  - Automated tests:
+    - pending fresh local rerun for this specific UX-flow adjustment (to be recorded in worklog on completion).
+  - Manual tests:
+    - Pending user-side DMG runtime validation confirming no first-click dialog/settings overlap.
+
+## Entry
+- Date: 2026-02-21
 - Area: Permission-pane visibility follow-up hardening for DMG-installed runtime
 - Change Summary:
   - Follow-up after user validation (`Accessibility` visible but other privacy panes missing `ClickCherry`):

@@ -209,7 +209,7 @@ final class OnboardingStateStore {
     }
 
     func refreshPermissionStatus(for permission: AppPermission) {
-        let status = permissionService.requestAccessIfNeeded(for: permission)
+        let status = permissionService.currentStatus(for: permission)
 
         switch permission {
         case .screenRecording:

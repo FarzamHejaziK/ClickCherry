@@ -8,6 +8,36 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-21
+- Step: Permission UX policy update (Settings-list only, no native popups on click)
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/OnboardingStateStore.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/PermissionsStepView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/xcode_signing_setup.md`
+  - Applied user-requested behavior:
+    - permission-row clicks no longer call native prompt-triggering APIs.
+    - clicks now open target System Settings permission lists directly.
+    - onboarding refresh path uses passive status reads only.
+  - Updated helper copy to match the Settings-list-only flow.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-dialog-deconflict-build build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-dialogless-test test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
+- Manual tests run:
+  - Pending user-side DMG runtime validation:
+    - confirm no native modal prompt appears on permission-row click.
+    - confirm rows open System Settings and `ClickCherry` can be toggled there.
+- Result:
+  - Complete (implementation + automated validation), pending user runtime confirmation.
+- Issues/blockers:
+  - Terminal environment cannot assert live System Settings modal behavior directly.
+
+## Entry
+- Date: 2026-02-21
 - Step: DMG permission visibility follow-up (non-AX registration probes + stronger retry behavior)
 - Changes made:
   - Updated:
@@ -227,22 +257,4 @@ description: Running implementation log of completed work, test evidence, blocke
   - Complete (implementation + targeted automated tests + docs), pending runtime confirmation.
 - Issues/blockers:
   - Runtime validation required to confirm no residual cross-screen drift.
-
-## Entry
-- Date: 2026-02-21
-- Step: Runs panel numbering order fix (descending top-to-bottom for newest-first list)
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/TaskDetailPageView.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-  - Changed run title calculation from index-based ascending labels to descending labels based on total run count.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-run-label-fix build` (pass).
-- Manual tests run:
-  - Pending user-side runtime validation in Runs panel.
-- Result:
-  - Complete (implementation + build validation), pending UI confirmation by user.
-- Issues/blockers:
-  - None.
 

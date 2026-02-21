@@ -21,6 +21,8 @@ description: Active unresolved issues with concrete repro details, mitigation, a
   - Permission pane can open before TCC registration settles, so the app row is not yet visible.
   - Prior implementation also issued duplicate request calls (`refreshPermissionStatus` + `openPermissionSettings`), increasing race probability.
   - Follow-up user report (2026-02-21): only Accessibility list showed `ClickCherry`; Screen Recording, Microphone, and Input Monitoring lists still missed app registration.
+  - Follow-up UX report (2026-02-21): first permission click could show both native macOS permission dialog and auto-opened System Settings list at the same time, which is confusing.
+  - User requirement update (2026-02-21): permission clicks should avoid native modal prompts entirely and use System Settings lists only.
 - Expected:
   - Clicking `Open Settings` should consistently show `ClickCherry` in the relevant privacy list after request registration.
 - Current Mitigation:
@@ -29,11 +31,15 @@ description: Active unresolved issues with concrete repro details, mitigation, a
     - Screen Recording: best-effort screenshot probe path to exercise ScreenCapture registration.
     - Microphone: best-effort capture-session probe after authorization to exercise mic registration path.
     - Input Monitoring: burst probing (event tap + global monitor) to improve list registration consistency.
+  - Permission-row actions now use a Settings-only flow (no native prompt-triggering request calls on click):
+    - Screen Recording, Microphone, Accessibility, and Input Monitoring rows open the target System Settings list directly.
+    - onboarding/status refresh path remains passive (`currentStatus`) to avoid accidental prompt dialogs.
   - Permission-row handlers in onboarding/settings now use a single request-open path (removed duplicate pre-request calls).
   - Added explicit guidance in onboarding/settings permissions copy to run `ClickCherry` from `/Applications` and retry `Open Settings` if list entries are still missing.
 - Next Action:
   - User-side runtime validation on a DMG-installed build:
     - ensure app is launched from `/Applications` (not directly from mounted DMG).
+    - click each permission row and confirm no native permission dialog appears (Settings list only).
     - click each permission row (`Screen Recording`, `Microphone`, `Accessibility`, `Input Monitoring`) and confirm `ClickCherry` appears in the target list.
     - repeat after relaunch to confirm consistent visibility.
 - Owner: Codex + user validation in DMG runtime

@@ -16,6 +16,9 @@ struct PermissionsStepView: View {
                 Text("If a permission list does not show ClickCherry, relaunch from /Applications and click Open Settings again.")
                     .foregroundStyle(.secondary)
                     .font(.footnote)
+                Text("Grant permissions from the System Settings list opened by each row.")
+                    .foregroundStyle(.secondary)
+                    .font(.footnote)
             }
             .multilineTextAlignment(.center)
 

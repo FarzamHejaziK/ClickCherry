@@ -4,7 +4,7 @@ import AVFoundation
 import CoreGraphics
 import Foundation
 
-enum AppPermission: Equatable {
+enum AppPermission: Equatable, Hashable {
     case screenRecording
     case microphone
     case accessibility
@@ -55,7 +55,6 @@ final class MacPermissionService: PermissionService {
         static let retryDelay: TimeInterval = 1.3
         static let retryCount = 2
     }
-
     func openSystemSettings(for permission: AppPermission) {
         for candidate in settingsURLStrings(for: permission) {
             guard let url = URL(string: candidate) else {
@@ -124,40 +123,26 @@ final class MacPermissionService: PermissionService {
     func requestAccessAndOpenSystemSettings(for permission: AppPermission) {
         switch permission {
         case .microphone:
-            let status = AVCaptureDevice.authorizationStatus(for: .audio)
-            if status == .notDetermined {
-                AVCaptureDevice.requestAccess(for: .audio) { granted in
-                    DispatchQueue.main.async {
-                        if granted {
-                            self.probeMicrophoneCaptureStackAsync()
-                        }
-                        self.openSystemSettingsAfterRegistration(
-                            for: permission,
-                            initialDelay: SettingsOpenTiming.microphoneDelay
-                        )
-                    }
-                }
-                return
-            }
-            _ = requestAccessIfNeeded(for: permission)
+            // Settings-only flow: avoid triggering native modal prompt from in-app clicks.
+            _ = AVCaptureDevice.authorizationStatus(for: .audio)
             openSystemSettingsAfterRegistration(
                 for: permission,
                 initialDelay: SettingsOpenTiming.microphoneDelay
             )
         case .inputMonitoring:
-            _ = requestAccessIfNeeded(for: permission)
+            _ = CGPreflightListenEventAccess()
             openSystemSettingsAfterRegistration(
                 for: permission,
                 initialDelay: SettingsOpenTiming.inputMonitoringDelay
             )
         case .screenRecording:
-            _ = requestAccessIfNeeded(for: permission)
+            _ = CGPreflightScreenCaptureAccess()
             openSystemSettingsAfterRegistration(
                 for: permission,
                 initialDelay: SettingsOpenTiming.screenRecordingDelay
             )
         case .accessibility:
-            _ = requestAccessIfNeeded(for: permission)
+            _ = AXIsProcessTrusted()
             openSystemSettingsAfterRegistration(
                 for: permission,
                 initialDelay: SettingsOpenTiming.accessibilityDelay

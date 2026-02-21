@@ -5084,3 +5084,21 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - Complete (implementation + automated tests + docs), pending runtime user confirmation.
 - Issues/blockers:
   - None in build/test; runtime visual validation required for final confirmation.
+
+## Entry
+- Date: 2026-02-21
+- Step: Runs panel numbering order fix (descending top-to-bottom for newest-first list)
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/TaskDetailPageView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+  - Changed run title calculation from index-based ascending labels to descending labels based on total run count.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-run-label-fix build` (pass).
+- Manual tests run:
+  - Pending user-side runtime validation in Runs panel.
+- Result:
+  - Complete (implementation + build validation), pending UI confirmation by user.
+- Issues/blockers:
+  - None.
