@@ -31,9 +31,11 @@ description: Active unresolved issues with concrete repro details, mitigation, a
     - Screen Recording: best-effort screenshot probe path to exercise ScreenCapture registration.
     - Microphone: best-effort capture-session probe after authorization to exercise mic registration path.
     - Input Monitoring: burst probing (event tap + global monitor) to improve list registration consistency.
-  - Permission-row actions now use a Settings-only flow (no native prompt-triggering request calls on click):
-    - Screen Recording, Microphone, Accessibility, and Input Monitoring rows open the target System Settings list directly.
-    - onboarding/status refresh path remains passive (`currentStatus`) to avoid accidental prompt dialogs.
+  - Permission-row actions now use mixed policy per user requirement:
+    - restore native prompt path for permissions where initial registration requires it (notably Microphone, and prompt-capable system APIs for other rows).
+    - keep first-click de-conflict behavior to avoid opening Settings simultaneously with native prompt.
+    - follow-up click opens target Settings pane when still not granted.
+  - onboarding/status refresh path remains passive (`currentStatus`) to avoid accidental prompt dialogs during polling.
   - Permission-row handlers in onboarding/settings now use a single request-open path (removed duplicate pre-request calls).
   - Added explicit guidance in onboarding/settings permissions copy to run `ClickCherry` from `/Applications` and retry `Open Settings` if list entries are still missing.
 - Next Action:

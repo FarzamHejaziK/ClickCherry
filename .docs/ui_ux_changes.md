@@ -27,6 +27,29 @@ description: Canonical log for UI/UX plans, decisions, and implementation alignm
 
 ## Entry
 - Date: 2026-02-21
+- Area: Permission flow policy update (required dialogs restored where needed)
+- Change Summary:
+  - Updated permission-click behavior from strict Settings-only to mixed policy:
+    - re-enabled native prompt-triggering request paths where registration requires them.
+    - preserved first-click de-confliction to avoid dialog + Settings opening at once.
+    - follow-up click opens Settings when still not granted.
+  - Updated helper copy in onboarding/settings to match mixed behavior.
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/PermissionsStepView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` setup reliability objective by restoring reliable registration while minimizing UX confusion.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` requirement for clear permission onboarding behavior and predictable setup transitions.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-required-dialogs test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
+  - Manual tests:
+    - Pending user-side DMG runtime validation for microphone registration + granted-state reflection.
+
+## Entry
+- Date: 2026-02-21
 - Area: Permissions UX policy update (no native dialogs on click)
 - Change Summary:
   - Applied explicit UX requirement: clicking permission rows should not trigger native macOS permission popups.

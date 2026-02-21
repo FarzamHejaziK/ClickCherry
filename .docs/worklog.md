@@ -8,6 +8,30 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-21
+- Step: Permission policy correction (restore required native dialogs for registration reliability)
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/PermissionsStepView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+  - Behavior change:
+    - re-enabled native request dialogs where needed for initial permission registration.
+    - retained first-click de-confliction so app does not auto-open Settings while native prompt is active.
+    - follow-up click opens target Settings pane when permission remains ungranted.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-required-dialogs test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
+- Manual tests run:
+  - Pending user-side DMG runtime validation for microphone list registration and granted-state reflection.
+- Result:
+  - Complete (implementation + targeted automated validation), pending runtime confirmation.
+- Issues/blockers:
+  - Existing machine-level stale TCC entries may require reset/re-grant to reflect corrected behavior.
+
+## Entry
+- Date: 2026-02-21
 - Step: Permission UX policy update (Settings-list only, no native popups on click)
 - Changes made:
   - Updated:
@@ -231,30 +255,4 @@ description: Running implementation log of completed work, test evidence, blocke
   - Complete (implementation + targeted automated tests + docs), pending local runtime confirmation.
 - Issues/blockers:
   - Physical-display validation required for final confirmation of Chrome/app activation placement behavior.
-
-## Entry
-- Date: 2026-02-21
-- Step: Run-display synchronization hardening (pointer anchor + terminal `open` policy block)
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomationEngine.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/execution_agent_openai/prompt.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-  - Added selected-display pointer anchoring at run start (move + click center) to prime app/UI focus on the chosen display.
-  - Added move-only anchoring before `open_app`, `open_url`, and `terminal_exec`.
-  - Blocked terminal `open` executable for execution-agent policy so UI launches are routed through `desktop_action`.
-  - Added regression/behavior tests:
-    - `OpenAIComputerUseRunnerTests.runToolLoopRejectsTerminalOpenCommandAndRequestsDesktopActionTool`
-    - updated run-loop tool-use test with anchor move/click assertions.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-display-sync test -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests` (pass).
-- Manual tests run:
-  - Pending user-side runtime validation on multi-display hardware.
-- Result:
-  - Complete (implementation + targeted automated tests + docs), pending runtime confirmation.
-- Issues/blockers:
-  - Runtime validation required to confirm no residual cross-screen drift.
 

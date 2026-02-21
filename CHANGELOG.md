@@ -9,6 +9,13 @@ The format is based on Keep a Changelog and this project uses Semantic Versionin
 ### Added
 - Open-source governance, contribution, and release scaffolding.
 
+## [0.1.23] - 2026-02-21
+
+### Changed
+- Permission request behavior now uses required native macOS dialogs where registration needs them (notably Microphone), while preventing first-click overlap with immediate Settings navigation.
+- Follow-up permission clicks now route to targeted System Settings panes when a permission remains ungranted.
+- Updated onboarding/settings permission helper copy to reflect the mixed dialog + settings flow.
+
 ## [0.1.22] - 2026-02-21
 
 ### Added

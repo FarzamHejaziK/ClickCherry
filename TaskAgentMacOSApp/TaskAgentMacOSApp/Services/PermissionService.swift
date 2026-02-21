@@ -55,6 +55,8 @@ final class MacPermissionService: PermissionService {
         static let retryDelay: TimeInterval = 1.3
         static let retryCount = 2
     }
+    private let requestTrackingQueue = DispatchQueue(label: "MacPermissionService.requestTracking")
+    private var requestedPermissionsInSession = Set<AppPermission>()
     func openSystemSettings(for permission: AppPermission) {
         for candidate in settingsURLStrings(for: permission) {
             guard let url = URL(string: candidate) else {
@@ -123,26 +125,71 @@ final class MacPermissionService: PermissionService {
     func requestAccessAndOpenSystemSettings(for permission: AppPermission) {
         switch permission {
         case .microphone:
-            // Settings-only flow: avoid triggering native modal prompt from in-app clicks.
-            _ = AVCaptureDevice.authorizationStatus(for: .audio)
+            let status = AVCaptureDevice.authorizationStatus(for: .audio)
+            if status == .authorized {
+                probeMicrophoneCaptureStackAsync()
+                return
+            }
+            if status == .notDetermined {
+                AVCaptureDevice.requestAccess(for: .audio) { granted in
+                    if granted {
+                        self.probeMicrophoneCaptureStackAsync()
+                    }
+                }
+                // Avoid opening Settings at the same time as the first native prompt.
+                return
+            }
             openSystemSettingsAfterRegistration(
                 for: permission,
                 initialDelay: SettingsOpenTiming.microphoneDelay
             )
         case .inputMonitoring:
-            _ = CGPreflightListenEventAccess()
+            if currentStatus(for: permission) == .granted {
+                return
+            }
+            let isFirstRequestInSession = markRequestAttempt(permission)
+            _ = requestAccessIfNeeded(for: permission)
+            if currentStatus(for: permission) == .granted {
+                return
+            }
+            if isFirstRequestInSession {
+                // First click should avoid overlapping native prompt + auto-opened Settings.
+                return
+            }
             openSystemSettingsAfterRegistration(
                 for: permission,
                 initialDelay: SettingsOpenTiming.inputMonitoringDelay
             )
         case .screenRecording:
-            _ = CGPreflightScreenCaptureAccess()
+            if currentStatus(for: permission) == .granted {
+                return
+            }
+            let isFirstRequestInSession = markRequestAttempt(permission)
+            _ = requestAccessIfNeeded(for: permission)
+            if currentStatus(for: permission) == .granted {
+                return
+            }
+            if isFirstRequestInSession {
+                // First click should avoid overlapping native prompt + auto-opened Settings.
+                return
+            }
             openSystemSettingsAfterRegistration(
                 for: permission,
                 initialDelay: SettingsOpenTiming.screenRecordingDelay
             )
         case .accessibility:
-            _ = AXIsProcessTrusted()
+            if currentStatus(for: permission) == .granted {
+                return
+            }
+            let isFirstRequestInSession = markRequestAttempt(permission)
+            _ = requestAccessIfNeeded(for: permission)
+            if currentStatus(for: permission) == .granted {
+                return
+            }
+            if isFirstRequestInSession {
+                // First click should avoid overlapping native prompt + auto-opened Settings.
+                return
+            }
             openSystemSettingsAfterRegistration(
                 for: permission,
                 initialDelay: SettingsOpenTiming.accessibilityDelay
@@ -282,6 +329,12 @@ final class MacPermissionService: PermissionService {
             session.startRunning()
             Thread.sleep(forTimeInterval: 0.35)
             session.stopRunning()
+        }
+    }
+
+    private func markRequestAttempt(_ permission: AppPermission) -> Bool {
+        requestTrackingQueue.sync {
+            requestedPermissionsInSession.insert(permission).inserted
         }
     }
 }

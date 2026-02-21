@@ -12,7 +12,7 @@ description: Short, continuously updated plan of the immediate next implementati
     - added screen recording registration probe (best-effort screenshot capture path).
     - added microphone registration probe (best-effort short-lived capture session path).
     - added input monitoring burst probe (event tap + global monitor with delayed second pass).
-    - switched permission-row click handling to Settings-only flow (no native modal prompt request calls on click).
+    - switched to mixed policy: re-enabled native prompts where needed for registration, while avoiding first-click prompt/settings overlap.
   - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/OnboardingStateStore.swift`:
     - changed `refreshPermissionStatus` to passive `currentStatus` reads so polling never triggers native permission dialogs.
   - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/PermissionsStepView.swift`:
@@ -24,6 +24,7 @@ description: Short, continuously updated plan of the immediate next implementati
 4. Automated tests:
   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-dialog-deconflict-build build` (pass on 2026-02-21 local run).
   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-dialogless-test test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass on 2026-02-21 local run).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-required-dialogs test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass on 2026-02-21 local run).
 5. Manual tests:
   - Pending user-side runtime checks on DMG-installed app:
     - ensure app is launched from `/Applications`.
