@@ -4780,3 +4780,25 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - Complete (code + tests + docs), pending user verification.
 - Issues/blockers:
   - Interactive click/focus behavior can only be fully confirmed in runtime UI.
+
+## Entry
+- Date: 2026-02-20
+- Step: Recording preflight non-interactive modal mitigation via presentation-path change
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/MainShellView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/RecordingPreflightDialogCanvasView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+  - Moved modal presentation from `.overlay` to explicit root `ZStack` modal layer.
+  - Restored outside-click dismiss on dim backdrop.
+  - Added no-op tap consumer on dialog card so inside clicks do not dismiss.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests test` (pass on rerun; first run encountered transient bundle-instance creation failure).
+- Manual tests run:
+  - Pending user-side runtime validation.
+- Result:
+  - Complete (code + tests + docs), pending user verification.
+- Issues/blockers:
+  - Terminal-only environment cannot directly verify interactive runtime behavior.

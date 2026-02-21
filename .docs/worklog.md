@@ -7,6 +7,22 @@ description: Running implementation log of completed work, test evidence, blocke
 > Previous archived entries are in `/Users/farzamh/code-git-local/task-agent-macos/.docs/legacy_worklog.md`.
 
 ## Entry
+- Date: 2026-02-21
+- Step: Release-build actor isolation fix for run-task preflight continuation
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
+  - Marked `continueAfterRunTaskPreflightDialog()` as `@MainActor` so its call to `startRunTaskNow()` is actor-safe in Release compilation.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Release -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-release-local CODE_SIGNING_ALLOWED=NO build` (pass).
+- Manual tests run:
+  - Pending user-side runtime confirmation.
+- Result:
+  - Complete (code + local CI-equivalent release build), ready for release retry.
+- Issues/blockers:
+  - None for compilation path; workflow rerun still required for packaged release artifacts.
+
+## Entry
 - Date: 2026-02-20
 - Step: Run-task preflight dialog unification (OpenAI key + Accessibility)
 - Changes made:
@@ -204,26 +220,4 @@ description: Running implementation log of completed work, test evidence, blocke
   - Complete (code + tests + docs), pending user confirmation.
 - Issues/blockers:
   - Interactive runtime behavior cannot be confirmed from terminal-only environment.
-
-## Entry
-- Date: 2026-02-20
-- Step: Recording preflight non-interactive modal mitigation via presentation-path change
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/MainShellView.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/RecordingPreflightDialogCanvasView.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-  - Moved modal presentation from `.overlay` to explicit root `ZStack` modal layer.
-  - Restored outside-click dismiss on dim backdrop.
-  - Added no-op tap consumer on dialog card so inside clicks do not dismiss.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests test` (pass on rerun; first run encountered transient bundle-instance creation failure).
-- Manual tests run:
-  - Pending user-side runtime validation.
-- Result:
-  - Complete (code + tests + docs), pending user verification.
-- Issues/blockers:
-  - Terminal-only environment cannot directly verify interactive runtime behavior.
 

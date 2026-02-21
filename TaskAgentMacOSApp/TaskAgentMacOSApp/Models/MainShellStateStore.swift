@@ -853,6 +853,7 @@ final class MainShellStateStore {
         return didSave
     }
 
+    @MainActor
     func continueAfterRunTaskPreflightDialog() {
         refreshRunTaskPreflightDialogState()
         guard runTaskPreflightDialogState == nil else {
