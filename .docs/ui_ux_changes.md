@@ -27,6 +27,58 @@ description: Canonical log for UI/UX plans, decisions, and implementation alignm
 
 ## Entry
 - Date: 2026-02-21
+- Area: Settings temporary full reset permission revocation reliability
+- Change Summary:
+  - Updated temporary full reset behavior to attempt direct TCC permission revocation and then relaunch the app on success so permission status reflects cleanly after reset.
+  - Expanded service reset coverage to include:
+    - `Accessibility`
+    - `Microphone`
+    - `ScreenCapture`
+    - `ListenEvent`
+    - `AppleEvents`
+    - `PostEvent`
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` setup reliability goals by making reset behavior deterministic for repeated onboarding validation loops.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` by keeping destructive reset explicit while reducing ambiguous stale permission UI state after reset.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-temp-reset2 -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO test` (pass).
+  - Manual tests:
+    - Pending user-side runtime validation with Settings temporary reset flow.
+
+## Entry
+- Date: 2026-02-21
+- Area: Settings temporary setup reset toggle (clear keys + restart onboarding)
+- Change Summary:
+  - Added a temporary guarded reset control in Settings -> Model Setup:
+    - toggle: `Enable temporary full reset`
+    - action button: `Run Temporary Reset (Clear Keys + Onboarding)` (enabled only when toggle is on)
+  - Added store action `resetSetupAndReturnToOnboarding()` that:
+    - clears OpenAI and Gemini keys from Keychain-backed store
+    - updates in-memory provider state to unsaved
+    - forces onboarding route reset (`onboarding.completed = false` + reset notification)
+    - shows explicit message that macOS permissions must be revoked manually in System Settings.
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` setup-reliability goals by enabling deterministic return to onboarding state during iterative validation.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` principle of explicit, user-visible control surfaces for setup state transitions.
+  - Respects macOS platform constraints by not pretending permissions can be revoked in-app; UI explains manual reset path.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-temp-reset -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO test` (pass).
+    - Added: `MainShellStateStoreTests.resetSetupClearsProviderKeysAndPostsOnboardingResetNotification`.
+  - Manual tests:
+    - Pending user-side runtime validation in Settings UI.
+
+## Entry
+- Date: 2026-02-21
 - Area: Temporary run-log screenshot strip for execution debugging
 - Change Summary:
   - Enabled temporary screenshot retention during active runs by wiring OpenAI runner `screenshotLogSink` into `MainShellStateStore`.

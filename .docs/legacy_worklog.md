@@ -4973,3 +4973,47 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - Complete (code + automated test), pending visual confirmation.
 - Issues/blockers:
   - Terminal-only environment cannot directly validate animation clipping visually.
+
+## Entry
+- Date: 2026-02-20
+- Step: Run-task preflight dialog unification (OpenAI key + Accessibility)
+- Changes made:
+  - Added:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/RunTaskPreflightDialogCanvasView.swift`
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/MainShellView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+  - Implemented run-task preflight requirements model and dialog state for:
+    - OpenAI API key
+    - Accessibility permission
+  - Replaced direct run start checks with the preflight path and removed old `ensureExecutionPermissions` gate.
+  - Added run preflight preview and test coverage updates for missing OpenAI key/missing Accessibility cases.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-run-preflight build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-run-preflight test -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
+- Manual tests run:
+  - Pending user-side runtime verification of run-task preflight interactions.
+- Result:
+  - Complete (code + automated tests + docs), pending runtime confirmation.
+- Issues/blockers:
+  - Terminal-only environment cannot verify interactive sheet behavior visually.
+
+## Entry
+- Date: 2026-02-21
+- Step: Release-build actor isolation fix for run-task preflight continuation
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
+  - Marked `continueAfterRunTaskPreflightDialog()` as `@MainActor` so its call to `startRunTaskNow()` is actor-safe in Release compilation.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Release -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-release-local CODE_SIGNING_ALLOWED=NO build` (pass).
+- Manual tests run:
+  - Pending user-side runtime confirmation.
+- Result:
+  - Complete (code + local CI-equivalent release build), ready for release retry.
+- Issues/blockers:
+  - None for compilation path; workflow rerun still required for packaged release artifacts.

@@ -17,6 +17,7 @@ struct MainShellSettingsView: View {
     @State private var isGeminiKeyVisible = false
 
     @State private var permissionStatuses = PermissionStatuses()
+    @State private var enableTemporaryFullReset = false
 
     var body: some View {
         HSplitView {
@@ -202,6 +203,31 @@ struct MainShellSettingsView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(.red)
+            }
+
+            Divider()
+                .padding(.top, 4)
+                .opacity(0.4)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Temporary Reset Toggle")
+                    .font(.headline)
+
+                Text("Temporary developer utility: clear saved OpenAI/Gemini keys, reset onboarding, and attempt a macOS permission reset (with app relaunch on success). If macOS does not allow automatic reset, revoke permissions manually in System Settings.")
+                    .foregroundStyle(.secondary)
+
+                Toggle("Enable temporary full reset", isOn: $enableTemporaryFullReset)
+                    .toggleStyle(.switch)
+
+                Button("Run Temporary Reset (Clear Keys + Onboarding)") {
+                    mainShellStateStore.resetSetupAndReturnToOnboarding()
+                    enableTemporaryFullReset = false
+                    openAIKeyInput = ""
+                    geminiKeyInput = ""
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.red)
+                .disabled(!enableTemporaryFullReset)
             }
         }
         .frame(maxWidth: 640, alignment: .leading)

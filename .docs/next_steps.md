@@ -4,6 +4,30 @@ description: Short, continuously updated plan of the immediate next implementati
 
 # Next Steps
 
+1. Step: Validate temporary Settings full-reset toggle with TCC reset + app relaunch in runtime (in progress).
+2. Why now: User reported that the temporary reset did not actually clear permissions, so the flow was hardened to reset TCC entries and relaunch the app for permission-state refresh.
+3. Code tasks:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`.
+  - Added temporary guarded control in Model Setup:
+    - toggle gate: `Enable temporary full reset`
+    - action button: `Run Temporary Reset (Clear Keys + Onboarding)` (disabled until toggle enabled).
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift` with `resetSetupAndReturnToOnboarding()` to:
+    - clear OpenAI/Gemini keys
+    - force onboarding reset
+    - attempt TCC permission resets for app bundle ID
+    - relaunch app on successful permission reset.
+4. Automated tests:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-temp-reset2 -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO test` (pass on 2026-02-21 local run).
+5. Manual tests:
+  - Pending user-side runtime checks:
+    - open Settings -> Model Setup.
+    - confirm reset button is disabled until toggle is enabled.
+    - enable toggle, run reset, and confirm app relaunches then onboarding restarts from welcome.
+    - confirm OpenAI/Gemini saved state is cleared.
+    - confirm permission pills require re-grant after relaunch.
+6. Exit criteria:
+  - Temporary toggle reliably resets onboarding + keys and re-triggers permission onboarding after relaunch.
+
 1. Step: Validate post-launch app-window relocation for cross-display `open_app`/`open_url` scenarios (in progress).
 2. Why now: User still reproduces wrong-display app activation when the target app is already open on another monitor before run start.
 3. Code tasks:

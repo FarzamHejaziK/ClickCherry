@@ -9,6 +9,15 @@ The format is based on Keep a Changelog and this project uses Semantic Versionin
 ### Added
 - Open-source governance, contribution, and release scaffolding.
 
+## [0.1.20] - 2026-02-21
+
+### Added
+- Temporary guarded Settings reset utility (`Enable temporary full reset` + `Run Temporary Reset`) to clear provider keys and restart onboarding.
+
+### Changed
+- Hardened temporary setup reset to attempt TCC permission revocation for app-related services and relaunch the app on successful reset so onboarding permission state refreshes correctly.
+- Updated Settings copy to clearly indicate automatic relaunch on successful permission reset and manual fallback path when OS-managed reset is unavailable.
+
 ## [0.1.16] - 2026-02-19
 
 ### Added

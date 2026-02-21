@@ -517,6 +517,35 @@ final class MainShellStateStore {
         NotificationCenter.default.post(name: .clickCherryResetOnboardingRequested, object: nil)
     }
 
+    func resetSetupAndReturnToOnboarding() {
+        do {
+            try apiKeyStore.setKey(nil, for: .openAI)
+            try apiKeyStore.setKey(nil, for: .gemini)
+            updateProviderSetupState(saved: false, for: .openAI)
+            updateProviderSetupState(saved: false, for: .gemini)
+            apiKeyStatusMessage = "Cleared OpenAI/Gemini API keys and returned to onboarding."
+            apiKeyErrorMessage = "OpenAI API key is not saved."
+        } catch {
+            apiKeyStatusMessage = nil
+            apiKeyErrorMessage = "Failed to clear one or more API keys. Onboarding reset still applied."
+        }
+
+        let permissionResetOutcome = Self.resetSystemPermissionsViaTCC()
+        switch permissionResetOutcome {
+        case .success:
+            errorMessage = "Reset macOS permissions and onboarding for this app. The app will relaunch so macOS permission state fully refreshes."
+        case .notAvailable:
+            errorMessage = "Could not reset macOS permissions automatically. Use System Settings > Privacy & Security to revoke them manually."
+        case .failed:
+            errorMessage = "Automatic permission reset failed. Use System Settings > Privacy & Security to revoke permissions manually."
+        }
+        resetOnboardingAndReturnToSetup()
+
+        if permissionResetOutcome == .success {
+            Self.relaunchApplicationAfterReset()
+        }
+    }
+
     func openTask(_ taskID: String) {
         route = .task(taskID)
         selectedTaskID = taskID
@@ -636,6 +665,74 @@ final class MainShellStateStore {
     private static func loadPinnedTaskIDs(from defaults: UserDefaults) -> Set<String> {
         let raw = defaults.array(forKey: pinnedTasksUserDefaultsKey) as? [String] ?? []
         return Set(raw.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty })
+    }
+
+    private enum PermissionResetOutcome {
+        case success
+        case notAvailable
+        case failed
+    }
+
+    private static func resetSystemPermissionsViaTCC() -> PermissionResetOutcome {
+        // Prevent test execution from mutating host TCC state.
+        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {
+            return .notAvailable
+        }
+
+        guard let bundleIdentifier = Bundle.main.bundleIdentifier, !bundleIdentifier.isEmpty else {
+            return .notAvailable
+        }
+
+        let executable = "/usr/bin/tccutil"
+        guard FileManager.default.isExecutableFile(atPath: executable) else {
+            return .notAvailable
+        }
+
+        if runTCCReset(executablePath: executable, service: "All", bundleIdentifier: bundleIdentifier) {
+            return .success
+        }
+
+        let services = ["Accessibility", "Microphone", "ScreenCapture", "ListenEvent", "AppleEvents", "PostEvent"]
+        var didResetAtLeastOne = false
+        for service in services {
+            if runTCCReset(executablePath: executable, service: service, bundleIdentifier: bundleIdentifier) {
+                didResetAtLeastOne = true
+            }
+        }
+        return didResetAtLeastOne ? .success : .failed
+    }
+
+    private static func runTCCReset(executablePath: String, service: String, bundleIdentifier: String) -> Bool {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: executablePath)
+        process.arguments = ["reset", service, bundleIdentifier]
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+            return process.terminationStatus == 0
+        } catch {
+            return false
+        }
+    }
+
+    private static func relaunchApplicationAfterReset() {
+        guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else {
+            return
+        }
+
+        let appBundlePath = Bundle.main.bundlePath
+        guard !appBundlePath.isEmpty else {
+            return
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            let relaunch = Process()
+            relaunch.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+            relaunch.arguments = ["-n", appBundlePath]
+            try? relaunch.run()
+            NSApp.terminate(nil)
+        }
     }
 
     private func persistPinnedTaskIDs() {

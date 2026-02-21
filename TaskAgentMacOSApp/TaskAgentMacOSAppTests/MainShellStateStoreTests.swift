@@ -1339,6 +1339,55 @@ struct MainShellStateStoreTests {
     }
 
     @Test
+    func resetSetupClearsProviderKeysAndPostsOnboardingResetNotification() throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let suiteName = "MainShellStateStoreResetSetup-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        defaults.set(true, forKey: "onboarding.completed")
+
+        let keyStore = MockAPIKeyStore(initialValues: [
+            .openAI: "openai-secret",
+            .gemini: "gemini-secret"
+        ])
+        let store = MainShellStateStore(
+            taskService: taskService,
+            apiKeyStore: keyStore,
+            userDefaults: defaults,
+            captureService: MockRecordingCaptureService(),
+            overlayService: MockRecordingOverlayService()
+        )
+
+        var received = false
+        let token = NotificationCenter.default.addObserver(
+            forName: .clickCherryResetOnboardingRequested,
+            object: nil,
+            queue: nil
+        ) { _ in
+            received = true
+        }
+        defer { NotificationCenter.default.removeObserver(token) }
+
+        store.resetSetupAndReturnToOnboarding()
+
+        #expect(defaults.bool(forKey: "onboarding.completed") == false)
+        #expect(received)
+        #expect(try keyStore.readKey(for: .openAI) == nil)
+        #expect(try keyStore.readKey(for: .gemini) == nil)
+        #expect(store.providerSetupState.hasOpenAIKey == false)
+        #expect(store.providerSetupState.hasGeminiKey == false)
+    }
+
+    @Test
     func deletingSelectedTaskReturnsToNewTaskAndClearsState() throws {
         let fm = FileManager.default
         let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)

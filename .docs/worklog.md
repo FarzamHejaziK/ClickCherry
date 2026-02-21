@@ -8,6 +8,53 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-21
+- Step: Temporary Settings reset permission revocation fix (TCC reset + relaunch)
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+  - Root-cause mitigation implemented:
+    - Added app-bundle `tccutil reset` flow in temporary setup reset.
+    - Expanded service resets beyond `All` fallback to include `Accessibility`, `Microphone`, `ScreenCapture`, `ListenEvent`, `AppleEvents`, and `PostEvent`.
+    - Added app relaunch after successful permission reset to avoid stale in-process permission status.
+    - Updated Settings helper text to indicate relaunch behavior.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-temp-reset2 -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - Pending user-side runtime validation for permission revocation visibility after relaunch.
+- Result:
+  - Complete (implementation + targeted automated validation), pending runtime confirmation.
+- Issues/blockers:
+  - macOS may still require manual revocation in some policy-managed environments.
+
+## Entry
+- Date: 2026-02-21
+- Step: Temporary Settings reset toggle (clear provider keys + restart onboarding)
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+  - Added temporary guarded reset control in Settings model setup with explicit toggle gating before destructive action.
+  - Added `resetSetupAndReturnToOnboarding()` to clear OpenAI/Gemini keys and force onboarding reset via existing notification path.
+  - Added explicit user-facing limitation message: macOS permissions must be manually revoked in System Settings.
+  - Added regression test:
+    - `MainShellStateStoreTests.resetSetupClearsProviderKeysAndPostsOnboardingResetNotification`.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-temp-reset -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - Pending user-side runtime verification of Settings interaction and onboarding restart.
+- Result:
+  - Complete (implementation + targeted automated validation), pending runtime confirmation.
+- Issues/blockers:
+  - macOS permission grants are OS-managed and cannot be revoked programmatically from this app.
+
+## Entry
+- Date: 2026-02-21
 - Step: Multi-display app-launch root-cause fix (`open_app`/`open_url` post-launch relocation)
 - Changes made:
   - Updated:
@@ -211,48 +258,4 @@ description: Running implementation log of completed work, test evidence, blocke
   - Complete (implementation + targeted automated tests + docs), pending user runtime validation.
 - Issues/blockers:
   - None for code/test execution; runtime VPN-path behavior still requires user-side confirmation.
-
-## Entry
-- Date: 2026-02-21
-- Step: Release-build actor isolation fix for run-task preflight continuation
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
-  - Marked `continueAfterRunTaskPreflightDialog()` as `@MainActor` so its call to `startRunTaskNow()` is actor-safe in Release compilation.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Release -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-release-local CODE_SIGNING_ALLOWED=NO build` (pass).
-- Manual tests run:
-  - Pending user-side runtime confirmation.
-- Result:
-  - Complete (code + local CI-equivalent release build), ready for release retry.
-- Issues/blockers:
-  - None for compilation path; workflow rerun still required for packaged release artifacts.
-
-## Entry
-- Date: 2026-02-20
-- Step: Run-task preflight dialog unification (OpenAI key + Accessibility)
-- Changes made:
-  - Added:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/RunTaskPreflightDialogCanvasView.swift`
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/MainShellView.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-  - Implemented run-task preflight requirements model and dialog state for:
-    - OpenAI API key
-    - Accessibility permission
-  - Replaced direct run start checks with the preflight path and removed old `ensureExecutionPermissions` gate.
-  - Added run preflight preview and test coverage updates for missing OpenAI key/missing Accessibility cases.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-run-preflight build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-run-preflight test -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
-- Manual tests run:
-  - Pending user-side runtime verification of run-task preflight interactions.
-- Result:
-  - Complete (code + automated tests + docs), pending runtime confirmation.
-- Issues/blockers:
-  - Terminal-only environment cannot verify interactive sheet behavior visually.
 
