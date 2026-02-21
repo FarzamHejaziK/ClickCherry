@@ -27,6 +27,29 @@ description: Canonical log for UI/UX plans, decisions, and implementation alignm
 
 ## Entry
 - Date: 2026-02-21
+- Area: Permission-pane registration reliability for DMG-installed runtime
+- Change Summary:
+  - Hardened permission action behavior so `Open Settings` is less likely to race macOS TCC registration:
+    - added delayed settings-open timing per permission and one follow-up retry open.
+    - removed duplicate permission request path from onboarding/settings permission-row actions (single request-open path only).
+  - Added explicit setup guidance in onboarding + settings permissions surfaces: run `ClickCherry` from `/Applications` for stable privacy-list registration.
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/PermissionsStepView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` setup reliability and permission onboarding success criteria by reducing intermittent false-negative permission panes.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` requirement for predictable setup flow and clear user guidance for required macOS permissions.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-dmg-fix-build-r2 build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-dmg-fix-test-r2 test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
+  - Manual tests:
+    - Pending user-side runtime validation on DMG-installed app launched from `/Applications`.
+
+## Entry
+- Date: 2026-02-21
 - Area: Settings temporary full reset permission revocation reliability
 - Change Summary:
   - Updated temporary full reset behavior to attempt direct TCC permission revocation and then relaunch the app on success so permission status reflects cleanly after reset.

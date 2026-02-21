@@ -10,6 +10,9 @@ struct PermissionsStepView: View {
                     .font(.system(size: 24, weight: .semibold))
                 Text("Use Open Settings to grant permissions. Status updates automatically.")
                     .foregroundStyle(.secondary)
+                Text("For reliable registration in Privacy lists, run ClickCherry from /Applications.")
+                    .foregroundStyle(.secondary)
+                    .font(.footnote)
             }
             .multilineTextAlignment(.center)
 
@@ -50,7 +53,6 @@ private struct PermissionsPanelView: View {
                 title: "Screen Recording",
                 status: onboardingStateStore.screenRecordingStatus,
                 onOpenSettings: {
-                    onboardingStateStore.refreshPermissionStatus(for: .screenRecording)
                     onboardingStateStore.openPermissionSettings(for: .screenRecording)
                 }
             )
@@ -62,7 +64,6 @@ private struct PermissionsPanelView: View {
                 status: onboardingStateStore.microphoneStatus,
                 footnote: "Needed to record your voice during screen recordings.",
                 onOpenSettings: {
-                    onboardingStateStore.refreshPermissionStatus(for: .microphone)
                     onboardingStateStore.openPermissionSettings(for: .microphone)
                 }
             )
@@ -73,7 +74,6 @@ private struct PermissionsPanelView: View {
                 title: "Accessibility",
                 status: onboardingStateStore.accessibilityStatus,
                 onOpenSettings: {
-                    onboardingStateStore.refreshPermissionStatus(for: .accessibility)
                     onboardingStateStore.openPermissionSettings(for: .accessibility)
                 }
             )
@@ -85,7 +85,6 @@ private struct PermissionsPanelView: View {
                 status: onboardingStateStore.inputMonitoringStatus,
                 footnote: "Needed to stop the agent with Escape.",
                 onOpenSettings: {
-                    onboardingStateStore.refreshPermissionStatus(for: .inputMonitoring)
                     onboardingStateStore.openPermissionSettings(for: .inputMonitoring)
                 }
             )

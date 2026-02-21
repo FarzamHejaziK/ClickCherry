@@ -5017,3 +5017,41 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - Complete (code + local CI-equivalent release build), ready for release retry.
 - Issues/blockers:
   - None for compilation path; workflow rerun still required for packaged release artifacts.
+
+## Entry
+- Date: 2026-02-21
+- Step: LLM transport hardening + provider-aware actionable error UX
+- Changes made:
+  - Added:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/LLM_calls_hardening.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/LLMUserFacingIssue.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/LLMUserFacingIssueCanvasView.swift`
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomationEngine.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/GeminiVideoLLMClient.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/Protocols.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/TaskDetailPageView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/RecordingFinishedDialogView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/MainShellView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/GeminiVideoLLMClientTests.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
+  - Implemented fresh `URLSession` per LLM request call (OpenAI + Gemini) and normalized provider mappings for:
+    - `invalid_credentials`
+    - `rate_limited`
+    - `quota_or_budget_exhausted`
+    - `billing_or_tier_not_enabled`
+  - Introduced a dedicated canvas UX for these provider failures with direct remediation actions (`Open Settings`, provider console/billing links).
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-llm-hardening build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-llm-hardening test -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests -only-testing:TaskAgentMacOSAppTests/GeminiVideoLLMClientTests` (pass).
+- Manual tests run:
+  - Pending user-side runtime verification of the four canvas error states and CTA flows in task run/extraction.
+- Result:
+  - Complete (implementation + targeted automated tests + docs), pending user runtime validation.
+- Issues/blockers:
+  - None for code/test execution; runtime VPN-path behavior still requires user-side confirmation.

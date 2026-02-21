@@ -8,6 +8,33 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-21
+- Step: DMG permission-pane registration race mitigation (`Open Settings` reliability)
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/PermissionsStepView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+  - Root-cause mitigation implemented:
+    - Added delayed privacy-pane open timing and one retry open in `MacPermissionService` after permission request calls to reduce TCC registration races.
+    - Removed duplicate permission request path in onboarding/settings permission-row actions (single request-open flow).
+    - Added `/Applications` guidance copy in onboarding/settings permissions UI for stable runtime identity/path.
+  - Added issue tracking entry:
+    - `OI-2026-02-21-015` in `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-dmg-fix-build-r2 build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-dmg-fix-test-r2 test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
+- Manual tests run:
+  - Pending user-side DMG runtime validation (app launched from `/Applications`) across all permission rows.
+- Result:
+  - Complete (implementation + automated validation), pending DMG runtime confirmation.
+- Issues/blockers:
+  - Terminal-only environment cannot validate System Settings list rendering directly.
+
+## Entry
+- Date: 2026-02-21
 - Step: Temporary Settings reset permission revocation fix (TCC reset + relaunch)
 - Changes made:
   - Updated:
@@ -220,42 +247,3 @@ description: Running implementation log of completed work, test evidence, blocke
   - Complete (implementation + automated tests + docs), pending runtime user confirmation.
 - Issues/blockers:
   - None in build/test; runtime visual validation required for final confirmation.
-
-## Entry
-- Date: 2026-02-21
-- Step: LLM transport hardening + provider-aware actionable error UX
-- Changes made:
-  - Added:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/LLM_calls_hardening.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/LLMUserFacingIssue.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/LLMUserFacingIssueCanvasView.swift`
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomationEngine.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/GeminiVideoLLMClient.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/Protocols.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/TaskDetailPageView.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/RecordingFinishedDialogView.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/MainShellView.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/GeminiVideoLLMClientTests.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
-  - Implemented fresh `URLSession` per LLM request call (OpenAI + Gemini) and normalized provider mappings for:
-    - `invalid_credentials`
-    - `rate_limited`
-    - `quota_or_budget_exhausted`
-    - `billing_or_tier_not_enabled`
-  - Introduced a dedicated canvas UX for these provider failures with direct remediation actions (`Open Settings`, provider console/billing links).
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-llm-hardening build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-llm-hardening test -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests -only-testing:TaskAgentMacOSAppTests/GeminiVideoLLMClientTests` (pass).
-- Manual tests run:
-  - Pending user-side runtime verification of the four canvas error states and CTA flows in task run/extraction.
-- Result:
-  - Complete (implementation + targeted automated tests + docs), pending user runtime validation.
-- Issues/blockers:
-  - None for code/test execution; runtime VPN-path behavior still requires user-side confirmation.
-

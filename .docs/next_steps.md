@@ -4,6 +4,29 @@ description: Short, continuously updated plan of the immediate next implementati
 
 # Next Steps
 
+1. Step: Validate DMG-installed permission registration visibility after request/open flow hardening (in progress).
+2. Why now: User reports that `Open Settings` sometimes opens the privacy pane without showing `ClickCherry`, especially in DMG-installed runtime.
+3. Code tasks:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`:
+    - added registration-settle delays before opening privacy panes for all required permissions.
+    - added one retry open to reduce first-open race windows while TCC registration propagates.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/PermissionsStepView.swift`:
+    - removed duplicate pre-request call (`refreshPermissionStatus`) from permission-row actions.
+    - added `/Applications` runtime guidance copy for stable permission registration identity/path.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`:
+    - removed duplicate pre-request call from permission-row actions.
+    - added `/Applications` runtime guidance copy in Permissions section.
+4. Automated tests:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-dmg-fix-build-r2 build` (pass on 2026-02-21 local run).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-dmg-fix-test-r2 test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass on 2026-02-21 local run).
+5. Manual tests:
+  - Pending user-side runtime checks on DMG-installed app:
+    - ensure app is launched from `/Applications`.
+    - click each permission row and confirm `ClickCherry` appears in corresponding privacy list.
+    - relaunch and repeat to confirm consistency.
+6. Exit criteria:
+  - Permission rows consistently surface `ClickCherry` in target macOS privacy panes for DMG-installed runtime.
+
 1. Step: Validate temporary Settings full-reset toggle with TCC reset + app relaunch in runtime (in progress).
 2. Why now: User reported that the temporary reset did not actually clear permissions, so the flow was hardened to reset TCC entries and relaunch the app for permission-state refresh.
 3. Code tasks:

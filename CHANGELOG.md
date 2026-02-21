@@ -9,6 +9,16 @@ The format is based on Keep a Changelog and this project uses Semantic Versionin
 ### Added
 - Open-source governance, contribution, and release scaffolding.
 
+## [0.1.21] - 2026-02-21
+
+### Added
+- Permissions onboarding/settings now include explicit guidance to run `ClickCherry` from `/Applications` for reliable macOS Privacy-list registration.
+
+### Changed
+- Hardened permission request flow to reduce TCC registration races when opening System Settings:
+  - removed duplicate pre-request calls from permission-row actions.
+  - delayed privacy-pane navigation after request calls and added one retry open across required permissions.
+
 ## [0.1.20] - 2026-02-21
 
 ### Added

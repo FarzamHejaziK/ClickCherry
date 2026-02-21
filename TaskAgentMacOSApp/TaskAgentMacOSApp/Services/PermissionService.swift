@@ -47,6 +47,15 @@ extension PermissionService {
 }
 
 final class MacPermissionService: PermissionService {
+    private enum SettingsOpenTiming {
+        static let screenRecordingDelay: TimeInterval = 0.8
+        static let microphoneDelay: TimeInterval = 0.5
+        static let accessibilityDelay: TimeInterval = 0.7
+        static let inputMonitoringDelay: TimeInterval = 1.2
+        static let retryDelay: TimeInterval = 1.1
+        static let retryCount = 1
+    }
+
     func openSystemSettings(for permission: AppPermission) {
         for candidate in settingsURLStrings(for: permission) {
             guard let url = URL(string: candidate) else {
@@ -118,22 +127,37 @@ final class MacPermissionService: PermissionService {
             if status == .notDetermined {
                 AVCaptureDevice.requestAccess(for: .audio) { _ in
                     DispatchQueue.main.async {
-                        self.openSystemSettings(for: permission)
+                        self.openSystemSettingsAfterRegistration(
+                            for: permission,
+                            initialDelay: SettingsOpenTiming.microphoneDelay
+                        )
                     }
                 }
                 return
             }
             _ = requestAccessIfNeeded(for: permission)
-            openSystemSettings(for: permission)
+            openSystemSettingsAfterRegistration(
+                for: permission,
+                initialDelay: SettingsOpenTiming.microphoneDelay
+            )
         case .inputMonitoring:
             _ = requestAccessIfNeeded(for: permission)
-            // Let the privacy subsystem update app registration before navigating to the pane.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-                self.openSystemSettings(for: permission)
-            }
-        case .screenRecording, .accessibility:
+            openSystemSettingsAfterRegistration(
+                for: permission,
+                initialDelay: SettingsOpenTiming.inputMonitoringDelay
+            )
+        case .screenRecording:
             _ = requestAccessIfNeeded(for: permission)
-            openSystemSettings(for: permission)
+            openSystemSettingsAfterRegistration(
+                for: permission,
+                initialDelay: SettingsOpenTiming.screenRecordingDelay
+            )
+        case .accessibility:
+            _ = requestAccessIfNeeded(for: permission)
+            openSystemSettingsAfterRegistration(
+                for: permission,
+                initialDelay: SettingsOpenTiming.accessibilityDelay
+            )
         }
     }
 
@@ -208,6 +232,28 @@ final class MacPermissionService: PermissionService {
             installMonitor()
         } else {
             DispatchQueue.main.async(execute: installMonitor)
+        }
+    }
+
+    private func openSystemSettingsAfterRegistration(for permission: AppPermission, initialDelay: TimeInterval) {
+        openSystemSettingsAttempt(for: permission, attempt: 0, after: initialDelay)
+    }
+
+    private func openSystemSettingsAttempt(for permission: AppPermission, attempt: Int, after delay: TimeInterval) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self else {
+                return
+            }
+            self.openSystemSettings(for: permission)
+
+            guard attempt < SettingsOpenTiming.retryCount else {
+                return
+            }
+            self.openSystemSettingsAttempt(
+                for: permission,
+                attempt: attempt + 1,
+                after: SettingsOpenTiming.retryDelay
+            )
         }
     }
 }

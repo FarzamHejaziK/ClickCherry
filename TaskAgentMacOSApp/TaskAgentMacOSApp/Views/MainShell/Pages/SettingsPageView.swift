@@ -242,6 +242,10 @@ struct MainShellSettingsView: View {
 
                 Text("Use Open Settings to grant permissions. Status updates automatically.")
                     .foregroundStyle(.secondary)
+
+                Text("For reliable registration in Privacy lists, run ClickCherry from /Applications.")
+                    .foregroundStyle(.secondary)
+                    .font(.footnote)
             }
 
             VStack(spacing: 0) {
@@ -249,7 +253,6 @@ struct MainShellSettingsView: View {
                     title: "Screen Recording",
                     status: permissionStatuses.screenRecording,
                     onOpenSettings: {
-                        refreshPermissionStatuses()
                         mainShellStateStore.openPermissionSettings(for: .screenRecording)
                     }
                 )
@@ -261,7 +264,6 @@ struct MainShellSettingsView: View {
                     status: permissionStatuses.microphone,
                     footnote: "Needed to record your voice during screen recordings.",
                     onOpenSettings: {
-                        refreshPermissionStatuses()
                         mainShellStateStore.openPermissionSettings(for: .microphone)
                     }
                 )
@@ -272,7 +274,6 @@ struct MainShellSettingsView: View {
                     title: "Accessibility",
                     status: permissionStatuses.accessibility,
                     onOpenSettings: {
-                        refreshPermissionStatuses()
                         mainShellStateStore.openPermissionSettings(for: .accessibility)
                     }
                 )
@@ -284,7 +285,6 @@ struct MainShellSettingsView: View {
                     status: permissionStatuses.inputMonitoring,
                     footnote: "Needed to stop the agent with Escape.",
                     onOpenSettings: {
-                        refreshPermissionStatuses()
                         mainShellStateStore.openPermissionSettings(for: .inputMonitoring)
                     }
                 )

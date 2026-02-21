@@ -4,6 +4,35 @@ description: Active unresolved issues with concrete repro details, mitigation, a
 
 # Open Issues
 
+## Issue OI-2026-02-21-015
+- Issue ID: OI-2026-02-21-015
+- Title: DMG-installed app can be missing from Privacy lists when permission panes open too early
+- Status: Mitigated
+- Severity: High
+- First Seen: 2026-02-21
+- Scope:
+  - Affects permission onboarding/settings actions for release DMG installs.
+  - Most visible on first permission grant attempts for Screen Recording, Microphone, Accessibility, and Input Monitoring.
+- Repro Steps:
+  1. Install `ClickCherry` from release DMG and launch it.
+  2. In onboarding or Settings -> Permissions, click `Open Settings` for a required permission.
+  3. Observe that System Settings opens but `ClickCherry` is intermittently missing from the target privacy list.
+- Observed:
+  - Permission pane can open before TCC registration settles, so the app row is not yet visible.
+  - Prior implementation also issued duplicate request calls (`refreshPermissionStatus` + `openPermissionSettings`), increasing race probability.
+- Expected:
+  - Clicking `Open Settings` should consistently show `ClickCherry` in the relevant privacy list after request registration.
+- Current Mitigation:
+  - `MacPermissionService` now uses delayed permission-pane open timing after request calls, plus one retry open, to reduce TCC-registration race windows.
+  - Permission-row handlers in onboarding/settings now use a single request-open path (removed duplicate pre-request calls).
+  - Added explicit guidance in onboarding/settings permissions copy to run `ClickCherry` from `/Applications` for stable registration identity/path.
+- Next Action:
+  - User-side runtime validation on a DMG-installed build:
+    - ensure app is launched from `/Applications` (not directly from mounted DMG).
+    - click each permission row (`Screen Recording`, `Microphone`, `Accessibility`, `Input Monitoring`) and confirm `ClickCherry` appears in the target list.
+    - repeat after relaunch to confirm consistent visibility.
+- Owner: Codex + user validation in DMG runtime
+
 ## Issue OI-2026-02-20-014
 - Issue ID: OI-2026-02-20-014
 - Title: Multi-display selection can target the wrong physical display for overlays and capture
