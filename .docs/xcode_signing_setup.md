@@ -35,6 +35,16 @@ This repo currently uses Swift Package Manager for development logic/tests. For 
 3. Do not keep recreating the target/app identity.
 4. Do not test permission persistence using `swift run`.
 
+## Release DMG runtime checklist (permission registration)
+
+Use this checklist when validating a release DMG install (not Xcode-run builds):
+
+1. Install by dragging `ClickCherry.app` to `/Applications`.
+2. Eject the mounted DMG before launching app for permission checks.
+3. Launch `ClickCherry` from `/Applications`.
+4. Use app `Open Settings` actions to open each privacy pane.
+5. If a pane does not show `ClickCherry`, relaunch from `/Applications` and retry `Open Settings`.
+
 ## Identity diagnostics (must pass)
 
 1. In Xcode, the active scheme must be your macOS App target (not a package executable scheme).

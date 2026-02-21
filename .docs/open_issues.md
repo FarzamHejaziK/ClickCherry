@@ -7,7 +7,7 @@ description: Active unresolved issues with concrete repro details, mitigation, a
 ## Issue OI-2026-02-21-015
 - Issue ID: OI-2026-02-21-015
 - Title: DMG-installed app can be missing from Privacy lists when permission panes open too early
-- Status: Mitigated
+- Status: Open
 - Severity: High
 - First Seen: 2026-02-21
 - Scope:
@@ -20,12 +20,17 @@ description: Active unresolved issues with concrete repro details, mitigation, a
 - Observed:
   - Permission pane can open before TCC registration settles, so the app row is not yet visible.
   - Prior implementation also issued duplicate request calls (`refreshPermissionStatus` + `openPermissionSettings`), increasing race probability.
+  - Follow-up user report (2026-02-21): only Accessibility list showed `ClickCherry`; Screen Recording, Microphone, and Input Monitoring lists still missed app registration.
 - Expected:
   - Clicking `Open Settings` should consistently show `ClickCherry` in the relevant privacy list after request registration.
 - Current Mitigation:
-  - `MacPermissionService` now uses delayed permission-pane open timing after request calls, plus one retry open, to reduce TCC-registration race windows.
+  - `MacPermissionService` now uses delayed permission-pane open timing after request calls, plus multi-retry open attempts, to reduce TCC-registration race windows.
+  - Added explicit registration probes before Settings navigation for non-AX permissions:
+    - Screen Recording: best-effort screenshot probe path to exercise ScreenCapture registration.
+    - Microphone: best-effort capture-session probe after authorization to exercise mic registration path.
+    - Input Monitoring: burst probing (event tap + global monitor) to improve list registration consistency.
   - Permission-row handlers in onboarding/settings now use a single request-open path (removed duplicate pre-request calls).
-  - Added explicit guidance in onboarding/settings permissions copy to run `ClickCherry` from `/Applications` for stable registration identity/path.
+  - Added explicit guidance in onboarding/settings permissions copy to run `ClickCherry` from `/Applications` and retry `Open Settings` if list entries are still missing.
 - Next Action:
   - User-side runtime validation on a DMG-installed build:
     - ensure app is launched from `/Applications` (not directly from mounted DMG).

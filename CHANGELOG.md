@@ -9,6 +9,16 @@ The format is based on Keep a Changelog and this project uses Semantic Versionin
 ### Added
 - Open-source governance, contribution, and release scaffolding.
 
+## [0.1.22] - 2026-02-21
+
+### Added
+- Additional permission guidance in onboarding/settings: if a privacy list does not show `ClickCherry`, relaunch from `/Applications` and retry `Open Settings`.
+
+### Changed
+- Further hardened DMG-installed permission registration behavior for non-Accessibility panes:
+  - increased permission-pane open settle timing and retry behavior.
+  - added best-effort registration probes for Screen Recording, Microphone, and Input Monitoring before opening System Settings.
+
 ## [0.1.21] - 2026-02-21
 
 ### Added

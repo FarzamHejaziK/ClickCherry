@@ -48,12 +48,12 @@ extension PermissionService {
 
 final class MacPermissionService: PermissionService {
     private enum SettingsOpenTiming {
-        static let screenRecordingDelay: TimeInterval = 0.8
-        static let microphoneDelay: TimeInterval = 0.5
+        static let screenRecordingDelay: TimeInterval = 1.0
+        static let microphoneDelay: TimeInterval = 0.8
         static let accessibilityDelay: TimeInterval = 0.7
-        static let inputMonitoringDelay: TimeInterval = 1.2
-        static let retryDelay: TimeInterval = 1.1
-        static let retryCount = 1
+        static let inputMonitoringDelay: TimeInterval = 1.5
+        static let retryDelay: TimeInterval = 1.3
+        static let retryCount = 2
     }
 
     func openSystemSettings(for permission: AppPermission) {
@@ -90,10 +90,12 @@ final class MacPermissionService: PermissionService {
                 return .granted
             }
             _ = CGRequestScreenCaptureAccess()
+            probeScreenRecordingCaptureAsync()
             return CGPreflightScreenCaptureAccess() ? .granted : .notGranted
         case .microphone:
             let status = AVCaptureDevice.authorizationStatus(for: .audio)
             if status == .authorized {
+                probeMicrophoneCaptureStackAsync()
                 return .granted
             }
             if status == .notDetermined {
@@ -114,8 +116,7 @@ final class MacPermissionService: PermissionService {
                 return .granted
             }
             _ = CGRequestListenEventAccess()
-            _ = probeInputMonitoringEventTap()
-            probeInputMonitoringGlobalKeyMonitor()
+            probeInputMonitoringRegistrationBurst()
             return CGPreflightListenEventAccess() ? .granted : .notGranted
         }
     }
@@ -125,8 +126,11 @@ final class MacPermissionService: PermissionService {
         case .microphone:
             let status = AVCaptureDevice.authorizationStatus(for: .audio)
             if status == .notDetermined {
-                AVCaptureDevice.requestAccess(for: .audio) { _ in
+                AVCaptureDevice.requestAccess(for: .audio) { granted in
                     DispatchQueue.main.async {
+                        if granted {
+                            self.probeMicrophoneCaptureStackAsync()
+                        }
                         self.openSystemSettingsAfterRegistration(
                             for: permission,
                             initialDelay: SettingsOpenTiming.microphoneDelay
@@ -223,7 +227,7 @@ final class MacPermissionService: PermissionService {
             guard let monitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown, handler: { _ in }) else {
                 return
             }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                 NSEvent.removeMonitor(monitor)
             }
         }
@@ -254,6 +258,45 @@ final class MacPermissionService: PermissionService {
                 attempt: attempt + 1,
                 after: SettingsOpenTiming.retryDelay
             )
+        }
+    }
+
+    private func probeInputMonitoringRegistrationBurst() {
+        _ = probeInputMonitoringEventTap()
+        probeInputMonitoringGlobalKeyMonitor()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+            _ = self.probeInputMonitoringEventTap()
+            self.probeInputMonitoringGlobalKeyMonitor()
+        }
+    }
+
+    private func probeScreenRecordingCaptureAsync() {
+        DispatchQueue.global(qos: .utility).async {
+            _ = try? DesktopScreenshotService.captureMainDisplayPNG(excludingWindowNumbers: [])
+        }
+    }
+
+    private func probeMicrophoneCaptureStackAsync() {
+        DispatchQueue.global(qos: .utility).async {
+            guard AVCaptureDevice.authorizationStatus(for: .audio) == .authorized else {
+                return
+            }
+            guard
+                let device = AVCaptureDevice.default(for: .audio),
+                let input = try? AVCaptureDeviceInput(device: device)
+            else {
+                return
+            }
+
+            let session = AVCaptureSession()
+            session.beginConfiguration()
+            if session.canAddInput(input) {
+                session.addInput(input)
+            }
+            session.commitConfiguration()
+            session.startRunning()
+            Thread.sleep(forTimeInterval: 0.35)
+            session.stopRunning()
         }
     }
 }

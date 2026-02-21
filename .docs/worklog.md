@@ -8,6 +8,33 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-21
+- Step: DMG permission visibility follow-up (non-AX registration probes + stronger retry behavior)
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/PermissionsStepView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+  - Root-cause mitigation implemented:
+    - increased per-permission settle timing, open retry delay, and retry count in `MacPermissionService`.
+    - added best-effort registration probes for Screen Recording, Microphone, and Input Monitoring before Settings navigation.
+    - added explicit retry guidance copy in onboarding/settings when permission rows are missing.
+  - Issue tracking updated:
+    - `OI-2026-02-21-015` status set to `Open` after follow-up user report and mitigation details updated.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-followup-build build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-followup-test test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
+- Manual tests run:
+  - Pending user-side DMG runtime verification from `/Applications` for all four required permissions.
+- Result:
+  - Complete (follow-up implementation + automated validation), pending DMG runtime confirmation.
+- Issues/blockers:
+  - Terminal environment cannot directly validate macOS privacy-list rendering state.
+
+## Entry
+- Date: 2026-02-21
 - Step: DMG permission-pane registration race mitigation (`Open Settings` reliability)
 - Changes made:
   - Updated:
@@ -219,31 +246,3 @@ description: Running implementation log of completed work, test evidence, blocke
 - Issues/blockers:
   - None.
 
-## Entry
-- Date: 2026-02-21
-- Step: Multi-display run/record overlay targeting fix (stable display identity + aligned run HUD border target)
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/RecordingCaptureService.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AgentControlOverlayService.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/NewTaskPageView.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/TaskDetailPageView.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-  - Display selection now uses stable physical display identity (`CaptureDisplayOption.id`) and resolves to `screencaptureDisplayIndex` at execution time for run/record operations.
-  - Run `Agent is running` HUD now receives the selected run display index so it targets the same screen as the red border overlay.
-  - Added regression coverage to lock this behavior:
-    - `MainShellStateStoreTests.startRunTaskNowUsesSelectedDisplayScreencaptureIndexForBothOverlays`.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-display-fix build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-display-fix test -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
-- Manual tests run:
-  - Pending user-side runtime validation on a multi-display setup.
-- Result:
-  - Complete (implementation + automated tests + docs), pending runtime user confirmation.
-- Issues/blockers:
-  - None in build/test; runtime visual validation required for final confirmation.

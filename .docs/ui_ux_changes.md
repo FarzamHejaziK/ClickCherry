@@ -27,6 +27,33 @@ description: Canonical log for UI/UX plans, decisions, and implementation alignm
 
 ## Entry
 - Date: 2026-02-21
+- Area: Permission-pane visibility follow-up hardening for DMG-installed runtime
+- Change Summary:
+  - Follow-up after user validation (`Accessibility` visible but other privacy panes missing `ClickCherry`):
+    - increased settle timing and retry count before opening System Settings privacy panes.
+    - added non-AX registration probes before pane navigation:
+      - Screen Recording: best-effort screenshot capture path.
+      - Microphone: best-effort short-lived capture-session path.
+      - Input Monitoring: event-tap/global-monitor burst probing.
+  - Added explicit retry guidance copy in both onboarding and settings permissions sections:
+    - if row is missing, relaunch from `/Applications` and click `Open Settings` again.
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/PermissionsStepView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` setup reliability objective by reducing false-negative permission-list visibility in first-run DMG installs.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` requirement for predictable setup flow with explicit user guidance when platform behavior is asynchronous.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-followup-build build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-followup-test test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
+  - Manual tests:
+    - Pending user-side DMG runtime validation across Screen Recording, Microphone, Accessibility, and Input Monitoring panes.
+
+## Entry
+- Date: 2026-02-21
 - Area: Permission-pane registration reliability for DMG-installed runtime
 - Change Summary:
   - Hardened permission action behavior so `Open Settings` is less likely to race macOS TCC registration:

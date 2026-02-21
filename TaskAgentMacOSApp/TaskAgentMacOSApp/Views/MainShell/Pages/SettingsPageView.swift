@@ -246,6 +246,10 @@ struct MainShellSettingsView: View {
                 Text("For reliable registration in Privacy lists, run ClickCherry from /Applications.")
                     .foregroundStyle(.secondary)
                     .font(.footnote)
+
+                Text("If a permission list does not show ClickCherry, relaunch from /Applications and click Open Settings again.")
+                    .foregroundStyle(.secondary)
+                    .font(.footnote)
             }
 
             VStack(spacing: 0) {

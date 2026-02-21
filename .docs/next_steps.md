@@ -4,21 +4,21 @@ description: Short, continuously updated plan of the immediate next implementati
 
 # Next Steps
 
-1. Step: Validate DMG-installed permission registration visibility after request/open flow hardening (in progress).
-2. Why now: User reports that `Open Settings` sometimes opens the privacy pane without showing `ClickCherry`, especially in DMG-installed runtime.
+1. Step: Validate DMG-installed permission registration visibility after follow-up non-AX registration hardening (in progress).
+2. Why now: User confirmed follow-up failure where only Accessibility showed `ClickCherry`; Screen Recording, Microphone, and Input Monitoring still missed the app row after `Open Settings`.
 3. Code tasks:
   - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`:
-    - added registration-settle delays before opening privacy panes for all required permissions.
-    - added one retry open to reduce first-open race windows while TCC registration propagates.
+    - increased registration-settle delays and open retries for privacy-pane navigation.
+    - added screen recording registration probe (best-effort screenshot capture path).
+    - added microphone registration probe (best-effort short-lived capture session path).
+    - added input monitoring burst probe (event tap + global monitor with delayed second pass).
   - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/PermissionsStepView.swift`:
-    - removed duplicate pre-request call (`refreshPermissionStatus`) from permission-row actions.
-    - added `/Applications` runtime guidance copy for stable permission registration identity/path.
+    - added follow-up helper text instructing relaunch from `/Applications` and retry of `Open Settings` when rows are missing.
   - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`:
-    - removed duplicate pre-request call from permission-row actions.
-    - added `/Applications` runtime guidance copy in Permissions section.
+    - added the same retry guidance copy in Settings -> Permissions.
 4. Automated tests:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-dmg-fix-build-r2 build` (pass on 2026-02-21 local run).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-dmg-fix-test-r2 test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass on 2026-02-21 local run).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-followup-build build` (pass on 2026-02-21 local run).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-followup-test test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass on 2026-02-21 local run).
 5. Manual tests:
   - Pending user-side runtime checks on DMG-installed app:
     - ensure app is launched from `/Applications`.
