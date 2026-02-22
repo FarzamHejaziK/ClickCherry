@@ -8,6 +8,27 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-22
+- Step: Stabilize `startAndStopCaptureUpdatesCaptureState` CI race in unit tests
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
+  - Test hardening:
+    - waits for `Capture started on Display ...` before calling `stopCapture()` to avoid racing detached capture-start completion.
+    - waits for a terminal stop status and asserts with `hasPrefix("Capture stopped.")` so both valid stop messages pass (`Capture stopped.` and `Capture stopped. Saved ...`).
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-flake-fix-target -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests/startAndStopCaptureUpdatesCaptureState CODE_SIGNING_ALLOWED=NO test` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-flake-fix-full -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass; 89 tests).
+- Manual tests run:
+  - Launched `/tmp/taskagent-dd-ci-flake-fix-full/Build/Products/Debug/ClickCherry.app`, confirmed startup via `pgrep`, then terminated app process.
+- Result:
+  - Complete for local test stabilization and validation; pending CI rerun confirmation on GitHub.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-22
 - Step: App icon strong-roundness follow-up for macOS 15 Dock rendering
 - Changes made:
   - Updated:
@@ -219,31 +240,6 @@ description: Running implementation log of completed work, test evidence, blocke
   - Launched `/tmp/taskagent-dd-icon-fix/Build/Products/Debug/ClickCherry.app`, confirmed startup via `pgrep`, then terminated app process.
 - Result:
   - Complete for local icon-asset and enclosure-roundness update; pending user-side Dock visual confirmation.
-- Issues/blockers:
-  - None.
-
-## Entry
-- Date: 2026-02-22
-- Step: Remove Input Monitoring from onboarding and settings permissions UI
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/PermissionsStepView.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/OnboardingStateStore.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/OnboardingStateStoreTests.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
-  - UI behavior changes:
-    - removed `Input Monitoring` row from onboarding permissions.
-    - removed `Input Monitoring` row from settings permissions.
-    - onboarding `Continue` now depends on Screen Recording + Microphone + Accessibility only.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass; 89 tests).
-- Manual tests run:
-  - Launched `/tmp/taskagent-dd-ci-test/Build/Products/Debug/ClickCherry.app`, confirmed startup via `pgrep`, then terminated app process.
-- Result:
-  - Complete for requested UI/flow change.
 - Issues/blockers:
   - None.
 

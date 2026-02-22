@@ -521,17 +521,28 @@ struct MainShellStateStoreTests {
             try await Task.sleep(nanoseconds: 20_000_000)
         }
         #expect(captureService.startedOutputURL != nil)
+        // Wait for state-store start completion before stopping to avoid racing
+        // the detached start path on slower CI runners.
+        for _ in 0..<50 {
+            if let status = store.recordingStatusMessage, status.hasPrefix("Capture started on Display") {
+                break
+            }
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        #expect(store.recordingStatusMessage?.hasPrefix("Capture started on Display") == true)
         #expect(captureService.startedDisplayID == 1)
         #expect(captureService.startedAudioInput == .device(42))
         #expect(overlayService.shownDisplayIDs == [1])
 
         store.stopCapture()
-        for _ in 0..<100 {
-            if !store.isCapturing { break }
+        for _ in 0..<120 {
+            if let status = store.recordingStatusMessage, status.hasPrefix("Capture stopped.") {
+                break
+            }
             try await Task.sleep(nanoseconds: 20_000_000)
         }
         #expect(!store.isCapturing)
-        #expect(store.recordingStatusMessage == "Capture stopped.")
+        #expect(store.recordingStatusMessage?.hasPrefix("Capture stopped.") == true)
         #expect(overlayService.hideCallCount == 1)
     }
 

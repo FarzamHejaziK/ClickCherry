@@ -4,6 +4,20 @@ description: Short, continuously updated plan of the immediate next implementati
 
 # Next Steps
 
+1. Step: Eliminate CI flake in `MainShellStateStoreTests.startAndStopCaptureUpdatesCaptureState` (in progress).
+2. Why now: `v0.1.32` CI failed in `Unit Tests` due to a timing race where status remained `Stopping capture...` when assertion expected `Capture stopped.`.
+3. Code tasks:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`:
+    - wait for the store to publish a `Capture started on Display ...` status before calling `stopCapture()`.
+    - wait for terminal stop status and assert `recordingStatusMessage` with `hasPrefix("Capture stopped.")` to accept both valid stopped variants.
+4. Automated tests:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-flake-fix-target -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests/startAndStopCaptureUpdatesCaptureState CODE_SIGNING_ALLOWED=NO test` (pass on 2026-02-22).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-flake-fix-full -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass on 2026-02-22; 89 tests).
+5. Manual tests:
+  - Launched `/tmp/taskagent-dd-ci-flake-fix-full/Build/Products/Debug/ClickCherry.app`, confirmed process startup via `pgrep`, then terminated app process.
+6. Exit criteria:
+  - GitHub `CI / build-and-test` passes on rerun for the same branch/commit family without the capture-status race failure.
+
 1. Step: Publish `v0.1.32` release for app-icon roundness and Dock-size parity updates (in progress).
 2. Why now: User requested shipping the latest icon refinements after iterative macOS 15 validation feedback.
 3. Code tasks:
