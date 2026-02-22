@@ -5177,3 +5177,28 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - Complete (implementation + automated validation), pending user runtime confirmation.
 - Issues/blockers:
   - None.
+
+## Entry
+- Date: 2026-02-21
+- Step: Multi-display run action targeting hardening (foreground handoff + launch settle)
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomationEngine.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+  - Root-cause mitigation implemented:
+    - run-start desktop prep now keeps Finder visible and force-activates it after hiding other apps, reducing frontmost-context drift from the app window’s previous display.
+    - `open_app` and `open_url` now wait briefly after selected-display anchoring so launch/activation resolves after focus handoff.
+    - `cmd+space` shortcut path now primes selected-display focus before shortcut injection.
+  - Added regression test:
+    - `OpenAIComputerUseRunnerTests.runToolLoopPrimesDisplayBeforeCmdSpaceShortcut`.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-display-rootcause-fix-r4 test -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
+- Manual tests run:
+  - Pending user-side multi-display runtime validation of launcher/app-open placement.
+- Result:
+  - Complete (implementation + targeted automated validation), pending runtime confirmation.
+- Issues/blockers:
+  - None.

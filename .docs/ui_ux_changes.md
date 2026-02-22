@@ -26,6 +26,34 @@ description: Canonical log for UI/UX plans, decisions, and implementation alignm
 ## Entries
 
 ## Entry
+- Date: 2026-02-22
+- Area: Permission action reliability across macOS versions (no UI copy changes)
+- Change Summary:
+  - Updated permission-action internals only:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/DesktopScreenshotService.swift`
+  - Behavior updates:
+    - when a permission is already granted, clicking `Open Settings` still opens the matching pane for all four required permissions.
+    - Screen Recording probe now uses ScreenCaptureKit-only capture path.
+    - Input Monitoring probe now uses short run-loop event-tap burst probing.
+    - permission-pane open delays/retries tuned for TCC registration settle time.
+  - Explicitly no onboarding/settings permission copy changes in this increment.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` setup reliability goals by reducing no-op clicks and missing-row races in permission flows.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` section 8 (permissions preflight/remediation) by improving deterministic remediation behavior without altering user-facing wording.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-perm-fix-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO test` (pass; 37 tests).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Release -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-release-perm-signed build` (pass; signed local Release build).
+  - Manual tests:
+    - Local launch smoke passed for `/tmp/taskagent-dd-perm-fix-test/Build/Products/Debug/ClickCherry.app`.
+    - Local launch smoke passed for `/tmp/taskagent-dd-release-perm-signed/Build/Products/Release/ClickCherry.app`.
+    - Pending user-side two-device permission-pane validation on packaged release artifacts.
+- Notes:
+  - This update intentionally targets post-click behavior only; UI labels and helper text remain unchanged.
+
+## Entry
 - Date: 2026-02-21
 - Area: Permission click responsiveness and deterministic open behavior
 - Change Summary:

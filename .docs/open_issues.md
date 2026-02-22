@@ -22,14 +22,23 @@ description: Active unresolved issues with concrete repro details, mitigation, a
   - Prior implementation also issued duplicate request calls (`refreshPermissionStatus` + `openPermissionSettings`), increasing race probability.
   - Follow-up user report (2026-02-21): only Accessibility list showed `ClickCherry`; Screen Recording, Microphone, and Input Monitoring lists still missed app registration.
   - Follow-up UX report (2026-02-21): previous first-click de-conflict behavior could require extra clicks before Settings opened, which felt slow/confusing for Screen Recording, Accessibility, and Input Monitoring.
+  - Latest two-device validation (2026-02-22):
+    - macOS 26 dev machine: Settings panes open for all permissions, but `ClickCherry` appears only in Accessibility list; Screen Recording, Microphone, and Input Monitoring rows are missing.
+    - macOS 15 laptop: Screen Recording + Accessibility can show prompt then Settings with `ClickCherry` present; Microphone click can no-op; Input Monitoring still opens pane without `ClickCherry` row.
 - Expected:
   - Clicking `Open Settings` should consistently show `ClickCherry` in the relevant privacy list after request registration.
 - Current Mitigation:
-  - `MacPermissionService` keeps permission-pane opening delayed after request calls (to reduce TCC races), but now uses a shorter settle window and fewer retries for faster response.
+  - `MacPermissionService` keeps delayed permission-pane opening and retries after request/probe calls to reduce TCC registration races.
+    - Screen Recording delay: 1.0s
+    - Microphone delay: 0.8s
+    - Accessibility delay: 0.7s
+    - Input Monitoring delay: 1.5s
+    - Retry delay/count: 1.3s, 2 retries
   - Added explicit registration probes before Settings navigation for non-AX permissions:
-    - Screen Recording: best-effort screenshot probe path to exercise ScreenCapture registration.
+    - Screen Recording: ScreenCaptureKit-only screenshot probe path to force ScreenCapture service registration (no CLI fallback path).
     - Microphone: best-effort capture-session probe after authorization to exercise mic registration path.
-    - Input Monitoring: burst probing (event tap + global monitor) to improve list registration consistency.
+    - Input Monitoring: short run-loop-backed event-tap burst probing (two passes) to improve list registration consistency.
+  - For all four permissions, if status is already granted when user clicks `Open Settings`, the app now still opens the corresponding Settings pane (previously some paths returned early and looked like no-op).
   - Permission-row actions now use deterministic mixed behavior:
     - Screen Recording / Accessibility / Input Monitoring:
       - same click runs request/probe and then opens target Settings pane when still not granted.
@@ -40,12 +49,15 @@ description: Active unresolved issues with concrete repro details, mitigation, a
   - Permission-row handlers in onboarding/settings now use a single request-open path (removed duplicate pre-request calls).
   - Added explicit guidance in onboarding/settings permissions copy to run `ClickCherry` from `/Applications` and retry `Open Settings` if list entries are still missing.
 - Next Action:
-  - User-side runtime validation on a DMG-installed build:
-    - ensure app is launched from `/Applications` (not directly from mounted DMG).
-    - click `Screen Recording`, `Accessibility`, and `Input Monitoring` once and confirm target Settings panes open directly.
-    - click `Microphone` and confirm first-time native prompt behavior (if not yet decided) and Settings fallback when denied.
-    - confirm `ClickCherry` appears in each target list (`Screen Recording`, `Microphone`, `Accessibility`, `Input Monitoring`).
-    - repeat after relaunch to confirm consistent visibility.
+  - User-side runtime validation on the newest packaged build:
+    - install from `/tmp/ClickCherry-macos-permission-fix-2026-02-22-signed.dmg` and move app to `/Applications`.
+    - if Gatekeeper blocks first launch on secondary device, use right-click -> Open once (local build is signed for development but not notarized).
+    - relaunch app from `/Applications` before checking permissions.
+    - verify `Screen Recording` click opens pane and list contains `ClickCherry`.
+    - verify `Microphone` click does not no-op and opens prompt/settings path deterministically.
+    - verify `Input Monitoring` click opens pane and list contains `ClickCherry`.
+    - verify `Accessibility` behavior remains stable.
+    - repeat checks once after full app relaunch to confirm persistence.
 - Owner: Codex + user validation in DMG runtime
 
 ## Issue OI-2026-02-20-014

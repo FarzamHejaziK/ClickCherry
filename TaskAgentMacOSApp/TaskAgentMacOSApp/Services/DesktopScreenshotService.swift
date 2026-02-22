@@ -27,6 +27,10 @@ struct DesktopScreenshotService {
         try captureMainDisplayPNG(excludingWindowNumbers: excludingWindowNumber.flatMap { [$0] } ?? [])
     }
 
+    nonisolated static func captureMainDisplayPNGScreenCaptureKitOnly(excludingWindowNumbers: [Int]) throws -> DesktopScreenshotCapture {
+        try captureMainDisplayPNGViaScreenCaptureKit(excludingWindowNumbers: excludingWindowNumbers)
+    }
+
     nonisolated static func captureMainDisplayPNG(excludingWindowNumbers: [Int]) throws -> DesktopScreenshotCapture {
         // Quartz window-list capture APIs are deprecated on macOS 14 and removed on macOS 15+.
         // Use ScreenCaptureKit so we can (optionally) exclude our “Agent is running” HUD window

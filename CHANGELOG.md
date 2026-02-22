@@ -9,6 +9,13 @@ The format is based on Keep a Changelog and this project uses Semantic Versionin
 ### Added
 - Open-source governance, contribution, and release scaffolding.
 
+## [0.1.25] - 2026-02-22
+
+### Changed
+- Hardened permission-to-Settings remediation across macOS versions by restoring longer TCC settle/retry timing for privacy pane opens.
+- `Open Settings` now opens the target pane even when the permission is already granted for all four required permissions (Screen Recording, Microphone, Accessibility, Input Monitoring).
+- Replaced Input Monitoring registration probing with short run-loop event-tap burst probing and switched Screen Recording registration probing to ScreenCaptureKit-only capture path.
+
 ## [0.1.24] - 2026-02-22
 
 ### Changed

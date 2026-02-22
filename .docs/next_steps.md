@@ -4,6 +4,32 @@ description: Short, continuously updated plan of the immediate next implementati
 
 # Next Steps
 
+1. Step: Validate two-device permission registration behavior after deeper TCC registration fixes (in progress).
+2. Why now: User reproduced mismatched behavior across macOS 26 and macOS 15, including missing privacy-list rows and a microphone click no-op.
+3. Code tasks:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`:
+    - restored longer permission-pane settle delays and retries.
+    - always opens target Settings pane when permission is already granted (all four permissions).
+    - switched Input Monitoring probe to run-loop-backed event-tap burst probing.
+    - switched Screen Recording probe to ScreenCaptureKit-only capture path.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/DesktopScreenshotService.swift`:
+    - added `captureMainDisplayPNGScreenCaptureKitOnly(...)` for registration-only probing without CLI fallback.
+  - Constraint honored:
+    - no UI text changes in onboarding/settings permission surfaces for this increment.
+4. Automated tests:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-perm-fix-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO test` (pass on 2026-02-22 local run; 37 tests passed).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Release -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-release-perm-signed build` (pass on 2026-02-22 local run; signed with local Apple Development identity).
+5. Manual tests:
+  - Local smoke: launched `/tmp/taskagent-dd-perm-fix-test/Build/Products/Debug/ClickCherry.app`, confirmed process startup, then terminated test instance.
+  - Local smoke: launched `/tmp/taskagent-dd-release-perm-signed/Build/Products/Release/ClickCherry.app`, confirmed process startup, then terminated test instance.
+  - Packaged local release artifacts for user runtime validation:
+    - `/tmp/ClickCherry-macos-permission-fix-2026-02-22-signed.zip`
+    - `/tmp/ClickCherry-macos-permission-fix-2026-02-22-signed.dmg`
+  - Gatekeeper note: this local build is Apple-Development signed but not notarized; first launch on secondary devices may require right-click -> Open.
+  - Pending user-side validation on both devices from `/Applications` install path.
+6. Exit criteria:
+  - On both macOS 26 and macOS 15 test machines, `ClickCherry` consistently appears in Screen Recording, Microphone, Accessibility, and Input Monitoring lists after row actions, with no microphone click no-op.
+
 1. Step: Validate deterministic permission click behavior without UI copy changes (in progress).
 2. Why now: User reported high friction in permission onboarding/settings and requested behavior fixes while keeping existing permission-screen text unchanged.
 3. Code tasks:

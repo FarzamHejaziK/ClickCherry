@@ -48,12 +48,12 @@ extension PermissionService {
 
 final class MacPermissionService: PermissionService {
     private enum SettingsOpenTiming {
-        static let screenRecordingDelay: TimeInterval = 0.35
-        static let microphoneDelay: TimeInterval = 0.4
-        static let accessibilityDelay: TimeInterval = 0.3
-        static let inputMonitoringDelay: TimeInterval = 0.45
-        static let retryDelay: TimeInterval = 0.9
-        static let retryCount = 1
+        static let screenRecordingDelay: TimeInterval = 1.0
+        static let microphoneDelay: TimeInterval = 0.8
+        static let accessibilityDelay: TimeInterval = 0.7
+        static let inputMonitoringDelay: TimeInterval = 1.5
+        static let retryDelay: TimeInterval = 1.3
+        static let retryCount = 2
     }
 
     func openSystemSettings(for permission: AppPermission) {
@@ -127,6 +127,7 @@ final class MacPermissionService: PermissionService {
             let microphoneAuthorizationStatus = AVCaptureDevice.authorizationStatus(for: .audio)
             if microphoneAuthorizationStatus == .authorized {
                 probeMicrophoneCaptureStackAsync()
+                openSystemSettings(for: permission)
                 return
             }
             if microphoneAuthorizationStatus == .notDetermined {
@@ -144,10 +145,12 @@ final class MacPermissionService: PermissionService {
             )
         case .inputMonitoring:
             if currentStatus(for: permission) == .granted {
+                openSystemSettings(for: permission)
                 return
             }
             _ = requestAccessIfNeeded(for: permission)
             if currentStatus(for: permission) == .granted {
+                openSystemSettings(for: permission)
                 return
             }
             openSystemSettingsAfterRegistration(
@@ -156,10 +159,12 @@ final class MacPermissionService: PermissionService {
             )
         case .screenRecording:
             if currentStatus(for: permission) == .granted {
+                openSystemSettings(for: permission)
                 return
             }
             _ = requestAccessIfNeeded(for: permission)
             if currentStatus(for: permission) == .granted {
+                openSystemSettings(for: permission)
                 return
             }
             openSystemSettingsAfterRegistration(
@@ -168,10 +173,12 @@ final class MacPermissionService: PermissionService {
             )
         case .accessibility:
             if currentStatus(for: permission) == .granted {
+                openSystemSettings(for: permission)
                 return
             }
             _ = requestAccessIfNeeded(for: permission)
             if currentStatus(for: permission) == .granted {
+                openSystemSettings(for: permission)
                 return
             }
             openSystemSettingsAfterRegistration(
@@ -218,41 +225,44 @@ final class MacPermissionService: PermissionService {
         }
     }
 
-    private func probeInputMonitoringEventTap() -> Bool {
-        let mask = (1 as CGEventMask) << CGEventType.keyDown.rawValue
-        let callback: CGEventTapCallBack = { _, _, event, _ in
-            Unmanaged.passUnretained(event)
-        }
-        guard let tap = CGEvent.tapCreate(
-            tap: .cgSessionEventTap,
-            place: .headInsertEventTap,
-            options: .listenOnly,
-            eventsOfInterest: mask,
-            callback: callback,
-            userInfo: nil
-        ) else {
-            return false
-        }
-
-        CFMachPortInvalidate(tap)
-        return true
-    }
-
-    private func probeInputMonitoringGlobalKeyMonitor() {
-        let installMonitor = {
-            guard let monitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown, handler: { _ in }) else {
-                return
+    private func probeInputMonitoringEventTap(duration: TimeInterval) -> Bool {
+        let installProbe = { () -> Bool in
+            let mask = (1 as CGEventMask) << CGEventType.keyDown.rawValue
+            let callback: CGEventTapCallBack = { _, _, event, _ in
+                Unmanaged.passUnretained(event)
             }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                NSEvent.removeMonitor(monitor)
+            guard let tap = CGEvent.tapCreate(
+                tap: .cgSessionEventTap,
+                place: .headInsertEventTap,
+                options: .listenOnly,
+                eventsOfInterest: mask,
+                callback: callback,
+                userInfo: nil
+            ) else {
+                return false
             }
+
+            let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
+            CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
+            CGEvent.tapEnable(tap: tap, enable: true)
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
+                CGEvent.tapEnable(tap: tap, enable: false)
+                CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
+                CFMachPortInvalidate(tap)
+            }
+            return true
         }
 
         if Thread.isMainThread {
-            installMonitor()
-        } else {
-            DispatchQueue.main.async(execute: installMonitor)
+            return installProbe()
         }
+
+        var success = false
+        DispatchQueue.main.sync {
+            success = installProbe()
+        }
+        return success
     }
 
     private func openSystemSettingsAfterRegistration(for permission: AppPermission, initialDelay: TimeInterval) {
@@ -281,17 +291,15 @@ final class MacPermissionService: PermissionService {
     }
 
     private func probeInputMonitoringRegistrationBurst() {
-        _ = probeInputMonitoringEventTap()
-        probeInputMonitoringGlobalKeyMonitor()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-            _ = self.probeInputMonitoringEventTap()
-            self.probeInputMonitoringGlobalKeyMonitor()
+        _ = probeInputMonitoringEventTap(duration: 1.2)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            _ = self.probeInputMonitoringEventTap(duration: 1.2)
         }
     }
 
     private func probeScreenRecordingCaptureAsync() {
         DispatchQueue.global(qos: .utility).async {
-            _ = try? DesktopScreenshotService.captureMainDisplayPNG(excludingWindowNumbers: [])
+            _ = try? DesktopScreenshotService.captureMainDisplayPNGScreenCaptureKitOnly(excludingWindowNumbers: [])
         }
     }
 
