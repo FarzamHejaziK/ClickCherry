@@ -87,3 +87,9 @@ description: Open-source strategy decisions, governance, contribution model, and
   - require review from code owners
   - restrict direct pushes to `main`
 - Decide whether to stop tracking `/.docs/` and `AGENTS.md` in git later.
+
+## Updates (2026-02-22)
+
+- Contributor-facing docs alignment:
+  - Updated `/README.md` open-source baseline bullet to match locked contribution legal model (`No DCO or CLA requirement`).
+  - `CONTRIBUTING.md` and workflow enforcement were already aligned; README is now consistent with the actual policy.

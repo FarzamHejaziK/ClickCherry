@@ -105,7 +105,7 @@ xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj \
 
 - License: MIT ([`LICENSE`](LICENSE))
 - Contributions: [`CONTRIBUTING.md`](CONTRIBUTING.md)
-- DCO required: `git commit -s`
+- Contribution legal model: no DCO/CLA requirement
 - Code of Conduct: [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
 - Security policy: [`SECURITY.md`](SECURITY.md)
 - Governance: [`GOVERNANCE.md`](GOVERNANCE.md), [`MAINTAINERS.md`](MAINTAINERS.md)

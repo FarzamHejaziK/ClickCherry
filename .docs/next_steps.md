@@ -4,6 +4,20 @@ description: Short, continuously updated plan of the immediate next implementati
 
 # Next Steps
 
+1. Step: Align README contribution policy text with actual no-DCO enforcement (in progress).
+2. Why now: User flagged that README still showed a DCO requirement despite repository policy and enforcement having no DCO check.
+3. Code tasks:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/README.md`:
+    - replaced stale `DCO required: git commit -s` line with `Contribution legal model: no DCO/CLA requirement`.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`:
+    - recorded contributor-doc alignment update.
+4. Automated tests:
+  - N/A (docs-only).
+5. Manual tests:
+  - N/A (docs-only).
+6. Exit criteria:
+  - README contribution/legal model line matches repository policy and enforcement state.
+
 1. Step: Eliminate CI flake in `MainShellStateStoreTests.startAndStopCaptureUpdatesCaptureState` (in progress).
 2. Why now: `v0.1.32` CI failed in `Unit Tests` due to a timing race where status remained `Stopping capture...` when assertion expected `Capture stopped.`.
 3. Code tasks:
