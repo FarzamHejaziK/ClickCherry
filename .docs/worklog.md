@@ -8,6 +8,128 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-22
+- Step: Release cut `v0.1.29` preparation
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/CHANGELOG.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
+  - Release prep updates:
+    - added `0.1.29` changelog notes for DMG artwork polish, onboarding/settings permissions simplification, and icon refinement changes.
+    - prepared repository state for `v0.1.29` tag push to trigger GitHub Release workflow.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-release-preflight CODE_SIGNING_ALLOWED=NO build` (pass).
+- Manual tests run:
+  - N/A (release operation step; workflow status verified after tag push).
+- Result:
+  - Ready to publish release tag.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-22
+- Step: DMG installer artwork cleanup (remove text + iconized direction arrow)
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
+  - Visual behavior changes:
+    - removed DMG background instruction text (`Drag to install`, `Drop the app into Applications`).
+    - replaced typed `>` with symbol-based `chevron.right.circle.fill` plus subtle glow.
+    - kept icon placement and drop-link positions unchanged.
+- Automated tests run:
+  - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass).
+- Manual tests run:
+  - Extracted the embedded workflow Swift script to `/tmp/make_dmg_background_preview.swift`.
+  - Ran `swift /tmp/make_dmg_background_preview.swift /tmp/dmg-background-preview.png`.
+  - Verified output artifact via `sips` (`1520x960`).
+- Result:
+  - Complete for requested DMG artwork direction change; pending confirmation on next built DMG.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-22
+- Step: App icon Dock-size normalization + corner-roundness refinement
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_16x16.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_16x16@2x.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_32x32.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_32x32@2x.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_128x128.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_128x128@2x.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_256x256.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_256x256@2x.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_512x512.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_512x512@2x.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
+  - Visual behavior changes:
+    - reduced icon optical mass so Dock sizing appears less oversized on macOS 15.
+    - regenerated all icon slots from one adjusted 1024 source to avoid per-size drift.
+    - increased rounded-rectangle corner curvature after user feedback that border corners were too square.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-icon-fix CODE_SIGNING_ALLOWED=NO build` (pass).
+- Manual tests run:
+  - Launched `/tmp/taskagent-dd-icon-fix/Build/Products/Debug/ClickCherry.app`, confirmed startup via `pgrep`, then terminated app process.
+- Result:
+  - Complete for local icon-asset and enclosure-roundness update; pending user-side Dock visual confirmation.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-22
+- Step: Remove Input Monitoring from onboarding and settings permissions UI
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/PermissionsStepView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/OnboardingStateStore.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/OnboardingStateStoreTests.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
+  - UI behavior changes:
+    - removed `Input Monitoring` row from onboarding permissions.
+    - removed `Input Monitoring` row from settings permissions.
+    - onboarding `Continue` now depends on Screen Recording + Microphone + Accessibility only.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass; 89 tests).
+- Manual tests run:
+  - Launched `/tmp/taskagent-dd-ci-test/Build/Products/Debug/ClickCherry.app`, confirmed startup via `pgrep`, then terminated app process.
+- Result:
+  - Complete for requested UI/flow change.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-22
+- Step: Settings UI cleanup (remove temporary reset controls)
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
+  - UI behavior changes:
+    - removed the `Temporary Reset Toggle` section from Settings -> Model Setup.
+    - removed `Enable temporary full reset` toggle and `Run Temporary Reset (Clear Keys + Onboarding)` button.
+    - left `Start Over (Show Onboarding)` unchanged.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass; 89 tests).
+- Manual tests run:
+  - Launched `/tmp/taskagent-dd-ci-test/Build/Products/Debug/ClickCherry.app`, confirmed startup via `pgrep`, then terminated app process.
+- Result:
+  - Complete for requested temporary UI removal.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-22
 - Step: Runtime permission policy update + release preparation (Input Monitoring optional outside onboarding)
 - Changes made:
   - Updated:
@@ -143,132 +265,4 @@ description: Running implementation log of completed work, test evidence, blocke
   - In progress: code and automated validation complete; full runtime permission validation pending.
 - Issues/blockers:
   - Terminal-only environment cannot directly confirm System Settings privacy-pane list rendering.
-
-## Entry
-- Date: 2026-02-21
-- Step: Release artifact naming update (versioned DMG filename in workflow + docs alignment)
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`
-    - `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-  - Release workflow now emits and publishes versioned DMG names (`ClickCherry-macos-vMAJOR.MINOR.PATCH.dmg`) and release notes artifact line matches the versioned filename.
-  - Confirmed/retained platform constraint note: GitHub default source archives (`zip`/`tar.gz`) remain visible and cannot be removed by workflow uploads.
-- Automated tests run:
-  - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass).
-- Manual tests run:
-  - Pending next tag-based release run to verify final asset naming on release page.
-- Result:
-  - Complete (workflow/docs implementation + local validation), pending release-run confirmation.
-- Issues/blockers:
-  - None.
-
-## Entry
-- Date: 2026-02-21
-- Step: Permission policy correction (restore required native dialogs for registration reliability)
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/PermissionsStepView.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-  - Behavior change:
-    - re-enabled native request dialogs where needed for initial permission registration.
-    - retained first-click de-confliction so app does not auto-open Settings while native prompt is active.
-    - follow-up click opens target Settings pane when permission remains ungranted.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-required-dialogs test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
-- Manual tests run:
-  - Pending user-side DMG runtime validation for microphone list registration and granted-state reflection.
-- Result:
-  - Complete (implementation + targeted automated validation), pending runtime confirmation.
-- Issues/blockers:
-  - Existing machine-level stale TCC entries may require reset/re-grant to reflect corrected behavior.
-
-## Entry
-- Date: 2026-02-21
-- Step: Permission UX policy update (Settings-list only, no native popups on click)
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/OnboardingStateStore.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/PermissionsStepView.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/xcode_signing_setup.md`
-  - Applied user-requested behavior:
-    - permission-row clicks no longer call native prompt-triggering APIs.
-    - clicks now open target System Settings permission lists directly.
-    - onboarding refresh path uses passive status reads only.
-  - Updated helper copy to match the Settings-list-only flow.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-dialog-deconflict-build build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-dialogless-test test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
-- Manual tests run:
-  - Pending user-side DMG runtime validation:
-    - confirm no native modal prompt appears on permission-row click.
-    - confirm rows open System Settings and `ClickCherry` can be toggled there.
-- Result:
-  - Complete (implementation + automated validation), pending user runtime confirmation.
-- Issues/blockers:
-  - Terminal environment cannot assert live System Settings modal behavior directly.
-
-## Entry
-- Date: 2026-02-21
-- Step: DMG permission visibility follow-up (non-AX registration probes + stronger retry behavior)
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/PermissionsStepView.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-  - Root-cause mitigation implemented:
-    - increased per-permission settle timing, open retry delay, and retry count in `MacPermissionService`.
-    - added best-effort registration probes for Screen Recording, Microphone, and Input Monitoring before Settings navigation.
-    - added explicit retry guidance copy in onboarding/settings when permission rows are missing.
-  - Issue tracking updated:
-    - `OI-2026-02-21-015` status set to `Open` after follow-up user report and mitigation details updated.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-followup-build build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-followup-test test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
-- Manual tests run:
-  - Pending user-side DMG runtime verification from `/Applications` for all four required permissions.
-- Result:
-  - Complete (follow-up implementation + automated validation), pending DMG runtime confirmation.
-- Issues/blockers:
-  - Terminal environment cannot directly validate macOS privacy-list rendering state.
-
-## Entry
-- Date: 2026-02-21
-- Step: DMG permission-pane registration race mitigation (`Open Settings` reliability)
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/PermissionsStepView.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-  - Root-cause mitigation implemented:
-    - Added delayed privacy-pane open timing and one retry open in `MacPermissionService` after permission request calls to reduce TCC registration races.
-    - Removed duplicate permission request path in onboarding/settings permission-row actions (single request-open flow).
-    - Added `/Applications` guidance copy in onboarding/settings permissions UI for stable runtime identity/path.
-  - Added issue tracking entry:
-    - `OI-2026-02-21-015` in `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-dmg-fix-build-r2 build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-dmg-fix-test-r2 test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
-- Manual tests run:
-  - Pending user-side DMG runtime validation (app launched from `/Applications`) across all permission rows.
-- Result:
-  - Complete (implementation + automated validation), pending DMG runtime confirmation.
-- Issues/blockers:
-  - Terminal-only environment cannot validate System Settings list rendering directly.
 

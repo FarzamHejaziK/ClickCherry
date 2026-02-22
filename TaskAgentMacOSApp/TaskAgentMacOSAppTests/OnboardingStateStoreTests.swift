@@ -93,8 +93,7 @@ struct OnboardingStateStoreTests {
             currentStep: .permissionsPreflight,
             hasScreenRecordingPermission: true,
             hasMicrophonePermission: true,
-            hasAccessibilityPermission: false,
-            hasInputMonitoringPermission: true
+            hasAccessibilityPermission: false
         )
         #expect(!store.canContinueCurrentStep)
 
@@ -114,8 +113,7 @@ struct OnboardingStateStoreTests {
             statuses: [
                 .screenRecording: .granted,
                 .microphone: .granted,
-                .accessibility: .granted,
-                .inputMonitoring: .granted
+                .accessibility: .granted
             ]
         )
 
@@ -124,7 +122,6 @@ struct OnboardingStateStoreTests {
         store.refreshPermissionStatus(for: .screenRecording)
         store.refreshPermissionStatus(for: .microphone)
         store.refreshPermissionStatus(for: .accessibility)
-        store.refreshPermissionStatus(for: .inputMonitoring)
 
         #expect(store.screenRecordingStatus == .granted)
         #expect(store.accessibilityStatus == .granted)

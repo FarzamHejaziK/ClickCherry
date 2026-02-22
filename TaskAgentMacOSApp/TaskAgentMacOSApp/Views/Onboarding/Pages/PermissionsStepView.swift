@@ -83,17 +83,6 @@ private struct PermissionsPanelView: View {
                     onboardingStateStore.openPermissionSettings(for: .accessibility)
                 }
             )
-
-            permissionDivider
-
-            PermissionRowView(
-                title: "Input Monitoring",
-                status: onboardingStateStore.inputMonitoringStatus,
-                footnote: "Needed to stop the agent with Escape.",
-                onOpenSettings: {
-                    onboardingStateStore.openPermissionSettings(for: .inputMonitoring)
-                }
-            )
         }
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))

@@ -4,6 +4,93 @@ description: Short, continuously updated plan of the immediate next implementati
 
 # Next Steps
 
+1. Step: Publish `v0.1.29` GitHub release (in progress).
+2. Why now: User requested creating a new release with current UI/installer/icon updates.
+3. Code tasks:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/CHANGELOG.md` with `0.1.29` release notes dated 2026-02-22.
+  - Prepare release commit + `v0.1.29` tag push to trigger `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`.
+4. Automated tests:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-release-preflight CODE_SIGNING_ALLOWED=NO build` (pass on 2026-02-22).
+5. Manual tests:
+  - Pending release workflow completion check on GitHub Actions.
+6. Exit criteria:
+  - Tag `v0.1.29` is pushed and GitHub Release workflow starts successfully.
+
+1. Step: Ship DMG background without instruction text and with icon-based install arrow (in progress).
+2. Why now: User requested removing text labels from DMG installer artwork and replacing the typed `>` with a cleaner icon.
+3. Code tasks:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`:
+    - removed DMG background title/subtitle text drawing.
+    - replaced text chevron with symbol-rendered `chevron.right.circle.fill` and subtle glow.
+    - preserved existing icon coordinates and DMG layout mechanics.
+4. Automated tests:
+  - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass on 2026-02-22).
+5. Manual tests:
+  - `awk '/cat > "\\$DMG_BG_SCRIPT" <<\\x27SWIFT\\x27/{flag=1;next}/^          SWIFT$/{flag=0}flag' .github/workflows/release.yml > /tmp/make_dmg_background_preview.swift`
+  - `swift /tmp/make_dmg_background_preview.swift /tmp/dmg-background-preview.png`
+  - `sips -g pixelWidth -g pixelHeight /tmp/dmg-background-preview.png` (generated successfully; `1520x960`).
+  - Pending user visual confirmation on next DMG artifact.
+6. Exit criteria:
+  - User confirms the released DMG background has no text and uses the new icon-based direction cue.
+
+1. Step: Validate Dock icon optical-size normalization across macOS 15 and macOS 26 (in progress).
+2. Why now: User reported the app icon appears larger than neighboring Dock icons on macOS 15 while looking normal on macOS 26.
+3. Code tasks:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_16x16.png`.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_16x16@2x.png`.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_32x32.png`.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_32x32@2x.png`.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_128x128.png`.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_128x128@2x.png`.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_256x256.png`.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_256x256@2x.png`.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_512x512.png`.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_512x512@2x.png`.
+  - Regenerated all slots from a single adjusted 1024 master to keep per-size rendering consistent.
+  - Refined rounded-rectangle alpha mask to increase corner roundness based on user visual feedback.
+4. Automated tests:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-icon-fix CODE_SIGNING_ALLOWED=NO build` (pass on 2026-02-22).
+5. Manual tests:
+  - Launched `/tmp/taskagent-dd-icon-fix/Build/Products/Debug/ClickCherry.app`, confirmed process startup via `pgrep`, then terminated app.
+  - Pending user-side Dock visual confirmation on both macOS 15 and macOS 26.
+6. Exit criteria:
+  - User confirms Dock icon size appears visually aligned with neighboring apps on macOS 15 and remains acceptable on macOS 26.
+
+1. Step: Keep Input Monitoring hidden in onboarding/settings permissions UI unless reintroduced intentionally (in progress).
+2. Why now: User requested removing Input Monitoring permission from onboarding and settings for now.
+3. Code tasks:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/PermissionsStepView.swift`:
+    - removed `Input Monitoring` row from onboarding permissions panel.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`:
+    - removed `Input Monitoring` row from settings permissions panel.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/OnboardingStateStore.swift`:
+    - removed Input Monitoring from onboarding required-permissions gating.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/OnboardingStateStoreTests.swift`:
+    - aligned permission-step expectations with new required set.
+4. Automated tests:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass on 2026-02-22; 89 tests).
+5. Manual tests:
+  - Launched `/tmp/taskagent-dd-ci-test/Build/Products/Debug/ClickCherry.app`, confirmed startup, then terminated app.
+  - Pending user-side visual confirmation that onboarding/settings no longer show Input Monitoring rows.
+6. Exit criteria:
+  - User confirms Input Monitoring is absent in onboarding/settings and onboarding continues when Screen Recording, Microphone, and Accessibility are granted.
+
+1. Step: Keep temporary Settings reset controls removed pending future re-introduction decision (in progress).
+2. Why now: The temporary reset toggle/action in `Settings > Model Setup` was developer-only and was requested to be removed from current UI.
+3. Code tasks:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`:
+    - removed `Temporary Reset Toggle` section.
+    - removed `Enable temporary full reset` toggle state binding and UI control.
+    - removed `Run Temporary Reset (Clear Keys + Onboarding)` UI action.
+    - preserved `Start Over (Show Onboarding)` behavior.
+4. Automated tests:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass on 2026-02-22; 89 tests).
+5. Manual tests:
+  - Launched `/tmp/taskagent-dd-ci-test/Build/Products/Debug/ClickCherry.app`, confirmed process startup, then terminated app.
+  - Pending user-side UI confirmation that Settings no longer shows the temporary reset controls.
+6. Exit criteria:
+  - User confirms the temporary reset controls remain hidden in Settings and no regression is observed in model setup view.
+
 1. Step: Publish permission-stability release and validate on two Macs (in progress).
 2. Why now: Recent fixes removed Input Monitoring as a runtime blocker and reduced Screen Recording prompt-loop friction; release validation is needed on real DMG installs.
 3. Code tasks:

@@ -5270,3 +5270,131 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - Complete (implementation + targeted automated validation), pending runtime confirmation.
 - Issues/blockers:
   - macOS may still require manual revocation in some policy-managed environments.
+
+## Entry
+- Date: 2026-02-21
+- Step: DMG permission-pane registration race mitigation (`Open Settings` reliability)
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/PermissionsStepView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+  - Root-cause mitigation implemented:
+    - Added delayed privacy-pane open timing and one retry open in `MacPermissionService` after permission request calls to reduce TCC registration races.
+    - Removed duplicate permission request path in onboarding/settings permission-row actions (single request-open flow).
+    - Added `/Applications` guidance copy in onboarding/settings permissions UI for stable runtime identity/path.
+  - Added issue tracking entry:
+    - `OI-2026-02-21-015` in `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-dmg-fix-build-r2 build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-dmg-fix-test-r2 test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
+- Manual tests run:
+  - Pending user-side DMG runtime validation (app launched from `/Applications`) across all permission rows.
+- Result:
+  - Complete (implementation + automated validation), pending DMG runtime confirmation.
+- Issues/blockers:
+  - Terminal-only environment cannot validate System Settings list rendering directly.
+
+## Entry
+- Date: 2026-02-21
+- Step: DMG permission visibility follow-up (non-AX registration probes + stronger retry behavior)
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/PermissionsStepView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+  - Root-cause mitigation implemented:
+    - increased per-permission settle timing, open retry delay, and retry count in `MacPermissionService`.
+    - added best-effort registration probes for Screen Recording, Microphone, and Input Monitoring before Settings navigation.
+    - added explicit retry guidance copy in onboarding/settings when permission rows are missing.
+  - Issue tracking updated:
+    - `OI-2026-02-21-015` status set to `Open` after follow-up user report and mitigation details updated.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-followup-build build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-followup-test test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
+- Manual tests run:
+  - Pending user-side DMG runtime verification from `/Applications` for all four required permissions.
+- Result:
+  - Complete (follow-up implementation + automated validation), pending DMG runtime confirmation.
+- Issues/blockers:
+  - Terminal environment cannot directly validate macOS privacy-list rendering state.
+
+## Entry
+- Date: 2026-02-21
+- Step: Permission UX policy update (Settings-list only, no native popups on click)
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/OnboardingStateStore.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/PermissionsStepView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/xcode_signing_setup.md`
+  - Applied user-requested behavior:
+    - permission-row clicks no longer call native prompt-triggering APIs.
+    - clicks now open target System Settings permission lists directly.
+    - onboarding refresh path uses passive status reads only.
+  - Updated helper copy to match the Settings-list-only flow.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-dialog-deconflict-build build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-dialogless-test test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
+- Manual tests run:
+  - Pending user-side DMG runtime validation:
+    - confirm no native modal prompt appears on permission-row click.
+    - confirm rows open System Settings and `ClickCherry` can be toggled there.
+- Result:
+  - Complete (implementation + automated validation), pending user runtime confirmation.
+- Issues/blockers:
+  - Terminal environment cannot assert live System Settings modal behavior directly.
+
+## Entry
+- Date: 2026-02-21
+- Step: Permission policy correction (restore required native dialogs for registration reliability)
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/PermissionsStepView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+  - Behavior change:
+    - re-enabled native request dialogs where needed for initial permission registration.
+    - retained first-click de-confliction so app does not auto-open Settings while native prompt is active.
+    - follow-up click opens target Settings pane when permission remains ungranted.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-required-dialogs test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
+- Manual tests run:
+  - Pending user-side DMG runtime validation for microphone list registration and granted-state reflection.
+- Result:
+  - Complete (implementation + targeted automated validation), pending runtime confirmation.
+- Issues/blockers:
+  - Existing machine-level stale TCC entries may require reset/re-grant to reflect corrected behavior.
+
+## Entry
+- Date: 2026-02-21
+- Step: Release artifact naming update (versioned DMG filename in workflow + docs alignment)
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+  - Release workflow now emits and publishes versioned DMG names (`ClickCherry-macos-vMAJOR.MINOR.PATCH.dmg`) and release notes artifact line matches the versioned filename.
+  - Confirmed/retained platform constraint note: GitHub default source archives (`zip`/`tar.gz`) remain visible and cannot be removed by workflow uploads.
+- Automated tests run:
+  - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass).
+- Manual tests run:
+  - Pending next tag-based release run to verify final asset naming on release page.
+- Result:
+  - Complete (workflow/docs implementation + local validation), pending release-run confirmation.
+- Issues/blockers:
+  - None.

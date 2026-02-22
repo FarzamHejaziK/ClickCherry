@@ -78,7 +78,6 @@ final class OnboardingStateStore {
         screenRecordingStatus == .granted
             && microphoneStatus == .granted
             && accessibilityStatus == .granted
-            && inputMonitoringStatus == .granted
     }
 
     var canContinueCurrentStep: Bool {

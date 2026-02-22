@@ -27,6 +27,113 @@ description: Canonical log for UI/UX plans, decisions, and implementation alignm
 
 ## Entry
 - Date: 2026-02-22
+- Area: Release DMG visual polish (icon-only install direction)
+- Change Summary:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`
+  - Visual updates:
+    - removed DMG background text overlays (`Drag to install`, `Drop the app into Applications`).
+    - replaced plain typed `>` with a symbol-based chevron icon (`chevron.right.circle.fill`) and subtle glow treatment.
+    - kept app and Applications icon placement unchanged.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` polish/release quality goals by improving first-run install surface aesthetics without changing install mechanics.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` emphasis on premium, intentional visual language and reduced noisy copy in guided surfaces.
+- Validation:
+  - Automated tests:
+    - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass on 2026-02-22).
+  - Manual tests:
+    - extracted and executed embedded DMG background Swift script from workflow:
+      - `awk '/cat > "\\$DMG_BG_SCRIPT" <<\\x27SWIFT\\x27/{flag=1;next}/^          SWIFT$/{flag=0}flag' .github/workflows/release.yml > /tmp/make_dmg_background_preview.swift`
+      - `swift /tmp/make_dmg_background_preview.swift /tmp/dmg-background-preview.png`
+      - verified output artifact exists and dimensions are valid via `sips` (`1520x960`).
+- Notes:
+  - User requested icon-only direction cue and no instructional text.
+
+## Entry
+- Date: 2026-02-22
+- Area: App Dock icon optical-size normalization (macOS 15 parity)
+- Change Summary:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_16x16.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_16x16@2x.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_32x32.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_32x32@2x.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_128x128.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_128x128@2x.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_256x256.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_256x256@2x.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_512x512.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_512x512@2x.png`
+  - UI/visual updates:
+    - reduced icon optical mass in the 1024 master and regenerated all size slots from the updated master for consistent Dock rendering.
+    - preserved full-bleed enclosure and corrected blur-matte corner handling to avoid halo artifacts.
+    - increased enclosure corner roundness after user review feedback on border curvature.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` onboarding/main-shell polish objectives by improving brand/icon visual consistency across supported macOS versions.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` visual consistency goals by keeping one canonical icon source and consistent generated variants.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-icon-fix CODE_SIGNING_ALLOWED=NO build` (pass on 2026-02-22).
+  - Manual tests:
+    - Launched `/tmp/taskagent-dd-icon-fix/Build/Products/Debug/ClickCherry.app`, confirmed startup via `pgrep`, then terminated app.
+- Notes:
+  - User-reported issue: icon appeared visually larger than neighboring Dock icons on macOS 15.
+
+## Entry
+- Date: 2026-02-22
+- Area: Permissions UI simplification (hide Input Monitoring in onboarding/settings)
+- Change Summary:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/PermissionsStepView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/OnboardingStateStore.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/OnboardingStateStoreTests.swift`
+  - UI/flow updates:
+    - Removed `Input Monitoring` permission row from onboarding permissions panel.
+    - Removed `Input Monitoring` permission row from settings permissions panel.
+    - Updated onboarding permission gating so `Continue` depends on Screen Recording, Microphone, and Accessibility only.
+  - Scope note:
+    - Runtime permission service support for Input Monitoring remains intact; this change only removes it from onboarding/settings surfaces.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` setup-flow simplification by reducing non-critical onboarding/settings permission friction.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` usability goal of predictable setup progression while preserving required runtime safety gates.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass on 2026-02-22; 89 tests).
+  - Manual tests:
+    - Launched `/tmp/taskagent-dd-ci-test/Build/Products/Debug/ClickCherry.app`, confirmed startup via `pgrep`, then terminated app.
+- Notes:
+  - Requested directly by user as a temporary UI simplification.
+
+## Entry
+- Date: 2026-02-22
+- Area: Settings cleanup (temporary reset controls hidden)
+- Change Summary:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
+  - UI updates:
+    - Removed the temporary developer reset surface from `Settings > Model Setup`:
+      - `Temporary Reset Toggle` heading/description.
+      - `Enable temporary full reset` toggle.
+      - `Run Temporary Reset (Clear Keys + Onboarding)` button.
+    - Kept `Start Over (Show Onboarding)` unchanged.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` setup clarity objective by reducing temporary/developer-only controls from the standard settings path.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` requirement for predictable, user-facing setup actions in Settings.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass on 2026-02-22; 89 tests).
+  - Manual tests:
+    - Launched `/tmp/taskagent-dd-ci-test/Build/Products/Debug/ClickCherry.app`, confirmed app process startup via `pgrep`, then terminated the debug app.
+- Notes:
+  - This is an intentional temporary removal from UI only; no provider-key or onboarding persistence behavior was changed in this step.
+
+## Entry
+- Date: 2026-02-22
 - Area: Permission-runtime friction reduction (Input Monitoring optional outside onboarding)
 - Change Summary:
   - Updated:

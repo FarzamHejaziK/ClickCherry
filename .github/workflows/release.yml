@@ -219,26 +219,26 @@ jobs:
           ])!
           topGlow.draw(in: NSRect(x: 0, y: 320, width: canvasSize.width, height: 160), angle: -90)
 
-          let titleAttrs: [NSAttributedString.Key: Any] = [
-              .font: NSFont.systemFont(ofSize: 36, weight: .bold),
-              .foregroundColor: NSColor.white
-          ]
-          NSAttributedString(string: "Drag to install", attributes: titleAttrs)
-              .draw(at: NSPoint(x: 250, y: 324))
+          let chevronCenter = NSPoint(x: 380, y: 214)
+          let glowRect = NSRect(x: chevronCenter.x - 58, y: chevronCenter.y - 58, width: 116, height: 116)
+          let glowPath = NSBezierPath(ovalIn: glowRect)
+          NSColor(calibratedWhite: 1.0, alpha: 0.08).setFill()
+          glowPath.fill()
 
-          let subtitleAttrs: [NSAttributedString.Key: Any] = [
-              .font: NSFont.systemFont(ofSize: 18, weight: .medium),
-              .foregroundColor: NSColor(calibratedWhite: 1.0, alpha: 0.86)
-          ]
-          NSAttributedString(string: "Drop the app into Applications", attributes: subtitleAttrs)
-              .draw(at: NSPoint(x: 250, y: 282))
-
-          let chevronAttrs: [NSAttributedString.Key: Any] = [
-              .font: NSFont.systemFont(ofSize: 76, weight: .bold),
-              .foregroundColor: NSColor(calibratedWhite: 1.0, alpha: 0.78)
-          ]
-          NSAttributedString(string: ">", attributes: chevronAttrs)
-              .draw(at: NSPoint(x: 366, y: 172))
+          if let symbol = NSImage(
+              systemSymbolName: "chevron.right.circle.fill",
+              accessibilityDescription: nil
+          ) {
+              let config = NSImage.SymbolConfiguration(pointSize: 88, weight: .semibold)
+              let configured = symbol.withSymbolConfiguration(config) ?? symbol
+              let symbolRect = NSRect(x: chevronCenter.x - 44, y: chevronCenter.y - 44, width: 88, height: 88)
+              configured.draw(
+                  in: symbolRect,
+                  from: .zero,
+                  operation: .sourceOver,
+                  fraction: 0.92
+              )
+          }
 
           image.unlockFocus()
 

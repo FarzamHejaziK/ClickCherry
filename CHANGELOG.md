@@ -9,6 +9,17 @@ The format is based on Keep a Changelog and this project uses Semantic Versionin
 ### Added
 - Open-source governance, contribution, and release scaffolding.
 
+## [0.1.29] - 2026-02-22
+
+### Changed
+- DMG installer artwork now uses a cleaner icon-only direction cue:
+  - removed instructional text overlays from the background.
+  - replaced typed `>` with a symbol-based chevron icon.
+- Onboarding Permissions and Settings Permissions no longer show Input Monitoring.
+- Onboarding permission gating now requires Screen Recording, Microphone, and Accessibility only.
+- Removed temporary Settings reset controls from Model Setup (`Enable temporary full reset` and `Run Temporary Reset`).
+- Refined app icon asset sizing/optical balance for better Dock visual parity.
+
 ## [0.1.25] - 2026-02-22
 
 ### Changed
