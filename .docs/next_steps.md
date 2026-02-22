@@ -4,6 +4,28 @@ description: Short, continuously updated plan of the immediate next implementati
 
 # Next Steps
 
+1. Step: Validate bounded post-click permission sync behavior on two macOS devices using GitHub release build (in progress).
+2. Why now: User reported that permissions can be granted in System Settings while onboarding still shows `Not Granted`, with repeated/sticky Screen Recording dialogs and missing Input Monitoring row.
+3. Code tasks:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`:
+    - removed passive screen-recording probe churn from polling path.
+    - added bounded Screen Recording recheck probes after user click (`1.2s`, `3.5s`, `8.0s`).
+    - added temporary Screen Recording grant cache (`180s`) for in-process status convergence.
+    - increased Input Monitoring registration keepalive to `30s` and added temporary grant cache (`180s`).
+    - kept UI copy unchanged.
+4. Automated tests:
+  - `xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Debug build` (pass on 2026-02-22).
+  - `xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Debug test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass on 2026-02-22).
+5. Manual tests:
+  - Local smoke: launched `/Users/farzamh/Library/Developer/Xcode/DerivedData/TaskAgentMacOSApp-hcmwhqcntcyxesavzhrufsmixgfu/Build/Products/Debug/ClickCherry.app`, confirmed process startup, terminated debug instance.
+  - Pending user-side two-device runtime checks from GitHub release DMG:
+    - Screen Recording: prompt does not loop; granted state flips in-app.
+    - Microphone: click is deterministic (no no-op path).
+    - Accessibility: remains stable.
+    - Input Monitoring: row appears and can be granted.
+6. Exit criteria:
+  - Two-device runtime validation confirms all four permission rows register and app-side statuses converge without repeated prompt loops.
+
 1. Step: Validate two-device permission registration behavior after deeper TCC registration fixes (in progress).
 2. Why now: User reproduced mismatched behavior across macOS 26 and macOS 15, including missing privacy-list rows and a microphone click no-op.
 3. Code tasks:

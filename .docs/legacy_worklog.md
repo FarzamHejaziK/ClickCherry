@@ -5202,3 +5202,24 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - Complete (implementation + targeted automated validation), pending runtime confirmation.
 - Issues/blockers:
   - None.
+
+## Entry
+- Date: 2026-02-21
+- Step: Multi-display app-launch root-cause fix (`open_app`/`open_url` post-launch relocation)
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/DesktopActionExecutor.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+  - Root-cause mitigation implemented:
+    - `SystemDesktopActionExecutor.openApp` now captures selected-display context from anchored pointer location and, after launch/activation, repositions the target app's front window onto that display via Accessibility window APIs.
+    - `SystemDesktopActionExecutor.openURL` now applies the same relocation pass to the frontmost regular app after URL open so browser routing aligns to selected run display.
+    - Relocation is best-effort and non-blocking: launch/open still succeeds if window mutation is unavailable for a given app/window state.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - Pending user-side multi-display runtime validation (requires physical dual-display interaction path).
+- Result:
+  - Complete (implementation + full unit-test suite pass), pending runtime confirmation.
+- Issues/blockers:
+  - None in build/test; runtime verification still required for physical display behavior.

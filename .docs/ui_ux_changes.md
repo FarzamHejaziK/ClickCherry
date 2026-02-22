@@ -27,6 +27,31 @@ description: Canonical log for UI/UX plans, decisions, and implementation alignm
 
 ## Entry
 - Date: 2026-02-22
+- Area: Permission post-click stabilization (dialog loop reduction + granted-state sync)
+- Change Summary:
+  - Updated permission-action internals only:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`
+  - Behavior updates:
+    - stopped passive screen-recording probe churn during status polling to reduce repeated/sticky prompt behavior.
+    - introduced bounded post-click Screen Recording recheck probes (`1.2s`, `3.5s`, `8.0s`) with temporary granted cache (`180s`) so app status can flip to granted without requiring immediate relaunch.
+    - introduced longer Input Monitoring registration keepalive (`30s`) with temporary granted cache (`180s`) to improve row registration/status reflection timing.
+    - preserved existing UI text/copy (no visible label/content changes).
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` setup reliability goals by targeting post-click permission-state convergence and reducing noisy prompt loops.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` section 8 by keeping permission remediation deterministic and minimizing confusing repeated modal behavior.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Debug build` (pass on 2026-02-22).
+    - `xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Debug test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass on 2026-02-22).
+  - Manual tests:
+    - launched `/Users/farzamh/Library/Developer/Xcode/DerivedData/TaskAgentMacOSApp-hcmwhqcntcyxesavzhrufsmixgfu/Build/Products/Debug/ClickCherry.app`, confirmed startup (`pgrep`), then terminated debug instance.
+    - pending user-side two-device permission-pane runtime validation from GitHub release DMG.
+- Notes:
+  - This increment changes only what happens after the user clicks permission actions.
+
+## Entry
+- Date: 2026-02-22
 - Area: Permission action reliability across macOS versions (no UI copy changes)
 - Change Summary:
   - Updated permission-action internals only:

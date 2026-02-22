@@ -8,6 +8,31 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-22
+- Step: Permission status convergence hardening (granted-state capture + prompt-loop reduction)
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+  - Root-cause mitigation implemented:
+    - removed passive screen-recording probe churn from polling path.
+    - added bounded post-click Screen Recording recheck probes (`1.2s`, `3.5s`, `8.0s`) with temporary grant cache (`180s`).
+    - increased Input Monitoring registration keepalive to `30s` and added temporary grant cache (`180s`).
+    - preserved all existing onboarding/settings permission copy (no UI text changes).
+- Automated tests run:
+  - `xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Debug build` (pass).
+  - `xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Debug test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
+- Manual tests run:
+  - Launched `/Users/farzamh/Library/Developer/Xcode/DerivedData/TaskAgentMacOSApp-hcmwhqcntcyxesavzhrufsmixgfu/Build/Products/Debug/ClickCherry.app`, confirmed process startup with `pgrep`, then terminated debug instance.
+  - Pending user-side two-device permission runtime validation from GitHub release DMG.
+- Result:
+  - Complete for implementation + local validation; pending cross-device runtime confirmation.
+- Issues/blockers:
+  - Terminal environment cannot directly verify live System Settings row rendering and toggle persistence.
+
+## Entry
+- Date: 2026-02-22
 - Step: Two-device permission registration follow-up fixes (no UI text changes)
 - Changes made:
   - Updated:
@@ -241,23 +266,3 @@ description: Running implementation log of completed work, test evidence, blocke
 - Issues/blockers:
   - macOS permission grants are OS-managed and cannot be revoked programmatically from this app.
 
-## Entry
-- Date: 2026-02-21
-- Step: Multi-display app-launch root-cause fix (`open_app`/`open_url` post-launch relocation)
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/DesktopActionExecutor.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-  - Root-cause mitigation implemented:
-    - `SystemDesktopActionExecutor.openApp` now captures selected-display context from anchored pointer location and, after launch/activation, repositions the target app's front window onto that display via Accessibility window APIs.
-    - `SystemDesktopActionExecutor.openURL` now applies the same relocation pass to the frontmost regular app after URL open so browser routing aligns to selected run display.
-    - Relocation is best-effort and non-blocking: launch/open still succeeds if window mutation is unavailable for a given app/window state.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass).
-- Manual tests run:
-  - Pending user-side multi-display runtime validation (requires physical dual-display interaction path).
-- Result:
-  - Complete (implementation + full unit-test suite pass), pending runtime confirmation.
-- Issues/blockers:
-  - None in build/test; runtime verification still required for physical display behavior.

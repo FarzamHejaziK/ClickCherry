@@ -56,6 +56,23 @@ final class MacPermissionService: PermissionService {
         static let retryCount = 2
     }
 
+    private enum ProbeTiming {
+        static let screenRecordingGrantedCacheTTL: TimeInterval = 180.0
+        static let screenRecordingRecheckDelays: [TimeInterval] = [1.2, 3.5, 8.0]
+        static let inputMonitoringGrantedCacheTTL: TimeInterval = 180.0
+        static let inputMonitoringRegistrationHold: TimeInterval = 30.0
+    }
+
+    private let stateLock = NSLock()
+    private var requestedInSession: Set<AppPermission> = []
+
+    private var screenRecordingProbeCycleID: UInt64 = 0
+    private var screenRecordingProbeGrantedAt: Date?
+
+    private var inputMonitoringProbeGrantedAt: Date?
+    private var inputMonitoringGlobalMonitor: Any?
+    private var inputMonitoringRegistrationStopWorkItem: DispatchWorkItem?
+
     func openSystemSettings(for permission: AppPermission) {
         for candidate in settingsURLStrings(for: permission) {
             guard let url = URL(string: candidate) else {
@@ -73,13 +90,31 @@ final class MacPermissionService: PermissionService {
     func currentStatus(for permission: AppPermission) -> PermissionGrantStatus {
         switch permission {
         case .screenRecording:
-            return CGPreflightScreenCaptureAccess() ? .granted : .notGranted
+            if CGPreflightScreenCaptureAccess() {
+                recordScreenRecordingProbeResult(granted: true)
+                invalidateScreenRecordingProbeCycle()
+                clearRequestedInSession(.screenRecording)
+                return .granted
+            }
+            if hasRecentScreenRecordingProbeGrant() {
+                return .granted
+            }
+            return .notGranted
         case .microphone:
             return microphoneStatus()
         case .accessibility:
             return AXIsProcessTrusted() ? .granted : .notGranted
         case .inputMonitoring:
-            return CGPreflightListenEventAccess() ? .granted : .notGranted
+            if CGPreflightListenEventAccess() {
+                recordInputMonitoringProbeResult(granted: true)
+                stopInputMonitoringRegistrationKeepAlive()
+                clearRequestedInSession(.inputMonitoring)
+                return .granted
+            }
+            if hasRecentInputMonitoringProbeGrant() {
+                return .granted
+            }
+            return .notGranted
         }
     }
 
@@ -87,10 +122,13 @@ final class MacPermissionService: PermissionService {
         switch permission {
         case .screenRecording:
             if CGPreflightScreenCaptureAccess() {
+                invalidateScreenRecordingProbeCycle()
+                clearRequestedInSession(.screenRecording)
                 return .granted
             }
+            markRequestedInSession(.screenRecording)
             _ = CGRequestScreenCaptureAccess()
-            probeScreenRecordingCaptureAsync()
+            scheduleScreenRecordingRecheckProbes()
             return CGPreflightScreenCaptureAccess() ? .granted : .notGranted
         case .microphone:
             let status = AVCaptureDevice.authorizationStatus(for: .audio)
@@ -105,18 +143,24 @@ final class MacPermissionService: PermissionService {
             return microphoneStatus()
         case .accessibility:
             if AXIsProcessTrusted() {
+                clearRequestedInSession(.accessibility)
                 return .granted
             }
+            markRequestedInSession(.accessibility)
             let promptKey = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
             let options = [promptKey: true] as CFDictionary
             _ = AXIsProcessTrustedWithOptions(options)
             return AXIsProcessTrusted() ? .granted : .notGranted
         case .inputMonitoring:
             if CGPreflightListenEventAccess() {
+                recordInputMonitoringProbeResult(granted: true)
+                stopInputMonitoringRegistrationKeepAlive()
+                clearRequestedInSession(.inputMonitoring)
                 return .granted
             }
+            markRequestedInSession(.inputMonitoring)
             _ = CGRequestListenEventAccess()
-            probeInputMonitoringRegistrationBurst()
+            startInputMonitoringRegistrationKeepAlive(duration: ProbeTiming.inputMonitoringRegistrationHold)
             return CGPreflightListenEventAccess() ? .granted : .notGranted
         }
     }
@@ -127,10 +171,12 @@ final class MacPermissionService: PermissionService {
             let microphoneAuthorizationStatus = AVCaptureDevice.authorizationStatus(for: .audio)
             if microphoneAuthorizationStatus == .authorized {
                 probeMicrophoneCaptureStackAsync()
+                clearRequestedInSession(.microphone)
                 openSystemSettings(for: permission)
                 return
             }
             if microphoneAuthorizationStatus == .notDetermined {
+                markRequestedInSession(.microphone)
                 AVCaptureDevice.requestAccess(for: .audio) { granted in
                     if granted {
                         self.probeMicrophoneCaptureStackAsync()
@@ -145,11 +191,18 @@ final class MacPermissionService: PermissionService {
             )
         case .inputMonitoring:
             if currentStatus(for: permission) == .granted {
+                recordInputMonitoringProbeResult(granted: true)
+                clearRequestedInSession(.inputMonitoring)
                 openSystemSettings(for: permission)
                 return
             }
-            _ = requestAccessIfNeeded(for: permission)
+            if !hasRequestedInSession(.inputMonitoring) {
+                _ = requestAccessIfNeeded(for: permission)
+            } else {
+                startInputMonitoringRegistrationKeepAlive(duration: ProbeTiming.inputMonitoringRegistrationHold)
+            }
             if currentStatus(for: permission) == .granted {
+                clearRequestedInSession(.inputMonitoring)
                 openSystemSettings(for: permission)
                 return
             }
@@ -159,11 +212,19 @@ final class MacPermissionService: PermissionService {
             )
         case .screenRecording:
             if currentStatus(for: permission) == .granted {
+                invalidateScreenRecordingProbeCycle()
+                clearRequestedInSession(.screenRecording)
                 openSystemSettings(for: permission)
                 return
             }
-            _ = requestAccessIfNeeded(for: permission)
+            if !hasRequestedInSession(.screenRecording) {
+                _ = requestAccessIfNeeded(for: permission)
+            } else {
+                scheduleScreenRecordingRecheckProbes()
+            }
             if currentStatus(for: permission) == .granted {
+                invalidateScreenRecordingProbeCycle()
+                clearRequestedInSession(.screenRecording)
                 openSystemSettings(for: permission)
                 return
             }
@@ -173,11 +234,15 @@ final class MacPermissionService: PermissionService {
             )
         case .accessibility:
             if currentStatus(for: permission) == .granted {
+                clearRequestedInSession(.accessibility)
                 openSystemSettings(for: permission)
                 return
             }
-            _ = requestAccessIfNeeded(for: permission)
+            if !hasRequestedInSession(.accessibility) {
+                _ = requestAccessIfNeeded(for: permission)
+            }
             if currentStatus(for: permission) == .granted {
+                clearRequestedInSession(.accessibility)
                 openSystemSettings(for: permission)
                 return
             }
@@ -290,16 +355,153 @@ final class MacPermissionService: PermissionService {
         }
     }
 
-    private func probeInputMonitoringRegistrationBurst() {
-        _ = probeInputMonitoringEventTap(duration: 1.2)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-            _ = self.probeInputMonitoringEventTap(duration: 1.2)
+    private func markRequestedInSession(_ permission: AppPermission) {
+        stateLock.lock()
+        requestedInSession.insert(permission)
+        stateLock.unlock()
+    }
+
+    private func clearRequestedInSession(_ permission: AppPermission) {
+        stateLock.lock()
+        requestedInSession.remove(permission)
+        stateLock.unlock()
+    }
+
+    private func hasRequestedInSession(_ permission: AppPermission) -> Bool {
+        stateLock.lock()
+        let requested = requestedInSession.contains(permission)
+        stateLock.unlock()
+        return requested
+    }
+
+    private func hasRecentScreenRecordingProbeGrant() -> Bool {
+        stateLock.lock()
+        let grantedAt = screenRecordingProbeGrantedAt
+        stateLock.unlock()
+        guard let grantedAt else {
+            return false
+        }
+        return Date().timeIntervalSince(grantedAt) <= ProbeTiming.screenRecordingGrantedCacheTTL
+    }
+
+    private func hasRecentInputMonitoringProbeGrant() -> Bool {
+        stateLock.lock()
+        let grantedAt = inputMonitoringProbeGrantedAt
+        stateLock.unlock()
+        guard let grantedAt else {
+            return false
+        }
+        return Date().timeIntervalSince(grantedAt) <= ProbeTiming.inputMonitoringGrantedCacheTTL
+    }
+
+    private func recordScreenRecordingProbeResult(granted: Bool) {
+        stateLock.lock()
+        if granted {
+            screenRecordingProbeGrantedAt = Date()
+        } else {
+            screenRecordingProbeGrantedAt = nil
+        }
+        stateLock.unlock()
+    }
+
+    private func recordInputMonitoringProbeResult(granted: Bool) {
+        stateLock.lock()
+        if granted {
+            inputMonitoringProbeGrantedAt = Date()
+        } else {
+            inputMonitoringProbeGrantedAt = nil
+        }
+        stateLock.unlock()
+    }
+
+    private func invalidateScreenRecordingProbeCycle() {
+        stateLock.lock()
+        screenRecordingProbeCycleID &+= 1
+        stateLock.unlock()
+    }
+
+    private func currentScreenRecordingProbeCycleID() -> UInt64 {
+        stateLock.lock()
+        let cycleID = screenRecordingProbeCycleID
+        stateLock.unlock()
+        return cycleID
+    }
+
+    private func scheduleScreenRecordingRecheckProbes() {
+        invalidateScreenRecordingProbeCycle()
+        let cycleID = currentScreenRecordingProbeCycleID()
+        for delay in ProbeTiming.screenRecordingRecheckDelays {
+            DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + delay) { [weak self] in
+                guard let self else {
+                    return
+                }
+                self.probeScreenRecordingCaptureAsync(expectedCycleID: cycleID)
+            }
+        }
+    }
+
+    private func finishScreenRecordingProbe(granted: Bool, expectedCycleID: UInt64?) {
+        if let expectedCycleID, expectedCycleID != currentScreenRecordingProbeCycleID() {
+            return
+        }
+        if granted {
+            recordScreenRecordingProbeResult(granted: true)
+            clearRequestedInSession(.screenRecording)
+            invalidateScreenRecordingProbeCycle()
+        }
+    }
+
+    private func startInputMonitoringRegistrationKeepAlive(duration: TimeInterval) {
+        let install = {
+            self.stopInputMonitoringRegistrationKeepAlive()
+            let eventTapProbeInstalled = self.probeInputMonitoringEventTap(duration: duration)
+            self.recordInputMonitoringProbeResult(granted: eventTapProbeInstalled)
+
+            self.inputMonitoringGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { _ in }
+
+            let stopWorkItem = DispatchWorkItem { [weak self] in
+                self?.stopInputMonitoringRegistrationKeepAlive()
+            }
+            self.inputMonitoringRegistrationStopWorkItem = stopWorkItem
+            DispatchQueue.main.asyncAfter(deadline: .now() + duration, execute: stopWorkItem)
+        }
+
+        if Thread.isMainThread {
+            install()
+        } else {
+            DispatchQueue.main.async(execute: install)
+        }
+    }
+
+    private func stopInputMonitoringRegistrationKeepAlive() {
+        let stop = {
+            self.inputMonitoringRegistrationStopWorkItem?.cancel()
+            self.inputMonitoringRegistrationStopWorkItem = nil
+
+            if let monitor = self.inputMonitoringGlobalMonitor {
+                NSEvent.removeMonitor(monitor)
+            }
+            self.inputMonitoringGlobalMonitor = nil
+        }
+
+        if Thread.isMainThread {
+            stop()
+        } else {
+            DispatchQueue.main.async(execute: stop)
         }
     }
 
     private func probeScreenRecordingCaptureAsync() {
+        probeScreenRecordingCaptureAsync(expectedCycleID: nil)
+    }
+
+    private func probeScreenRecordingCaptureAsync(expectedCycleID: UInt64?) {
         DispatchQueue.global(qos: .utility).async {
-            _ = try? DesktopScreenshotService.captureMainDisplayPNGScreenCaptureKitOnly(excludingWindowNumbers: [])
+            if let expectedCycleID, expectedCycleID != self.currentScreenRecordingProbeCycleID() {
+                return
+            }
+            let granted = (try? DesktopScreenshotService.captureMainDisplayPNGScreenCaptureKitOnly(excludingWindowNumbers: [])) != nil
+            self.finishScreenRecordingProbe(granted: granted, expectedCycleID: expectedCycleID)
         }
     }
 
