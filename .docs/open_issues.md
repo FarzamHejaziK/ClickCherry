@@ -31,6 +31,9 @@ description: Active unresolved issues with concrete repro details, mitigation, a
     - Input Monitoring pane still opens without `ClickCherry` row on both tested macOS versions.
   - Latest follow-up validation (2026-02-22, release `v0.1.26`):
     - Screen Recording dialog can still repeatedly appear and cannot be dismissed reliably during onboarding flow.
+  - Latest follow-up validation (2026-02-22, post-fix local build + runtime logs):
+    - Screen Recording/OpenAI run calls can show transient transport failures and retries, then recover.
+    - Input Monitoring list registration remains inconsistent across machines; OS behavior is still not fully deterministic.
 - Expected:
   - Clicking `Open Settings` should consistently show `ClickCherry` in the relevant privacy list after request registration.
 - Current Mitigation:
@@ -45,6 +48,11 @@ description: Active unresolved issues with concrete repro details, mitigation, a
     - Screen Recording `Open Settings` click path is Settings-only with passive bounded recheck probes (no `CGRequestScreenCaptureAccess` call).
   - Screen Recording status sync now uses bounded post-click recheck probes (`1.2s`, `3.5s`, `8.0s`) plus temporary grant cache (TTL `180s`) to capture grant flips without continuous prompt churn.
   - Input Monitoring registration keepalive now holds event-tap/global-monitor registration attempts longer (`30s`) and uses temporary grant cache (TTL `180s`) to reflect successful registration earlier.
+  - Product policy updated to reduce blocking friction:
+    - Input Monitoring remains in onboarding permissions checklist.
+    - Input Monitoring is no longer enforced as a hard blocker for recording start.
+    - Input Monitoring is no longer enforced as a hard blocker for agent run start.
+    - If unavailable, run/record continue with reduced Escape-stop reliability.
   - Microphone and Accessibility keep native macOS-first request behavior and Settings fallback/open behavior.
   - For all four permissions, if status is already granted when user clicks `Open Settings`, the app now still opens the corresponding Settings pane (previously some paths returned early and looked like no-op).
   - onboarding/status refresh path remains passive (`currentStatus`) to avoid accidental prompt dialogs during polling.
@@ -52,10 +60,10 @@ description: Active unresolved issues with concrete repro details, mitigation, a
   - Added explicit guidance in onboarding/settings permissions copy to run `ClickCherry` from `/Applications` and retry `Open Settings` if list entries are still missing.
 - Next Action:
   - Ship this increment through GitHub release flow (tag + workflow artifact), then run two-device runtime validation from the GitHub DMG:
-    - confirm Screen Recording prompt does not loop/stick after Settings-only click flow.
-    - confirm Screen Recording granted state is reflected in-app within bounded recheck window.
-    - confirm Input Monitoring list registration appears after click flow (or document exact remaining OS-level failure mode with timestamps and screenshots).
-    - confirm Microphone and Accessibility remain deterministic (no no-op clicks).
+    - confirm Screen Recording prompt does not loop/stick after Settings-first click flow.
+    - confirm Screen Recording and Accessibility granted states converge in-app after toggle.
+    - confirm recording/agent run are not blocked by missing Input Monitoring grant.
+    - document remaining Input Monitoring list non-registration cases with timestamps/screenshots as OS-level residual risk.
 - Owner: Codex + user validation in DMG runtime
 
 ## Issue OI-2026-02-20-014

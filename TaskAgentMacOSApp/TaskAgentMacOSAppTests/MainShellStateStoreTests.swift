@@ -654,7 +654,7 @@ struct MainShellStateStoreTests {
         #expect(store.recordingPreflightDialogState != nil)
         #expect(
             store.recordingPreflightDialogState?.missingRequirements ==
-                [.geminiAPIKey, .microphone, .inputMonitoring]
+                [.geminiAPIKey, .microphone]
         )
     }
 
@@ -1721,12 +1721,15 @@ struct MainShellStateStoreTests {
 
         #expect(borderOverlay.shownDisplayIDs == [2])
         #expect(overlay.shownDisplayIDs == [2])
-        #expect(store.isRunningTask == false)
+        #expect(store.isRunningTask == true)
+        #expect(store.errorMessage == nil)
+
+        store.stopRunTask()
     }
 
     @Test
     @MainActor
-    func startRunTaskNowMonitorFailureRestoresCursorSize() throws {
+    func startRunTaskNowMonitorFailureDoesNotBlockRun() throws {
         let fm = FileManager.default
         let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
@@ -1762,13 +1765,18 @@ struct MainShellStateStoreTests {
         store.selectTask(task.id)
         store.startRunTaskNow()
 
-        #expect(store.isRunningTask == false)
+        #expect(store.isRunningTask == true)
         #expect(cursorPresentation.activateCount == 1)
         #expect(borderOverlay.shownDisplayIDs == [1])
+        #expect(borderOverlay.hideCallCount == 0)
+        #expect(cursorPresentation.deactivateCount == 0)
+        #expect(overlay.showCount == 1)
+        #expect(overlay.hideCount == 0)
+        #expect(store.errorMessage == nil)
+
+        store.stopRunTask()
         #expect(borderOverlay.hideCallCount == 1)
         #expect(cursorPresentation.deactivateCount == 1)
-        #expect(overlay.showCount == 1)
         #expect(overlay.hideCount == 1)
-        #expect(store.errorMessage?.contains("Failed to start escape-key monitoring.") == true)
     }
 }

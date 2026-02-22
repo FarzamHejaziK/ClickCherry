@@ -27,6 +27,32 @@ description: Canonical log for UI/UX plans, decisions, and implementation alignm
 
 ## Entry
 - Date: 2026-02-22
+- Area: Permission-runtime friction reduction (Input Monitoring optional outside onboarding)
+- Change Summary:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
+  - Behavior updates:
+    - Input Monitoring stays visible in onboarding permissions.
+    - Recording preflight no longer blocks on Input Monitoring.
+    - Agent run no longer aborts when Escape monitor cannot start due to missing Input Monitoring.
+    - Accessibility gating for agent run remains enforced.
+  - No UI text/copy changes introduced.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` setup reliability objective by removing avoidable runtime dead-ends while preserving onboarding visibility.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` section 8 permission-remediation intent: required guidance in setup, but runtime flow should remain recoverable and non-trapping.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Debug build` (pass on 2026-02-22).
+    - `xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Debug test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass on 2026-02-22).
+  - Manual tests:
+    - pending release-DMG validation on user devices.
+- Notes:
+  - Added consolidated permissions incident report at `/Users/farzamh/code-git-local/task-agent-macos/.docs/permissions_incident_report.md`.
+
+## Entry
+- Date: 2026-02-22
 - Area: Screen Recording click behavior hardening (settings-only, no repeat native request)
 - Change Summary:
   - Updated:

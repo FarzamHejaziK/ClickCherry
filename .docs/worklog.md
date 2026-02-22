@@ -8,6 +8,35 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-22
+- Step: Runtime permission policy update + release preparation (Input Monitoring optional outside onboarding)
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/permissions_incident_report.md` (new)
+  - Behavior changes:
+    - recording preflight no longer blocks on Input Monitoring.
+    - agent run no longer aborts when Escape monitor fails to start; run continues.
+    - onboarding visibility of Input Monitoring unchanged.
+  - Diagnostic follow-up:
+    - reviewed local app logs and latest run artifacts; observed transient OpenAI transport failures/retries (`-1200`, `-1005`) with eventual retry recovery in sampled run.
+- Automated tests run:
+  - `xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Debug build` (pass).
+  - `xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Debug test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
+  - `xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Debug test -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests/startRunTaskNowWithMissingAccessibilityShowsRunPreflightDialog` (pass).
+- Manual tests run:
+  - Runtime UI validation: pending user-side DMG checks on target devices.
+  - Local runtime evidence check performed via `log show` + persisted run logs under `~/Library/Application Support/TaskAgentMacOS`.
+- Result:
+  - Complete for implementation + automated validation + log-level diagnosis; pending release artifact runtime confirmation.
+- Issues/blockers:
+  - None in compile/test path; permission and network behavior still require final multi-device runtime confirmation.
+
+## Entry
+- Date: 2026-02-22
 - Step: Screen Recording loop fix (check-only polling + settings-only click path)
 - Changes made:
   - Updated:
@@ -242,27 +271,4 @@ description: Running implementation log of completed work, test evidence, blocke
   - Complete (implementation + automated validation), pending DMG runtime confirmation.
 - Issues/blockers:
   - Terminal-only environment cannot validate System Settings list rendering directly.
-
-## Entry
-- Date: 2026-02-21
-- Step: Temporary Settings reset permission revocation fix (TCC reset + relaunch)
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-  - Root-cause mitigation implemented:
-    - Added app-bundle `tccutil reset` flow in temporary setup reset.
-    - Expanded service resets beyond `All` fallback to include `Accessibility`, `Microphone`, `ScreenCapture`, `ListenEvent`, `AppleEvents`, and `PostEvent`.
-    - Added app relaunch after successful permission reset to avoid stale in-process permission status.
-    - Updated Settings helper text to indicate relaunch behavior.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-temp-reset2 -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO test` (pass).
-- Manual tests run:
-  - Pending user-side runtime validation for permission revocation visibility after relaunch.
-- Result:
-  - Complete (implementation + targeted automated validation), pending runtime confirmation.
-- Issues/blockers:
-  - macOS may still require manual revocation in some policy-managed environments.
 

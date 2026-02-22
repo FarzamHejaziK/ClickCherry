@@ -1303,17 +1303,12 @@ final class MainShellStateStore {
             self?.handleUserInterruptionDuringRun()
         }
         if !didStartMonitor {
-            agentControlOverlayService.hideAgentInControl()
-            overlayService.hideBorder()
-            if !agentCursorPresentationService.deactivateTakeoverCursor() {
-                executionTraceRecorder.record(ExecutionTraceEntry(kind: .error, message: "Failed to deactivate takeover cursor presentation after monitor startup failed."))
-            }
-            isRunningTask = false
-            runStatusMessage = nil
-            errorMessage =
-                "Failed to start escape-key monitoring. To ensure the agent can be stopped via Escape, enable TaskAgentMacOSApp in System Settings > Privacy & Security > Input Monitoring (and Accessibility)."
-            executionTraceRecorder.record(ExecutionTraceEntry(kind: .error, message: "Failed to start user-interruption monitor."))
-            return
+            executionTraceRecorder.record(
+                ExecutionTraceEntry(
+                    kind: .info,
+                    message: "Escape-key monitoring unavailable (Input Monitoring not granted). Run continues without Escape-to-stop."
+                )
+            )
         }
 
         // Run off the main actor to avoid blocking UI; cancellation is supported via `runTaskHandle.cancel()`.
@@ -2272,9 +2267,6 @@ final class MainShellStateStore {
         }
         if permissionService.currentStatus(for: .microphone) != .granted {
             missing.append(.microphone)
-        }
-        if permissionService.currentStatus(for: .inputMonitoring) != .granted {
-            missing.append(.inputMonitoring)
         }
 
         return missing

@@ -5247,3 +5247,26 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - Complete (implementation + targeted automated validation), pending runtime confirmation.
 - Issues/blockers:
   - macOS permission grants are OS-managed and cannot be revoked programmatically from this app.
+
+## Entry
+- Date: 2026-02-21
+- Step: Temporary Settings reset permission revocation fix (TCC reset + relaunch)
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+  - Root-cause mitigation implemented:
+    - Added app-bundle `tccutil reset` flow in temporary setup reset.
+    - Expanded service resets beyond `All` fallback to include `Accessibility`, `Microphone`, `ScreenCapture`, `ListenEvent`, `AppleEvents`, and `PostEvent`.
+    - Added app relaunch after successful permission reset to avoid stale in-process permission status.
+    - Updated Settings helper text to indicate relaunch behavior.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-temp-reset2 -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO test` (pass).
+- Manual tests run:
+  - Pending user-side runtime validation for permission revocation visibility after relaunch.
+- Result:
+  - Complete (implementation + targeted automated validation), pending runtime confirmation.
+- Issues/blockers:
+  - macOS may still require manual revocation in some policy-managed environments.

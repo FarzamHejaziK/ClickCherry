@@ -60,7 +60,6 @@ final class MacPermissionService: PermissionService {
         static let screenRecordingGrantedCacheTTL: TimeInterval = 180.0
         static let screenRecordingRecheckDelays: [TimeInterval] = [1.2, 3.5, 8.0]
         static let inputMonitoringGrantedCacheTTL: TimeInterval = 180.0
-        static let inputMonitoringRegistrationHold: TimeInterval = 30.0
     }
 
     private let stateLock = NSLock()
@@ -70,8 +69,9 @@ final class MacPermissionService: PermissionService {
     private var screenRecordingProbeGrantedAt: Date?
 
     private var inputMonitoringProbeGrantedAt: Date?
+    private var inputMonitoringPersistentTap: CFMachPort?
+    private var inputMonitoringPersistentSource: CFRunLoopSource?
     private var inputMonitoringGlobalMonitor: Any?
-    private var inputMonitoringRegistrationStopWorkItem: DispatchWorkItem?
 
     func openSystemSettings(for permission: AppPermission) {
         for candidate in settingsURLStrings(for: permission) {
@@ -107,7 +107,7 @@ final class MacPermissionService: PermissionService {
         case .inputMonitoring:
             if CGPreflightListenEventAccess() {
                 recordInputMonitoringProbeResult(granted: true)
-                stopInputMonitoringRegistrationKeepAlive()
+                stopInputMonitoringPersistentRegistration()
                 clearRequestedInSession(.inputMonitoring)
                 return .granted
             }
@@ -155,13 +155,13 @@ final class MacPermissionService: PermissionService {
         case .inputMonitoring:
             if CGPreflightListenEventAccess() {
                 recordInputMonitoringProbeResult(granted: true)
-                stopInputMonitoringRegistrationKeepAlive()
+                stopInputMonitoringPersistentRegistration()
                 clearRequestedInSession(.inputMonitoring)
                 return .granted
             }
             markRequestedInSession(.inputMonitoring)
+            startInputMonitoringPersistentRegistration()
             _ = CGRequestListenEventAccess()
-            startInputMonitoringRegistrationKeepAlive(duration: ProbeTiming.inputMonitoringRegistrationHold)
             return CGPreflightListenEventAccess() ? .granted : .notGranted
         }
     }
@@ -200,7 +200,7 @@ final class MacPermissionService: PermissionService {
             if !hasRequestedInSession(.inputMonitoring) {
                 _ = requestAccessIfNeeded(for: permission)
             } else {
-                startInputMonitoringRegistrationKeepAlive(duration: ProbeTiming.inputMonitoringRegistrationHold)
+                startInputMonitoringPersistentRegistration()
             }
             if currentStatus(for: permission) == .granted {
                 clearRequestedInSession(.inputMonitoring)
@@ -287,7 +287,7 @@ final class MacPermissionService: PermissionService {
         }
     }
 
-    private func probeInputMonitoringEventTap(duration: TimeInterval) -> Bool {
+    private func installInputMonitoringEventTap(duration: TimeInterval?) -> Bool {
         let installProbe = { () -> Bool in
             let mask = (1 as CGEventMask) << CGEventType.keyDown.rawValue
             let callback: CGEventTapCallBack = { _, _, event, _ in
@@ -308,10 +308,15 @@ final class MacPermissionService: PermissionService {
             CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
             CGEvent.tapEnable(tap: tap, enable: true)
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
-                CGEvent.tapEnable(tap: tap, enable: false)
-                CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
-                CFMachPortInvalidate(tap)
+            if let duration {
+                DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
+                    CGEvent.tapEnable(tap: tap, enable: false)
+                    CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
+                    CFMachPortInvalidate(tap)
+                }
+            } else {
+                self.inputMonitoringPersistentTap = tap
+                self.inputMonitoringPersistentSource = source
             }
             return true
         }
@@ -448,19 +453,13 @@ final class MacPermissionService: PermissionService {
         }
     }
 
-    private func startInputMonitoringRegistrationKeepAlive(duration: TimeInterval) {
+    private func startInputMonitoringPersistentRegistration() {
         let install = {
-            self.stopInputMonitoringRegistrationKeepAlive()
-            let eventTapProbeInstalled = self.probeInputMonitoringEventTap(duration: duration)
+            self.stopInputMonitoringPersistentRegistration()
+            let eventTapProbeInstalled = self.installInputMonitoringEventTap(duration: nil)
             self.recordInputMonitoringProbeResult(granted: eventTapProbeInstalled)
 
             self.inputMonitoringGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { _ in }
-
-            let stopWorkItem = DispatchWorkItem { [weak self] in
-                self?.stopInputMonitoringRegistrationKeepAlive()
-            }
-            self.inputMonitoringRegistrationStopWorkItem = stopWorkItem
-            DispatchQueue.main.asyncAfter(deadline: .now() + duration, execute: stopWorkItem)
         }
 
         if Thread.isMainThread {
@@ -470,15 +469,23 @@ final class MacPermissionService: PermissionService {
         }
     }
 
-    private func stopInputMonitoringRegistrationKeepAlive() {
+    private func stopInputMonitoringPersistentRegistration() {
         let stop = {
-            self.inputMonitoringRegistrationStopWorkItem?.cancel()
-            self.inputMonitoringRegistrationStopWorkItem = nil
-
             if let monitor = self.inputMonitoringGlobalMonitor {
                 NSEvent.removeMonitor(monitor)
             }
             self.inputMonitoringGlobalMonitor = nil
+
+            if let source = self.inputMonitoringPersistentSource {
+                CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
+            }
+            self.inputMonitoringPersistentSource = nil
+
+            if let tap = self.inputMonitoringPersistentTap {
+                CGEvent.tapEnable(tap: tap, enable: false)
+                CFMachPortInvalidate(tap)
+            }
+            self.inputMonitoringPersistentTap = nil
         }
 
         if Thread.isMainThread {

@@ -4,6 +4,28 @@ description: Short, continuously updated plan of the immediate next implementati
 
 # Next Steps
 
+1. Step: Publish permission-stability release and validate on two Macs (in progress).
+2. Why now: Recent fixes removed Input Monitoring as a runtime blocker and reduced Screen Recording prompt-loop friction; release validation is needed on real DMG installs.
+3. Code tasks:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`:
+    - recording preflight no longer blocks on Input Monitoring.
+    - run-task startup no longer aborts when Escape monitor cannot start (run continues).
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`:
+    - adjusted preflight and monitor-failure expectations to match optional Input Monitoring runtime policy.
+  - Added consolidated incident report:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/permissions_incident_report.md`.
+4. Automated tests:
+  - `xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Debug build` (pass on 2026-02-22).
+  - `xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Debug test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass on 2026-02-22).
+5. Manual tests:
+  - Pending user-side release DMG validation on both devices:
+    - onboarding still shows Input Monitoring row.
+    - recording can start when Input Monitoring is not granted.
+    - agent run can start when Input Monitoring is not granted.
+    - Accessibility remains required for agent run.
+6. Exit criteria:
+  - GitHub release published and two-device DMG validation confirms runtime no longer hard-blocks on Input Monitoring while onboarding visibility remains intact.
+
 1. Step: Validate Screen Recording settings-only click flow to eliminate repeated native dialog loops (in progress).
 2. Why now: User confirmed dialog-loop failure remains in `v0.1.26` (`Open Settings` can repeatedly surface the Screen Recording native prompt and onboarding stays blocked).
 3. Code tasks:
