@@ -4,6 +4,39 @@ description: Short, continuously updated plan of the immediate next implementati
 
 # Next Steps
 
+1. Step: Publish `v0.1.30` follow-up release for icon-centering correction (in progress).
+2. Why now: User requested another release after observing icon misalignment in `v0.1.29`.
+3. Code tasks:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/CHANGELOG.md` with `0.1.30` release notes.
+  - Included centered icon raster rollback plus previously shipped `v0.1.29` UI/installer improvements.
+4. Automated tests:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-icon-revert CODE_SIGNING_ALLOWED=NO build` (pass on 2026-02-22).
+5. Manual tests:
+  - Pending GitHub release artifact and user-side visual confirmation.
+6. Exit criteria:
+  - Tag `v0.1.30` is pushed and Release workflow is running with DMG artifact output.
+
+1. Step: Publish follow-up release with centered icon set rollback (`v0.1.30`) (in progress).
+2. Why now: User reported visible icon misalignment on release-page/app icon presentation after `v0.1.29`.
+3. Code tasks:
+  - Reverted app icon set files to `v0.1.28` known-good centered assets:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_16x16.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_16x16@2x.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_32x32.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_32x32@2x.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_128x128.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_128x128@2x.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_256x256.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_256x256@2x.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_512x512.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_512x512@2x.png`
+4. Automated tests:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-icon-revert CODE_SIGNING_ALLOWED=NO build` (pass on 2026-02-22).
+5. Manual tests:
+  - Pending user-side confirmation that icon alignment now looks centered in GitHub release asset preview and runtime icon surfaces.
+6. Exit criteria:
+  - User confirms icon alignment is acceptable and follow-up tag is published.
+
 1. Step: Publish `v0.1.29` GitHub release (in progress).
 2. Why now: User requested creating a new release with current UI/installer/icon updates.
 3. Code tasks:

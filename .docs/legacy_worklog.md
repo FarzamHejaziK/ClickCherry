@@ -5398,3 +5398,63 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - Complete (workflow/docs implementation + local validation), pending release-run confirmation.
 - Issues/blockers:
   - None.
+
+## Entry
+- Date: 2026-02-21
+- Step: Permission click-flow responsiveness update (no permission-screen text changes)
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/xcode_signing_setup.md`
+  - Behavior change:
+    - Screen Recording / Accessibility / Input Monitoring now request/probe and open target Settings pane in one click when still not granted.
+    - Microphone keeps first-time native prompt (`.notDetermined`) and uses Settings fallback for denied/restricted.
+    - Reduced permission-pane open delay/retry timing for faster perceived response.
+  - Constraint honored:
+    - no onboarding/settings permission helper copy changes in this increment.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-fast-open build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-fast-open-tests test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
+- Manual tests run:
+  - Launched `/tmp/taskagent-dd-perm-fast-open/Build/Products/Debug/ClickCherry.app` and confirmed process startup (`pgrep` observed PIDs), then terminated test instance.
+  - Pending user-side DMG runtime validation for macOS privacy-pane behavior and list visibility.
+- Result:
+  - In progress: code and automated validation complete; full runtime permission validation pending.
+- Issues/blockers:
+  - Terminal-only environment cannot directly confirm System Settings privacy-pane list rendering.
+
+## Entry
+- Date: 2026-02-22
+- Step: Two-device permission registration follow-up fixes (no UI text changes)
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/DesktopScreenshotService.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+  - Root-cause mitigation implemented:
+    - restored longer permission-pane open settle timing + retries.
+    - when permission is already granted, clicking `Open Settings` now still opens the pane for Screen Recording, Microphone, Accessibility, and Input Monitoring.
+    - replaced Input Monitoring global-monitor probe with run-loop-backed event-tap burst probing.
+    - switched Screen Recording probe to ScreenCaptureKit-only capture path.
+  - Release artifacts produced for user testing (signed build):
+    - `/tmp/ClickCherry-macos-permission-fix-2026-02-22-signed.zip`
+    - `/tmp/ClickCherry-macos-permission-fix-2026-02-22-signed.dmg`
+  - Signing verification:
+    - `codesign -dv --verbose=4 /tmp/taskagent-dd-release-perm-signed/Build/Products/Release/ClickCherry.app` shows `TeamIdentifier=QKN8WTSJYG`.
+    - `spctl -a -vv /tmp/taskagent-dd-release-perm-signed/Build/Products/Release/ClickCherry.app` reports rejection (expected; local build not notarized).
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-perm-fix-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO test` (pass; 37 tests).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Release -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-release-perm-signed build` (pass; signed with `Apple Development: farzam.hejazi@gmail.com (Z8336DG42F)`).
+- Manual tests run:
+  - Launched `/tmp/taskagent-dd-perm-fix-test/Build/Products/Debug/ClickCherry.app`, confirmed process startup, and terminated test instance.
+  - Launched `/tmp/taskagent-dd-release-perm-signed/Build/Products/Release/ClickCherry.app`, confirmed process startup, and terminated test instance.
+  - Pending user-side two-device runtime permission validation from `/Applications`.
+- Result:
+  - Complete (implementation + local build/test validation), pending user runtime confirmation on macOS 26 + macOS 15 devices.
+- Issues/blockers:
+  - None in local compile/test path; final confirmation depends on macOS privacy-pane behavior in user runtime.

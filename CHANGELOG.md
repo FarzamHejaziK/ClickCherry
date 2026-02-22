@@ -9,6 +9,12 @@ The format is based on Keep a Changelog and this project uses Semantic Versionin
 ### Added
 - Open-source governance, contribution, and release scaffolding.
 
+## [0.1.30] - 2026-02-22
+
+### Changed
+- Reverted app icon raster set to the known-good centered composition from `v0.1.28` to fix perceived misalignment in release/app icon presentation.
+- Retained `v0.1.29` installer improvements (icon-only DMG direction cue and onboarding/settings permission simplifications).
+
 ## [0.1.29] - 2026-02-22
 
 ### Changed
