@@ -8,6 +8,68 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-22
+- Step: Prepare and publish release `v0.1.31`
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/CHANGELOG.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
+  - Release updates:
+    - added `0.1.31` changelog section for settings model-page simplification and onboarding ready-step visual refresh.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-release-v0-1-31 CODE_SIGNING_ALLOWED=NO build` (pass).
+- Manual tests run:
+  - Launched `/tmp/taskagent-dd-release-v0-1-31/Build/Products/Debug/ClickCherry.app`, confirmed process startup via `pgrep`, then terminated launched debug process.
+- Result:
+  - Ready to push release commit and tag `v0.1.31`.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-22
+- Step: Modernize onboarding ready-step visuals using LLM issue page style language
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/ReadyStepView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
+  - UI behavior changes:
+    - applied material+gradient+stroke card treatment to the `Ready to Start` content block.
+    - restyled readiness rows into status chips with semantic tinted backgrounds and outlines.
+    - preserved existing text content and onboarding flow behavior.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ready-modern CODE_SIGNING_ALLOWED=NO build` (pass).
+- Manual tests run:
+  - Launched `/tmp/taskagent-dd-ready-modern/Build/Products/Debug/ClickCherry.app`, confirmed process startup via `pgrep`, then terminated launched debug process.
+- Result:
+  - Complete for requested ready-step visual refresh.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-22
+- Step: Remove `Start Over` controls from `Settings > Model Setup`
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
+  - UI behavior changes:
+    - removed `Start Over` heading/content/button block from settings model setup section.
+    - kept provider-key setup and status messaging behavior unchanged.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-settings-model-only CODE_SIGNING_ALLOWED=NO build` (pass).
+- Manual tests run:
+  - Launched `/tmp/taskagent-dd-settings-model-only/Build/Products/Debug/ClickCherry.app`, confirmed process startup via `pgrep`, then terminated debug process.
+- Result:
+  - Complete for requested settings UI removal.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-22
 - Step: Publish follow-up release `v0.1.30`
 - Changes made:
   - Updated:
@@ -176,82 +238,4 @@ description: Running implementation log of completed work, test evidence, blocke
   - Complete for requested temporary UI removal.
 - Issues/blockers:
   - None.
-
-## Entry
-- Date: 2026-02-22
-- Step: Runtime permission policy update + release preparation (Input Monitoring optional outside onboarding)
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/permissions_incident_report.md` (new)
-  - Behavior changes:
-    - recording preflight no longer blocks on Input Monitoring.
-    - agent run no longer aborts when Escape monitor fails to start; run continues.
-    - onboarding visibility of Input Monitoring unchanged.
-  - Diagnostic follow-up:
-    - reviewed local app logs and latest run artifacts; observed transient OpenAI transport failures/retries (`-1200`, `-1005`) with eventual retry recovery in sampled run.
-- Automated tests run:
-  - `xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Debug build` (pass).
-  - `xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Debug test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
-  - `xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Debug test -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests/startRunTaskNowWithMissingAccessibilityShowsRunPreflightDialog` (pass).
-- Manual tests run:
-  - Runtime UI validation: pending user-side DMG checks on target devices.
-  - Local runtime evidence check performed via `log show` + persisted run logs under `~/Library/Application Support/TaskAgentMacOS`.
-- Result:
-  - Complete for implementation + automated validation + log-level diagnosis; pending release artifact runtime confirmation.
-- Issues/blockers:
-  - None in compile/test path; permission and network behavior still require final multi-device runtime confirmation.
-
-## Entry
-- Date: 2026-02-22
-- Step: Screen Recording loop fix (check-only polling + settings-only click path)
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-  - Root-cause mitigation implemented:
-    - Screen Recording polling path remains passive status-check only.
-    - Screen Recording click path no longer calls native request API; it opens Settings and uses passive bounded recheck probes.
-    - target behavior is to eliminate repeated native dialog loops while still reflecting granted state after Settings toggle.
-- Automated tests run:
-  - `xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Debug build` (pass).
-  - `xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Debug test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
-- Manual tests run:
-  - Launched `/Users/farzamh/Library/Developer/Xcode/DerivedData/TaskAgentMacOSApp-hcmwhqcntcyxesavzhrufsmixgfu/Build/Products/Debug/ClickCherry.app`, confirmed process startup via `pgrep`, then terminated debug instance.
-  - Pending user-side runtime permission validation from GitHub release DMG.
-- Result:
-  - Complete for implementation + local validation; pending runtime confirmation on target machines.
-- Issues/blockers:
-  - Terminal environment cannot validate live System Settings modal loop behavior directly.
-
-## Entry
-- Date: 2026-02-22
-- Step: Permission status convergence hardening (granted-state capture + prompt-loop reduction)
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-  - Root-cause mitigation implemented:
-    - removed passive screen-recording probe churn from polling path.
-    - added bounded post-click Screen Recording recheck probes (`1.2s`, `3.5s`, `8.0s`) with temporary grant cache (`180s`).
-    - increased Input Monitoring registration keepalive to `30s` and added temporary grant cache (`180s`).
-    - preserved all existing onboarding/settings permission copy (no UI text changes).
-- Automated tests run:
-  - `xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Debug build` (pass).
-  - `xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Debug test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
-- Manual tests run:
-  - Launched `/Users/farzamh/Library/Developer/Xcode/DerivedData/TaskAgentMacOSApp-hcmwhqcntcyxesavzhrufsmixgfu/Build/Products/Debug/ClickCherry.app`, confirmed process startup with `pgrep`, then terminated debug instance.
-  - Pending user-side two-device permission runtime validation from GitHub release DMG.
-- Result:
-  - Complete for implementation + local validation; pending cross-device runtime confirmation.
-- Issues/blockers:
-  - Terminal environment cannot directly verify live System Settings row rendering and toggle persistence.
 

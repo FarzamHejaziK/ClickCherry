@@ -27,6 +27,49 @@ description: Canonical log for UI/UX plans, decisions, and implementation alignm
 
 ## Entry
 - Date: 2026-02-22
+- Area: Onboarding ready-step visual refresh (LLM-issue palette adaptation)
+- Change Summary:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/ReadyStepView.swift`
+  - UI updates:
+    - Restyled the `Ready to Start` message into a material card with accent-tinted gradient and subtle border.
+    - Restyled readiness rows into modern status chips with tinted background and outline.
+    - Reused the same visual language pattern used in `LLMUserFacingIssueCanvasView` (material + gradient tint + soft stroke) while preserving onboarding copy and flow behavior.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` quality/polish goals for onboarding completion surfaces.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` consistency goals by applying one coherent card/tint design language across related UI surfaces.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ready-modern CODE_SIGNING_ALLOWED=NO build` (pass on 2026-02-22).
+  - Manual tests:
+    - Launched `/tmp/taskagent-dd-ready-modern/Build/Products/Debug/ClickCherry.app`, confirmed app process startup via `pgrep`, then terminated the launched debug process.
+- Notes:
+  - No onboarding logic, navigation, or permission/key gating behavior changed in this step.
+
+## Entry
+- Date: 2026-02-22
+- Area: Settings model setup simplification (remove Start Over action)
+- Change Summary:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
+  - UI updates:
+    - Removed the `Start Over` heading, description, and `Start Over (Show Onboarding)` button from `Settings > Model Setup`.
+    - Kept provider key setup and key status messaging unchanged.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` setup-surface simplification goals by removing non-essential flow-reset controls from core model configuration UI.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` clarity principle by keeping settings focused on primary configuration actions only.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-settings-model-only CODE_SIGNING_ALLOWED=NO build` (pass on 2026-02-22).
+  - Manual tests:
+    - Launched `/tmp/taskagent-dd-settings-model-only/Build/Products/Debug/ClickCherry.app`, confirmed process startup via `pgrep`, then terminated the launched debug app process.
+- Notes:
+  - This is a UI-only removal from Settings; onboarding-reset behavior in state/services was not changed in this step.
+
+## Entry
+- Date: 2026-02-22
 - Area: App icon alignment rollback for release-page visual centering
 - Change Summary:
   - Updated:

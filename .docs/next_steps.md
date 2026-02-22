@@ -4,6 +4,49 @@ description: Short, continuously updated plan of the immediate next implementati
 
 # Next Steps
 
+1. Step: Publish `v0.1.31` release for settings simplification + ready-step visual refresh (in progress).
+2. Why now: User approved shipping the latest UI updates.
+3. Code tasks:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/CHANGELOG.md` with `0.1.31` release notes.
+  - Included:
+    - removal of `Start Over (Show Onboarding)` from `Settings > Model Setup`.
+    - modernization of onboarding `Ready` step using LLM issue-panel color language.
+4. Automated tests:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-release-v0-1-31 CODE_SIGNING_ALLOWED=NO build` (pass on 2026-02-22).
+5. Manual tests:
+  - Launched `/tmp/taskagent-dd-release-v0-1-31/Build/Products/Debug/ClickCherry.app`, confirmed process startup via `pgrep`, then terminated launched debug process.
+6. Exit criteria:
+  - Commit and tag `v0.1.31` are pushed and the GitHub Release workflow starts.
+
+1. Step: Validate and finalize modern visual style for onboarding `Ready` step (in progress).
+2. Why now: User requested a more modern look for the ready page and asked to incorporate colors/style language from the LLM errors surface.
+3. Code tasks:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/ReadyStepView.swift`:
+    - converted title/description block into a tinted material card with subtle stroke.
+    - converted readiness rows into status chips with semantic success/warning tints.
+    - aligned card tint treatment with `LLMUserFacingIssueCanvasView` style language.
+4. Automated tests:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ready-modern CODE_SIGNING_ALLOWED=NO build` (pass on 2026-02-22).
+5. Manual tests:
+  - Launched `/tmp/taskagent-dd-ready-modern/Build/Products/Debug/ClickCherry.app`, confirmed process startup via `pgrep`, then terminated launched debug process.
+  - Pending user-side visual approval of the new ready-step styling.
+6. Exit criteria:
+  - User confirms the ready-step visual treatment is acceptable and no follow-up adjustments are needed.
+
+1. Step: Keep `Settings > Model Setup` focused on provider-key setup only (in progress).
+2. Why now: User requested removing the `Start Over` control from Settings and keeping only model-related configuration in that page.
+3. Code tasks:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`:
+    - removed `Start Over` heading, explanatory text, and `Start Over (Show Onboarding)` button block.
+    - preserved OpenAI/Gemini key setup controls and status messages.
+4. Automated tests:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-settings-model-only CODE_SIGNING_ALLOWED=NO build` (pass on 2026-02-22).
+5. Manual tests:
+  - Launched `/tmp/taskagent-dd-settings-model-only/Build/Products/Debug/ClickCherry.app`, confirmed startup via `pgrep`, then terminated the debug app process.
+  - Pending user-side visual confirmation that `Settings > Model Setup` now shows only model-key configuration content.
+6. Exit criteria:
+  - User confirms the `Start Over` section is no longer visible in Settings and no regression is observed in provider key save/status behavior.
+
 1. Step: Publish `v0.1.30` follow-up release for icon-centering correction (in progress).
 2. Why now: User requested another release after observing icon misalignment in `v0.1.29`.
 3. Code tasks:

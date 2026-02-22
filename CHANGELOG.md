@@ -9,6 +9,12 @@ The format is based on Keep a Changelog and this project uses Semantic Versionin
 ### Added
 - Open-source governance, contribution, and release scaffolding.
 
+## [0.1.31] - 2026-02-22
+
+### Changed
+- Removed `Start Over (Show Onboarding)` from `Settings > Model Setup` so the page focuses on provider key configuration only.
+- Refreshed onboarding `Ready` step visuals with modern tinted material cards and status chips, aligned to the LLM issue panel color language.
+
 ## [0.1.30] - 2026-02-22
 
 ### Changed
