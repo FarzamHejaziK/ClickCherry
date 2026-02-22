@@ -5154,3 +5154,26 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - Complete (implementation + targeted automated tests + docs), pending local runtime confirmation.
 - Issues/blockers:
   - Physical-display validation required for final confirmation of Chrome/app activation placement behavior.
+
+## Entry
+- Date: 2026-02-21
+- Step: Temporary run-log screenshot visibility for active debugging
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/TaskDetailPageView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
+  - Connected OpenAI execution screenshot sink to state (`LLMScreenshotRecorder`) and surfaced per-run, in-memory screenshot entries (`runScreenshotLogByRunID`).
+  - Added temporary screenshot thumbnail strip beneath run log lines to aid debugging of target-screen mismatch behavior.
+  - Scoped retention to active runtime only (not persisted in saved run logs).
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-run-screenshots build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-run-screenshots test -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests` (pass).
+- Manual tests run:
+  - Pending user-side runtime verification (terminal environment cannot validate UI image rendering directly).
+- Result:
+  - Complete (implementation + automated validation), pending user runtime confirmation.
+- Issues/blockers:
+  - None.

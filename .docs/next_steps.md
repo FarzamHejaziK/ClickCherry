@@ -4,6 +4,26 @@ description: Short, continuously updated plan of the immediate next implementati
 
 # Next Steps
 
+1. Step: Validate deterministic permission click behavior without UI copy changes (in progress).
+2. Why now: User reported high friction in permission onboarding/settings and requested behavior fixes while keeping existing permission-screen text unchanged.
+3. Code tasks:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`:
+    - removed first-click session gating that previously deferred Settings open for Screen Recording, Accessibility, and Input Monitoring.
+    - now runs request/probe and opens target Settings pane in the same click when still not granted.
+    - kept first-time native Microphone prompt behavior for `.notDetermined`, with Settings fallback for denied/restricted.
+    - reduced open-delay and retry timing to improve responsiveness.
+4. Automated tests:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-fast-open build` (pass on 2026-02-21 local run).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-fast-open-tests test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass on 2026-02-21 local run).
+5. Manual tests:
+  - Local smoke: launched `/tmp/taskagent-dd-perm-fast-open/Build/Products/Debug/ClickCherry.app` and confirmed process startup.
+  - Pending user-side runtime checks on DMG-installed app from `/Applications`:
+    - one click on `Screen Recording`, `Accessibility`, `Input Monitoring` opens target Settings pane.
+    - `Microphone` first-time prompt behavior is preserved.
+    - app appears in all required privacy lists after grant.
+6. Exit criteria:
+  - Permission onboarding/settings no longer requires extra clicks for Screen Recording, Accessibility, and Input Monitoring, and runtime DMG validation confirms consistent list visibility.
+
 1. Step: Validate release artifact naming update (versioned DMG filename) on next tagged release run (in progress).
 2. Why now: User requested versioned DMG names and clarified that release page should emphasize DMG-only uploaded artifact.
 3. Code tasks:

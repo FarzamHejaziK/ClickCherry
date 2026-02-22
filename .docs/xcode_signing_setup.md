@@ -43,7 +43,9 @@ Use this checklist when validating a release DMG install (not Xcode-run builds):
 2. Eject the mounted DMG before launching app for permission checks.
 3. Launch `ClickCherry` from `/Applications`.
 4. Use app `Open Settings` actions to open each privacy pane.
-5. Confirm the app opens System Settings lists directly (no native modal permission popup from the app click path).
+5. Confirm `Open Settings` behavior:
+   - Screen Recording, Accessibility, Input Monitoring: app routes to System Settings lists.
+   - Microphone: first grant may use native macOS dialog; denied/restricted state should route to System Settings.
 6. If a pane does not show `ClickCherry`, relaunch from `/Applications` and retry `Open Settings`.
 
 ## Identity diagnostics (must pass)

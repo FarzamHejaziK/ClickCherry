@@ -27,6 +27,34 @@ description: Canonical log for UI/UX plans, decisions, and implementation alignm
 
 ## Entry
 - Date: 2026-02-21
+- Area: Permission click responsiveness and deterministic open behavior
+- Change Summary:
+  - Updated permission request/open behavior in:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`
+  - Behavior now:
+    - Screen Recording / Accessibility / Input Monitoring:
+      - one click runs request/probe and opens target System Settings pane when still not granted.
+    - Microphone:
+      - first-time `.notDetermined` keeps native prompt behavior.
+      - denied/restricted follow-up opens System Settings.
+  - Tightened open timing/retry values so Settings navigation feels faster.
+  - Explicitly kept existing permission-screen helper text unchanged in onboarding/settings per user request.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` setup reliability and usability goals by reducing extra-click friction and long perceived waits.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` section 8 (permissions preflight UX/remediation) by making click behavior deterministic while respecting platform-required microphone prompt flow.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-fast-open build` (pass).
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-fast-open-tests test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
+  - Manual tests:
+    - Local smoke: launched `/tmp/taskagent-dd-perm-fast-open/Build/Products/Debug/ClickCherry.app` and confirmed process start.
+    - Pending user-side runtime validation for macOS privacy panes on DMG-installed `/Applications` build.
+- Notes:
+  - User requested no onboarding/settings permission text changes in this increment.
+
+## Entry
+- Date: 2026-02-21
 - Area: Permission flow policy update (required dialogs restored where needed)
 - Change Summary:
   - Updated permission-click behavior from strict Settings-only to mixed policy:

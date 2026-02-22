@@ -9,6 +9,13 @@ The format is based on Keep a Changelog and this project uses Semantic Versionin
 ### Added
 - Open-source governance, contribution, and release scaffolding.
 
+## [0.1.24] - 2026-02-22
+
+### Changed
+- Permission clicks for Screen Recording, Accessibility, and Input Monitoring now perform registration requests and open target System Settings panes in the same interaction when still ungranted.
+- Microphone flow keeps first-time native prompt behavior for `.notDetermined` and uses System Settings fallback for denied/restricted states.
+- Reduced permission pane open delay/retry timing to improve perceived responsiveness while preserving registration probes.
+
 ## [0.1.23] - 2026-02-21
 
 ### Changed

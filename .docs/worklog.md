@@ -8,6 +8,33 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-21
+- Step: Permission click-flow responsiveness update (no permission-screen text changes)
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/xcode_signing_setup.md`
+  - Behavior change:
+    - Screen Recording / Accessibility / Input Monitoring now request/probe and open target Settings pane in one click when still not granted.
+    - Microphone keeps first-time native prompt (`.notDetermined`) and uses Settings fallback for denied/restricted.
+    - Reduced permission-pane open delay/retry timing for faster perceived response.
+  - Constraint honored:
+    - no onboarding/settings permission helper copy changes in this increment.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-fast-open build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-perm-fast-open-tests test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
+- Manual tests run:
+  - Launched `/tmp/taskagent-dd-perm-fast-open/Build/Products/Debug/ClickCherry.app` and confirmed process startup (`pgrep` observed PIDs), then terminated test instance.
+  - Pending user-side DMG runtime validation for macOS privacy-pane behavior and list visibility.
+- Result:
+  - In progress: code and automated validation complete; full runtime permission validation pending.
+- Issues/blockers:
+  - Terminal-only environment cannot directly confirm System Settings privacy-pane list rendering.
+
+## Entry
+- Date: 2026-02-21
 - Step: Release artifact naming update (versioned DMG filename in workflow + docs alignment)
 - Changes made:
   - Updated:
@@ -224,29 +251,6 @@ description: Running implementation log of completed work, test evidence, blocke
   - Pending user-side multi-display runtime validation of launcher/app-open placement.
 - Result:
   - Complete (implementation + targeted automated validation), pending runtime confirmation.
-- Issues/blockers:
-  - None.
-
-## Entry
-- Date: 2026-02-21
-- Step: Temporary run-log screenshot visibility for active debugging
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/TaskDetailPageView.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
-  - Connected OpenAI execution screenshot sink to state (`LLMScreenshotRecorder`) and surfaced per-run, in-memory screenshot entries (`runScreenshotLogByRunID`).
-  - Added temporary screenshot thumbnail strip beneath run log lines to aid debugging of target-screen mismatch behavior.
-  - Scoped retention to active runtime only (not persisted in saved run logs).
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-run-screenshots build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/taskagent-dd-run-screenshots test -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests` (pass).
-- Manual tests run:
-  - Pending user-side runtime verification (terminal environment cannot validate UI image rendering directly).
-- Result:
-  - Complete (implementation + automated validation), pending user runtime confirmation.
 - Issues/blockers:
   - None.
 

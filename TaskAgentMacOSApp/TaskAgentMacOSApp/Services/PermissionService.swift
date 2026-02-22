@@ -48,15 +48,14 @@ extension PermissionService {
 
 final class MacPermissionService: PermissionService {
     private enum SettingsOpenTiming {
-        static let screenRecordingDelay: TimeInterval = 1.0
-        static let microphoneDelay: TimeInterval = 0.8
-        static let accessibilityDelay: TimeInterval = 0.7
-        static let inputMonitoringDelay: TimeInterval = 1.5
-        static let retryDelay: TimeInterval = 1.3
-        static let retryCount = 2
+        static let screenRecordingDelay: TimeInterval = 0.35
+        static let microphoneDelay: TimeInterval = 0.4
+        static let accessibilityDelay: TimeInterval = 0.3
+        static let inputMonitoringDelay: TimeInterval = 0.45
+        static let retryDelay: TimeInterval = 0.9
+        static let retryCount = 1
     }
-    private let requestTrackingQueue = DispatchQueue(label: "MacPermissionService.requestTracking")
-    private var requestedPermissionsInSession = Set<AppPermission>()
+
     func openSystemSettings(for permission: AppPermission) {
         for candidate in settingsURLStrings(for: permission) {
             guard let url = URL(string: candidate) else {
@@ -125,20 +124,20 @@ final class MacPermissionService: PermissionService {
     func requestAccessAndOpenSystemSettings(for permission: AppPermission) {
         switch permission {
         case .microphone:
-            let status = AVCaptureDevice.authorizationStatus(for: .audio)
-            if status == .authorized {
+            let microphoneAuthorizationStatus = AVCaptureDevice.authorizationStatus(for: .audio)
+            if microphoneAuthorizationStatus == .authorized {
                 probeMicrophoneCaptureStackAsync()
                 return
             }
-            if status == .notDetermined {
+            if microphoneAuthorizationStatus == .notDetermined {
                 AVCaptureDevice.requestAccess(for: .audio) { granted in
                     if granted {
                         self.probeMicrophoneCaptureStackAsync()
                     }
                 }
-                // Avoid opening Settings at the same time as the first native prompt.
                 return
             }
+
             openSystemSettingsAfterRegistration(
                 for: permission,
                 initialDelay: SettingsOpenTiming.microphoneDelay
@@ -147,13 +146,8 @@ final class MacPermissionService: PermissionService {
             if currentStatus(for: permission) == .granted {
                 return
             }
-            let isFirstRequestInSession = markRequestAttempt(permission)
             _ = requestAccessIfNeeded(for: permission)
             if currentStatus(for: permission) == .granted {
-                return
-            }
-            if isFirstRequestInSession {
-                // First click should avoid overlapping native prompt + auto-opened Settings.
                 return
             }
             openSystemSettingsAfterRegistration(
@@ -164,13 +158,8 @@ final class MacPermissionService: PermissionService {
             if currentStatus(for: permission) == .granted {
                 return
             }
-            let isFirstRequestInSession = markRequestAttempt(permission)
             _ = requestAccessIfNeeded(for: permission)
             if currentStatus(for: permission) == .granted {
-                return
-            }
-            if isFirstRequestInSession {
-                // First click should avoid overlapping native prompt + auto-opened Settings.
                 return
             }
             openSystemSettingsAfterRegistration(
@@ -181,13 +170,8 @@ final class MacPermissionService: PermissionService {
             if currentStatus(for: permission) == .granted {
                 return
             }
-            let isFirstRequestInSession = markRequestAttempt(permission)
             _ = requestAccessIfNeeded(for: permission)
             if currentStatus(for: permission) == .granted {
-                return
-            }
-            if isFirstRequestInSession {
-                // First click should avoid overlapping native prompt + auto-opened Settings.
                 return
             }
             openSystemSettingsAfterRegistration(
@@ -285,6 +269,9 @@ final class MacPermissionService: PermissionService {
             guard attempt < SettingsOpenTiming.retryCount else {
                 return
             }
+            guard self.currentStatus(for: permission) != .granted else {
+                return
+            }
             self.openSystemSettingsAttempt(
                 for: permission,
                 attempt: attempt + 1,
@@ -332,9 +319,4 @@ final class MacPermissionService: PermissionService {
         }
     }
 
-    private func markRequestAttempt(_ permission: AppPermission) -> Bool {
-        requestTrackingQueue.sync {
-            requestedPermissionsInSession.insert(permission).inserted
-        }
-    }
 }

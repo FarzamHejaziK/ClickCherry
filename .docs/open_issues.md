@@ -21,28 +21,30 @@ description: Active unresolved issues with concrete repro details, mitigation, a
   - Permission pane can open before TCC registration settles, so the app row is not yet visible.
   - Prior implementation also issued duplicate request calls (`refreshPermissionStatus` + `openPermissionSettings`), increasing race probability.
   - Follow-up user report (2026-02-21): only Accessibility list showed `ClickCherry`; Screen Recording, Microphone, and Input Monitoring lists still missed app registration.
-  - Follow-up UX report (2026-02-21): first permission click could show both native macOS permission dialog and auto-opened System Settings list at the same time, which is confusing.
-  - User requirement update (2026-02-21): permission clicks should avoid native modal prompts entirely and use System Settings lists only.
+  - Follow-up UX report (2026-02-21): previous first-click de-conflict behavior could require extra clicks before Settings opened, which felt slow/confusing for Screen Recording, Accessibility, and Input Monitoring.
 - Expected:
   - Clicking `Open Settings` should consistently show `ClickCherry` in the relevant privacy list after request registration.
 - Current Mitigation:
-  - `MacPermissionService` now uses delayed permission-pane open timing after request calls, plus multi-retry open attempts, to reduce TCC-registration race windows.
+  - `MacPermissionService` keeps permission-pane opening delayed after request calls (to reduce TCC races), but now uses a shorter settle window and fewer retries for faster response.
   - Added explicit registration probes before Settings navigation for non-AX permissions:
     - Screen Recording: best-effort screenshot probe path to exercise ScreenCapture registration.
     - Microphone: best-effort capture-session probe after authorization to exercise mic registration path.
     - Input Monitoring: burst probing (event tap + global monitor) to improve list registration consistency.
-  - Permission-row actions now use mixed policy per user requirement:
-    - restore native prompt path for permissions where initial registration requires it (notably Microphone, and prompt-capable system APIs for other rows).
-    - keep first-click de-conflict behavior to avoid opening Settings simultaneously with native prompt.
-    - follow-up click opens target Settings pane when still not granted.
+  - Permission-row actions now use deterministic mixed behavior:
+    - Screen Recording / Accessibility / Input Monitoring:
+      - same click runs request/probe and then opens target Settings pane when still not granted.
+    - Microphone:
+      - first-time `.notDetermined` keeps native prompt behavior.
+      - denied/restricted follow-up clicks open target Settings pane.
   - onboarding/status refresh path remains passive (`currentStatus`) to avoid accidental prompt dialogs during polling.
   - Permission-row handlers in onboarding/settings now use a single request-open path (removed duplicate pre-request calls).
   - Added explicit guidance in onboarding/settings permissions copy to run `ClickCherry` from `/Applications` and retry `Open Settings` if list entries are still missing.
 - Next Action:
   - User-side runtime validation on a DMG-installed build:
     - ensure app is launched from `/Applications` (not directly from mounted DMG).
-    - click each permission row and confirm no native permission dialog appears (Settings list only).
-    - click each permission row (`Screen Recording`, `Microphone`, `Accessibility`, `Input Monitoring`) and confirm `ClickCherry` appears in the target list.
+    - click `Screen Recording`, `Accessibility`, and `Input Monitoring` once and confirm target Settings panes open directly.
+    - click `Microphone` and confirm first-time native prompt behavior (if not yet decided) and Settings fallback when denied.
+    - confirm `ClickCherry` appears in each target list (`Screen Recording`, `Microphone`, `Accessibility`, `Input Monitoring`).
     - repeat after relaunch to confirm consistent visibility.
 - Owner: Codex + user validation in DMG runtime
 
