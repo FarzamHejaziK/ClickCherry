@@ -126,8 +126,9 @@ final class MacPermissionService: PermissionService {
                 clearRequestedInSession(.screenRecording)
                 return .granted
             }
+            // Avoid repeated native dialog loops; route through System Settings and
+            // rely on bounded background probes to detect post-toggle grant state.
             markRequestedInSession(.screenRecording)
-            _ = CGRequestScreenCaptureAccess()
             scheduleScreenRecordingRecheckProbes()
             return CGPreflightScreenCaptureAccess() ? .granted : .notGranted
         case .microphone:
@@ -217,11 +218,7 @@ final class MacPermissionService: PermissionService {
                 openSystemSettings(for: permission)
                 return
             }
-            if !hasRequestedInSession(.screenRecording) {
-                _ = requestAccessIfNeeded(for: permission)
-            } else {
-                scheduleScreenRecordingRecheckProbes()
-            }
+            _ = requestAccessIfNeeded(for: permission)
             if currentStatus(for: permission) == .granted {
                 invalidateScreenRecordingProbeCycle()
                 clearRequestedInSession(.screenRecording)

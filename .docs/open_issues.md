@@ -29,6 +29,8 @@ description: Active unresolved issues with concrete repro details, mitigation, a
     - Screen Recording can show `ClickCherry` enabled in System Settings, but app-side status remains `Not Granted` in onboarding.
     - Screen Recording native dialog can feel stuck/reappearing after Settings navigation.
     - Input Monitoring pane still opens without `ClickCherry` row on both tested macOS versions.
+  - Latest follow-up validation (2026-02-22, release `v0.1.26`):
+    - Screen Recording dialog can still repeatedly appear and cannot be dismissed reliably during onboarding flow.
 - Expected:
   - Clicking `Open Settings` should consistently show `ClickCherry` in the relevant privacy list after request registration.
 - Current Mitigation:
@@ -38,7 +40,9 @@ description: Active unresolved issues with concrete repro details, mitigation, a
     - Accessibility delay: 0.7s
     - Input Monitoring delay: 1.5s
     - Retry delay/count: 1.3s, 2 retries
-  - Screen Recording request flow is session-gated and no longer probe-spams during passive polling.
+  - Screen Recording flow no longer calls native request API in onboarding click path.
+    - Polling path uses passive check only (`CGPreflightScreenCaptureAccess`) plus temporary cache.
+    - Screen Recording `Open Settings` click path is Settings-only with passive bounded recheck probes (no `CGRequestScreenCaptureAccess` call).
   - Screen Recording status sync now uses bounded post-click recheck probes (`1.2s`, `3.5s`, `8.0s`) plus temporary grant cache (TTL `180s`) to capture grant flips without continuous prompt churn.
   - Input Monitoring registration keepalive now holds event-tap/global-monitor registration attempts longer (`30s`) and uses temporary grant cache (TTL `180s`) to reflect successful registration earlier.
   - Microphone and Accessibility keep native macOS-first request behavior and Settings fallback/open behavior.
@@ -48,7 +52,7 @@ description: Active unresolved issues with concrete repro details, mitigation, a
   - Added explicit guidance in onboarding/settings permissions copy to run `ClickCherry` from `/Applications` and retry `Open Settings` if list entries are still missing.
 - Next Action:
   - Ship this increment through GitHub release flow (tag + workflow artifact), then run two-device runtime validation from the GitHub DMG:
-    - confirm Screen Recording prompt does not loop/stick after click flow.
+    - confirm Screen Recording prompt does not loop/stick after Settings-only click flow.
     - confirm Screen Recording granted state is reflected in-app within bounded recheck window.
     - confirm Input Monitoring list registration appears after click flow (or document exact remaining OS-level failure mode with timestamps and screenshots).
     - confirm Microphone and Accessibility remain deterministic (no no-op clicks).

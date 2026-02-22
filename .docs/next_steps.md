@@ -4,6 +4,24 @@ description: Short, continuously updated plan of the immediate next implementati
 
 # Next Steps
 
+1. Step: Validate Screen Recording settings-only click flow to eliminate repeated native dialog loops (in progress).
+2. Why now: User confirmed dialog-loop failure remains in `v0.1.26` (`Open Settings` can repeatedly surface the Screen Recording native prompt and onboarding stays blocked).
+3. Code tasks:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`:
+    - Screen Recording polling path stays check-only (`CGPreflightScreenCaptureAccess`) with no request API call.
+    - Screen Recording click path now avoids native request and uses Settings-only open behavior with passive bounded recheck probes.
+    - preserved existing UI text/copy.
+4. Automated tests:
+  - `xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Debug build` (pass on 2026-02-22).
+  - `xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Debug test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass on 2026-02-22).
+5. Manual tests:
+  - Local smoke: launched `/Users/farzamh/Library/Developer/Xcode/DerivedData/TaskAgentMacOSApp-hcmwhqcntcyxesavzhrufsmixgfu/Build/Products/Debug/ClickCherry.app`, confirmed startup, terminated debug instance.
+  - Pending user-side runtime verification from GitHub release DMG:
+    - Screen Recording click no longer traps user in repeated native dialog.
+    - granted toggle in Settings converges to `Granted` state in onboarding.
+6. Exit criteria:
+  - User confirms no repeated Screen Recording dialog loop and status convergence after Settings toggle.
+
 1. Step: Validate bounded post-click permission sync behavior on two macOS devices using GitHub release build (in progress).
 2. Why now: User reported that permissions can be granted in System Settings while onboarding still shows `Not Granted`, with repeated/sticky Screen Recording dialogs and missing Input Monitoring row.
 3. Code tasks:

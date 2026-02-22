@@ -27,6 +27,30 @@ description: Canonical log for UI/UX plans, decisions, and implementation alignm
 
 ## Entry
 - Date: 2026-02-22
+- Area: Screen Recording click behavior hardening (settings-only, no repeat native request)
+- Change Summary:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`
+  - Behavior updates:
+    - Screen Recording check path remains passive (status read only).
+    - Screen Recording `Open Settings` path no longer calls native request API; it now uses Settings-only open with bounded passive recheck.
+    - goal is to stop repeated native dialog loops while preserving grant-state convergence.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` setup reliability objective by preventing modal-loop dead ends during permission onboarding.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` section 8 by keeping permission remediation deterministic and reducing repeated interruption loops.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Debug build` (pass on 2026-02-22).
+    - `xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Debug test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass on 2026-02-22).
+  - Manual tests:
+    - launched `/Users/farzamh/Library/Developer/Xcode/DerivedData/TaskAgentMacOSApp-hcmwhqcntcyxesavzhrufsmixgfu/Build/Products/Debug/ClickCherry.app`, confirmed startup (`pgrep`), then terminated.
+    - pending user-side runtime verification from release DMG.
+- Notes:
+  - No UI text changes in this increment.
+
+## Entry
+- Date: 2026-02-22
 - Area: Permission post-click stabilization (dialog loop reduction + granted-state sync)
 - Change Summary:
   - Updated permission-action internals only:

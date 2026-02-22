@@ -8,6 +8,30 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-22
+- Step: Screen Recording loop fix (check-only polling + settings-only click path)
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_issues.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+  - Root-cause mitigation implemented:
+    - Screen Recording polling path remains passive status-check only.
+    - Screen Recording click path no longer calls native request API; it opens Settings and uses passive bounded recheck probes.
+    - target behavior is to eliminate repeated native dialog loops while still reflecting granted state after Settings toggle.
+- Automated tests run:
+  - `xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Debug build` (pass).
+  - `xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Debug test -only-testing:TaskAgentMacOSAppTests/OnboardingStateStoreTests -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass).
+- Manual tests run:
+  - Launched `/Users/farzamh/Library/Developer/Xcode/DerivedData/TaskAgentMacOSApp-hcmwhqcntcyxesavzhrufsmixgfu/Build/Products/Debug/ClickCherry.app`, confirmed process startup via `pgrep`, then terminated debug instance.
+  - Pending user-side runtime permission validation from GitHub release DMG.
+- Result:
+  - Complete for implementation + local validation; pending runtime confirmation on target machines.
+- Issues/blockers:
+  - Terminal environment cannot validate live System Settings modal loop behavior directly.
+
+## Entry
+- Date: 2026-02-22
 - Step: Permission status convergence hardening (granted-state capture + prompt-loop reduction)
 - Changes made:
   - Updated:
@@ -241,28 +265,4 @@ description: Running implementation log of completed work, test evidence, blocke
   - Complete (implementation + targeted automated validation), pending runtime confirmation.
 - Issues/blockers:
   - macOS may still require manual revocation in some policy-managed environments.
-
-## Entry
-- Date: 2026-02-21
-- Step: Temporary Settings reset toggle (clear provider keys + restart onboarding)
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-  - Added temporary guarded reset control in Settings model setup with explicit toggle gating before destructive action.
-  - Added `resetSetupAndReturnToOnboarding()` to clear OpenAI/Gemini keys and force onboarding reset via existing notification path.
-  - Added explicit user-facing limitation message: macOS permissions must be manually revoked in System Settings.
-  - Added regression test:
-    - `MainShellStateStoreTests.resetSetupClearsProviderKeysAndPostsOnboardingResetNotification`.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-temp-reset -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO test` (pass).
-- Manual tests run:
-  - Pending user-side runtime verification of Settings interaction and onboarding restart.
-- Result:
-  - Complete (implementation + targeted automated validation), pending runtime confirmation.
-- Issues/blockers:
-  - macOS permission grants are OS-managed and cannot be revoked programmatically from this app.
 
