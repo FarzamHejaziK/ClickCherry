@@ -5536,3 +5536,25 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - Complete for implementation + automated validation + log-level diagnosis; pending release artifact runtime confirmation.
 - Issues/blockers:
   - None in compile/test path; permission and network behavior still require final multi-device runtime confirmation.
+
+## Entry
+- Date: 2026-02-22
+- Step: Settings UI cleanup (remove temporary reset controls)
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
+  - UI behavior changes:
+    - removed the `Temporary Reset Toggle` section from Settings -> Model Setup.
+    - removed `Enable temporary full reset` toggle and `Run Temporary Reset (Clear Keys + Onboarding)` button.
+    - left `Start Over (Show Onboarding)` unchanged.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass; 89 tests).
+- Manual tests run:
+  - Launched `/tmp/taskagent-dd-ci-test/Build/Products/Debug/ClickCherry.app`, confirmed startup via `pgrep`, then terminated app process.
+- Result:
+  - Complete for requested temporary UI removal.
+- Issues/blockers:
+  - None.

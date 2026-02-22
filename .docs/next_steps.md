@@ -4,19 +4,19 @@ description: Short, continuously updated plan of the immediate next implementati
 
 # Next Steps
 
-1. Step: Publish `v0.1.31` release for settings simplification + ready-step visual refresh (in progress).
-2. Why now: User approved shipping the latest UI updates.
+1. Step: Publish `v0.1.32` release for app-icon roundness and Dock-size parity updates (in progress).
+2. Why now: User requested shipping the latest icon refinements after iterative macOS 15 validation feedback.
 3. Code tasks:
-  - Updated `/Users/farzamh/code-git-local/task-agent-macos/CHANGELOG.md` with `0.1.31` release notes.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/CHANGELOG.md` with `0.1.32` release notes.
   - Included:
-    - removal of `Start Over (Show Onboarding)` from `Settings > Model Setup`.
-    - modernization of onboarding `Ready` step using LLM issue-panel color language.
+    - stronger icon corner roundness.
+    - reduced icon optical mass with regenerated full icon raster set from a single master.
 4. Automated tests:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-release-v0-1-31 CODE_SIGNING_ALLOWED=NO build` (pass on 2026-02-22).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-icon-fix CODE_SIGNING_ALLOWED=NO build` (pass on 2026-02-22).
 5. Manual tests:
-  - Launched `/tmp/taskagent-dd-release-v0-1-31/Build/Products/Debug/ClickCherry.app`, confirmed process startup via `pgrep`, then terminated launched debug process.
+  - Launched `/tmp/taskagent-dd-icon-fix/Build/Products/Debug/ClickCherry.app`, confirmed process startup via `pgrep`, then terminated launched debug process.
 6. Exit criteria:
-  - Commit and tag `v0.1.31` are pushed and the GitHub Release workflow starts.
+  - Commit and tag `v0.1.32` are pushed and the GitHub Release workflow starts.
 
 1. Step: Validate and finalize modern visual style for onboarding `Ready` step (in progress).
 2. Why now: User requested a more modern look for the ready page and asked to incorporate colors/style language from the LLM errors surface.
@@ -124,6 +124,7 @@ description: Short, continuously updated plan of the immediate next implementati
   - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_512x512@2x.png`.
   - Regenerated all slots from a single adjusted 1024 master to keep per-size rendering consistent.
   - Refined rounded-rectangle alpha mask to increase corner roundness based on user visual feedback.
+  - Applied a stronger roundness pass and additional scale reduction after follow-up user feedback (`still larger/not round on macOS 15`).
 4. Automated tests:
   - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-icon-fix CODE_SIGNING_ALLOWED=NO build` (pass on 2026-02-22).
 5. Manual tests:

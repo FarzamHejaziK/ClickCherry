@@ -141,6 +141,7 @@ description: Canonical log for UI/UX plans, decisions, and implementation alignm
     - reduced icon optical mass in the 1024 master and regenerated all size slots from the updated master for consistent Dock rendering.
     - preserved full-bleed enclosure and corrected blur-matte corner handling to avoid halo artifacts.
     - increased enclosure corner roundness after user review feedback on border curvature.
+    - increased corner curvature again (strong pass) and reduced foreground scale further to improve Dock parity on macOS 15.
 - Plan Alignment:
   - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` onboarding/main-shell polish objectives by improving brand/icon visual consistency across supported macOS versions.
 - Design Decision Alignment:

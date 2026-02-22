@@ -8,6 +8,36 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-22
+- Step: App icon strong-roundness follow-up for macOS 15 Dock rendering
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_16x16.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_16x16@2x.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_32x32.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_32x32@2x.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_128x128.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_128x128@2x.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_256x256.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_256x256@2x.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_512x512.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_512x512@2x.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
+  - Visual behavior changes:
+    - applied a stronger rounded-rectangle enclosure mask for visibly rounder corners.
+    - reduced icon foreground scale further to reduce oversized Dock appearance on macOS 15.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-icon-fix CODE_SIGNING_ALLOWED=NO build` (pass).
+- Manual tests run:
+  - Launched `/tmp/taskagent-dd-icon-fix/Build/Products/Debug/ClickCherry.app`, confirmed startup via `pgrep`, then terminated app process.
+- Result:
+  - Complete for stronger roundness/scale pass; pending user confirmation from macOS 15 Dock.
+- Issues/blockers:
+  - macOS Dock icon caching may continue to show stale icon until cache refresh/relaunch.
+
+## Entry
+- Date: 2026-02-22
 - Step: Prepare and publish release `v0.1.31`
 - Changes made:
   - Updated:
@@ -214,28 +244,6 @@ description: Running implementation log of completed work, test evidence, blocke
   - Launched `/tmp/taskagent-dd-ci-test/Build/Products/Debug/ClickCherry.app`, confirmed startup via `pgrep`, then terminated app process.
 - Result:
   - Complete for requested UI/flow change.
-- Issues/blockers:
-  - None.
-
-## Entry
-- Date: 2026-02-22
-- Step: Settings UI cleanup (remove temporary reset controls)
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
-  - UI behavior changes:
-    - removed the `Temporary Reset Toggle` section from Settings -> Model Setup.
-    - removed `Enable temporary full reset` toggle and `Run Temporary Reset (Clear Keys + Onboarding)` button.
-    - left `Start Over (Show Onboarding)` unchanged.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ci-test -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass; 89 tests).
-- Manual tests run:
-  - Launched `/tmp/taskagent-dd-ci-test/Build/Products/Debug/ClickCherry.app`, confirmed startup via `pgrep`, then terminated app process.
-- Result:
-  - Complete for requested temporary UI removal.
 - Issues/blockers:
   - None.
 

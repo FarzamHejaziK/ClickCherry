@@ -9,6 +9,12 @@ The format is based on Keep a Changelog and this project uses Semantic Versionin
 ### Added
 - Open-source governance, contribution, and release scaffolding.
 
+## [0.1.32] - 2026-02-22
+
+### Changed
+- Refined app icon enclosure geometry with a stronger rounded-rectangle mask for visibly rounder corners in Dock rendering.
+- Reduced icon optical foreground mass and regenerated all `AppIcon.appiconset` sizes from one updated 1024 master to improve perceived size parity on macOS 15.
+
 ## [0.1.31] - 2026-02-22
 
 ### Changed
