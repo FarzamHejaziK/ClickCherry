@@ -5614,3 +5614,27 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - Complete for local icon-asset and enclosure-roundness update; pending user-side Dock visual confirmation.
 - Issues/blockers:
   - None.
+
+## Entry
+- Date: 2026-02-22
+- Step: DMG installer artwork cleanup (remove text + iconized direction arrow)
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
+  - Visual behavior changes:
+    - removed DMG background instruction text (`Drag to install`, `Drop the app into Applications`).
+    - replaced typed `>` with symbol-based `chevron.right.circle.fill` plus subtle glow.
+    - kept icon placement and drop-link positions unchanged.
+- Automated tests run:
+  - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass).
+- Manual tests run:
+  - Extracted the embedded workflow Swift script to `/tmp/make_dmg_background_preview.swift`.
+  - Ran `swift /tmp/make_dmg_background_preview.swift /tmp/dmg-background-preview.png`.
+  - Verified output artifact via `sips` (`1520x960`).
+- Result:
+  - Complete for requested DMG artwork direction change; pending confirmation on next built DMG.
+- Issues/blockers:
+  - None.

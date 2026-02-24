@@ -26,6 +26,37 @@ description: Canonical log for UI/UX plans, decisions, and implementation alignm
 ## Entries
 
 ## Entry
+- Date: 2026-02-24
+- Area: App icon rollback of optical resize while preserving round enclosure
+- Change Summary:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_16x16.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_16x16@2x.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_32x32.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_32x32@2x.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_128x128.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_128x128@2x.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_256x256.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_256x256@2x.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_512x512.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_512x512@2x.png`
+  - UI/visual updates:
+    - restored icon foreground/content scale to the pre-resize composition from `v0.1.31`.
+    - retained the stronger rounded enclosure mask from the latest icon pass.
+    - regenerated all icon slots from one 1024 master to keep slot consistency.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` polish objective by fixing a user-reported visual regression in Dock icon sizing while keeping accepted shape changes.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` consistency goals by preserving intentional icon geometry decisions and removing unintended optical-size drift.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-icon-round-no-resize CODE_SIGNING_ALLOWED=NO build` (pass on 2026-02-24).
+  - Manual tests:
+    - Launched `/tmp/taskagent-dd-icon-round-no-resize/Build/Products/Debug/ClickCherry.app`, confirmed startup via `pgrep`, then terminated app.
+- Notes:
+  - Requested by user after confirming roundness improvement but rejecting the optical downscale effect.
+
+## Entry
 - Date: 2026-02-22
 - Area: Onboarding ready-step visual refresh (LLM-issue palette adaptation)
 - Change Summary:

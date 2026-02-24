@@ -4,6 +4,28 @@ description: Short, continuously updated plan of the immediate next implementati
 
 # Next Steps
 
+1. Step: Keep rounder Dock icon enclosure but revert optical downscale (in progress).
+2. Why now: User accepted corner roundness update but reported the reduced icon scale looked wrong.
+3. Code tasks:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_16x16.png`.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_16x16@2x.png`.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_32x32.png`.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_32x32@2x.png`.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_128x128.png`.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_128x128@2x.png`.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_256x256.png`.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_256x256@2x.png`.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_512x512.png`.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_512x512@2x.png`.
+  - Restored icon composition from `v0.1.31` master and reapplied strong rounded enclosure mask only.
+4. Automated tests:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-icon-round-no-resize CODE_SIGNING_ALLOWED=NO build` (pass on 2026-02-24).
+5. Manual tests:
+  - Launched `/tmp/taskagent-dd-icon-round-no-resize/Build/Products/Debug/ClickCherry.app`, confirmed startup via `pgrep`, then terminated app process.
+  - Pending user-side Dock visual confirmation on macOS 15.
+6. Exit criteria:
+  - User confirms icon roundness is retained and visual size/composition no longer appears over-shrunk.
+
 1. Step: Align README contribution policy text with actual no-DCO enforcement (in progress).
 2. Why now: User flagged that README still showed a DCO requirement despite repository policy and enforcement having no DCO check.
 3. Code tasks:

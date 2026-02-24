@@ -7,6 +7,37 @@ description: Running implementation log of completed work, test evidence, blocke
 > Previous archived entries are in `/Users/farzamh/code-git-local/task-agent-macos/.docs/legacy_worklog.md`.
 
 ## Entry
+- Date: 2026-02-24
+- Step: Restore app icon size while keeping rounder enclosure
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_16x16.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_16x16@2x.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_32x32.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_32x32@2x.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_128x128.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_128x128@2x.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_256x256.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_256x256@2x.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_512x512.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_512x512@2x.png`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
+  - Icon behavior changes:
+    - restored icon content scale/composition from `v0.1.31`.
+    - retained stronger rounded enclosure from recent icon updates.
+    - regenerated all app icon slots from one master.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-icon-round-no-resize CODE_SIGNING_ALLOWED=NO build` (pass).
+- Manual tests run:
+  - Launched `/tmp/taskagent-dd-icon-round-no-resize/Build/Products/Debug/ClickCherry.app`, confirmed startup via `pgrep`, then terminated app process.
+- Result:
+  - Complete for requested icon size rollback with roundness preserved.
+- Issues/blockers:
+  - None.
+
+## Entry
 - Date: 2026-02-22
 - Step: Align README with no-DCO contribution policy
 - Changes made:
@@ -206,30 +237,6 @@ description: Running implementation log of completed work, test evidence, blocke
   - N/A (release operation step; workflow status verified after tag push).
 - Result:
   - Ready to publish release tag.
-- Issues/blockers:
-  - None.
-
-## Entry
-- Date: 2026-02-22
-- Step: DMG installer artwork cleanup (remove text + iconized direction arrow)
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.github/workflows/release.yml`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
-  - Visual behavior changes:
-    - removed DMG background instruction text (`Drag to install`, `Drop the app into Applications`).
-    - replaced typed `>` with symbol-based `chevron.right.circle.fill` plus subtle glow.
-    - kept icon placement and drop-link positions unchanged.
-- Automated tests run:
-  - `ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); puts "release.yml ok"'` (pass).
-- Manual tests run:
-  - Extracted the embedded workflow Swift script to `/tmp/make_dmg_background_preview.swift`.
-  - Ran `swift /tmp/make_dmg_background_preview.swift /tmp/dmg-background-preview.png`.
-  - Verified output artifact via `sips` (`1520x960`).
-- Result:
-  - Complete for requested DMG artwork direction change; pending confirmation on next built DMG.
 - Issues/blockers:
   - None.
 
