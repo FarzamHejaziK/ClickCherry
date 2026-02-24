@@ -27,6 +27,27 @@ description: Canonical log for UI/UX plans, decisions, and implementation alignm
 
 ## Entry
 - Date: 2026-02-24
+- Area: Onboarding ready-step rollback to pre-v0.1.31 layout
+- Change Summary:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/ReadyStepView.swift`
+  - UI updates:
+    - removed the v0.1.31 material-card/tinted-chip redesign on Step 4 (`Ready`).
+    - restored the earlier compact typography/spacing and plain readiness rows to reduce vertical height in non-fullscreen windows.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` onboarding reliability goals by prioritizing layout fit and readability over optional visual styling.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` consistency and usability goals by reverting to the previously stable step layout that fits constrained window sizes.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ready-rollback CODE_SIGNING_ALLOWED=NO build` (pass on 2026-02-24).
+  - Manual tests:
+    - Launched `/tmp/taskagent-dd-ready-rollback/Build/Products/Debug/ClickCherry.app`, confirmed process startup via `pgrep`, then quit the launched instance.
+- Notes:
+  - User explicitly requested full rollback of the ready-step redesign.
+
+## Entry
+- Date: 2026-02-24
 - Area: App icon rollback of optical resize while preserving round enclosure
 - Change Summary:
   - Updated:

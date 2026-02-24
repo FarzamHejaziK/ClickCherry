@@ -9,6 +9,12 @@ The format is based on Keep a Changelog and this project uses Semantic Versionin
 ### Added
 - Open-source governance, contribution, and release scaffolding.
 
+## [0.1.33] - 2026-02-24
+
+### Changed
+- Rolled back onboarding Step 4 (`Ready`) UI from the `v0.1.31` redesign to the previous compact layout.
+- Restored the earlier ready-page spacing/typography/readiness row styling to prevent clipping and overflow in non-fullscreen windows.
+
 ## [0.1.32] - 2026-02-22
 
 ### Changed

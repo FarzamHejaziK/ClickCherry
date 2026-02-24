@@ -4,6 +4,33 @@ description: Short, continuously updated plan of the immediate next implementati
 
 # Next Steps
 
+1. Step: Publish `v0.1.33` with onboarding ready-step rollback (in progress).
+2. Why now: User requested releasing the rollback that restores usable Step 4 layout in non-fullscreen windows.
+3. Code tasks:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/CHANGELOG.md` with `0.1.33` release notes.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md` with release strategy execution update.
+  - Included rollback payload from `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/ReadyStepView.swift`.
+4. Automated tests:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ready-rollback CODE_SIGNING_ALLOWED=NO build` (pass on 2026-02-24).
+5. Manual tests:
+  - Launched `/tmp/taskagent-dd-ready-rollback/Build/Products/Debug/ClickCherry.app`, confirmed process startup via `pgrep`, then quit the launched app instance.
+6. Exit criteria:
+  - Release commit and tag `v0.1.33` are pushed and GitHub Release workflow starts.
+
+1. Step: Keep onboarding Step 4 (`Ready`) on the pre-redesign layout (in progress).
+2. Why now: User reported severe non-fullscreen layout breakage after the v0.1.31 ready-page redesign and requested full rollback.
+3. Code tasks:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/ReadyStepView.swift`:
+    - removed material-card and tinted-chip redesign styles.
+    - restored previous compact spacing/typography/readiness row styling from pre-v0.1.31.
+4. Automated tests:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ready-rollback CODE_SIGNING_ALLOWED=NO build` (pass on 2026-02-24).
+5. Manual tests:
+  - Launched `/tmp/taskagent-dd-ready-rollback/Build/Products/Debug/ClickCherry.app`, confirmed process startup via `pgrep`, then quit the launched app instance.
+  - Pending user-side visual confirmation that Step 4 fits correctly in non-fullscreen mode.
+6. Exit criteria:
+  - User confirms onboarding Step 4 no longer clips/overflows in non-fullscreen windows.
+
 1. Step: Keep rounder Dock icon enclosure but revert optical downscale (in progress).
 2. Why now: User accepted corner roundness update but reported the reduced icon scale looked wrong.
 3. Code tasks:

@@ -93,3 +93,9 @@ description: Open-source strategy decisions, governance, contribution model, and
 - Contributor-facing docs alignment:
   - Updated `/README.md` open-source baseline bullet to match locked contribution legal model (`No DCO or CLA requirement`).
   - `CONTRIBUTING.md` and workflow enforcement were already aligned; README is now consistent with the actual policy.
+
+## Updates (2026-02-24)
+
+- Release execution alignment:
+  - Prepared release `v0.1.33` with changelog notes for onboarding ready-step rollback.
+  - Release payload focuses on restoring non-fullscreen onboarding layout stability on Step 4 (`Ready`).

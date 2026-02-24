@@ -5638,3 +5638,23 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - Complete for requested DMG artwork direction change; pending confirmation on next built DMG.
 - Issues/blockers:
   - None.
+
+## Entry
+- Date: 2026-02-22
+- Step: Release cut `v0.1.29` preparation
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/CHANGELOG.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
+  - Release prep updates:
+    - added `0.1.29` changelog notes for DMG artwork polish, onboarding/settings permissions simplification, and icon refinement changes.
+    - prepared repository state for `v0.1.29` tag push to trigger GitHub Release workflow.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-release-preflight CODE_SIGNING_ALLOWED=NO build` (pass).
+- Manual tests run:
+  - N/A (release operation step; workflow status verified after tag push).
+- Result:
+  - Ready to publish release tag.
+- Issues/blockers:
+  - None.

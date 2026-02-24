@@ -8,6 +8,29 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-24
+- Step: Roll back onboarding ready-step redesign and cut release `v0.1.33`
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/ReadyStepView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/CHANGELOG.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
+  - UI/release behavior changes:
+    - reverted Step 4 (`Ready`) to the pre-v0.1.31 compact layout to avoid non-fullscreen clipping/overflow.
+    - prepared release notes for `0.1.33` documenting the rollback.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ready-rollback CODE_SIGNING_ALLOWED=NO build` (pass).
+- Manual tests run:
+  - Launched `/tmp/taskagent-dd-ready-rollback/Build/Products/Debug/ClickCherry.app`, confirmed process startup via `pgrep`, then quit launched instance.
+- Result:
+  - Ready to publish `v0.1.33`.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-24
 - Step: Restore app icon size while keeping rounder enclosure
 - Changes made:
   - Updated:
@@ -217,26 +240,6 @@ description: Running implementation log of completed work, test evidence, blocke
   - Pending user-side visual validation of icon centering.
 - Result:
   - Complete for asset-level correction; ready for follow-up release tag.
-- Issues/blockers:
-  - None.
-
-## Entry
-- Date: 2026-02-22
-- Step: Release cut `v0.1.29` preparation
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/CHANGELOG.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
-  - Release prep updates:
-    - added `0.1.29` changelog notes for DMG artwork polish, onboarding/settings permissions simplification, and icon refinement changes.
-    - prepared repository state for `v0.1.29` tag push to trigger GitHub Release workflow.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-release-preflight CODE_SIGNING_ALLOWED=NO build` (pass).
-- Manual tests run:
-  - N/A (release operation step; workflow status verified after tag push).
-- Result:
-  - Ready to publish release tag.
 - Issues/blockers:
   - None.
 
