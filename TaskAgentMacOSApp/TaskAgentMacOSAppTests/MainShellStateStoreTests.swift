@@ -977,11 +977,12 @@ struct MainShellStateStoreTests {
         """)
 
         await waitUntil(timeoutSeconds: 5.0) {
-            store.selectedTaskID != nil
+            store.selectedTaskID != nil && store.finishedRecordingReview == nil && !store.isExtractingTask
         }
 
         #expect(store.selectedTaskID != nil)
         #expect(store.finishedRecordingReview == nil)
+        #expect(store.isExtractingTask == false)
 
         let workspacesAfter = try fm.contentsOfDirectory(at: tempRoot, includingPropertiesForKeys: nil)
             .filter { $0.hasDirectoryPath && $0.lastPathComponent.hasPrefix("workspace-") }

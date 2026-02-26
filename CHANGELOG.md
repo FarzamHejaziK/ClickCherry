@@ -9,6 +9,12 @@ The format is based on Keep a Changelog and this project uses Semantic Versionin
 ### Added
 - Open-source governance, contribution, and release scaffolding.
 
+## [0.1.37] - 2026-02-26
+
+### Fixed
+- Stabilized CI unit test `MainShellStateStoreTests.extractFromFinishedRecordingCreatesTaskOnlyAfterExtractionReturns()` by waiting for extraction completion and review-dialog dismissal before asserting.
+- Prevented intermittent CI failure where `finishedRecordingReview` could still be non-`nil` during assertion due to async state timing.
+
 ## [0.1.36] - 2026-02-26
 
 ### Fixed

@@ -5,6 +5,14 @@
 - Follow the `.docs/` update contract below for file ownership and maintenance rules.
 - Never push changes (run `git push`) unless the user explicitly requests it in the current thread.
 
+## Docs Update Approval Gate
+
+- Before editing any `.docs/*` file, explicitly ask the user for approval.
+- Provide a short proposed doc update list first (files + one-line reason per file).
+- Apply `.docs` changes only after the user approves.
+- Prioritize this approval gate for `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md` and `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`.
+- If the user declines, skip `.docs` edits and continue code changes unless instructed otherwise.
+
 ## Open Source Strategy Rules
 
 - Track all open-source strategy decisions, tradeoffs, and process updates in `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`.
@@ -43,9 +51,9 @@
   - Keep step definitions aligned with current execution reality.
 - `.docs/next_steps.md`:
   - Keep this as the current execution queue.
-  - Always include immediate priorities, code tasks, automated tests, manual tests, and exit criteria.
+  - After user approval, include immediate priorities, code tasks, automated tests, manual tests, and exit criteria.
 - `.docs/worklog.md`:
-  - Append an entry for each incremental implementation step and major docs/process change.
+  - After user approval, append an entry for each incremental implementation step and major docs/process change.
   - Include: what changed, automated tests run, manual tests run, result, blockers, notes.
   - Keep only the 10 most recent `## Entry` sections in this file.
   - Move older entries to `.docs/legacy_worklog.md` using `scripts/rotate_worklog.sh`.
@@ -68,7 +76,7 @@
 
 ## Docs-Only Changes
 
-- If a task is docs-only, still update `.docs/worklog.md` and keep `.docs/next_steps.md` aligned with current priorities.
+- If a task is docs-only, first ask for user approval; after approval, update `.docs/worklog.md` and keep `.docs/next_steps.md` aligned with current priorities.
 - In docs-only worklog entries, explicitly mark automated/manual tests as `N/A (docs-only)` unless a verification command is actually run.
 
 ## `open_issues.md` Entry Rules
