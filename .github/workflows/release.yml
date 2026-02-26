@@ -297,6 +297,7 @@ jobs:
           name: clickcherry-release
           path: |
             ClickCherry-macos-*.dmg
+          if-no-files-found: error
 
   publish:
     runs-on: ubuntu-latest
@@ -308,6 +309,10 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: clickcherry-release
+
+      - name: Verify DMG exists
+        run: |
+          ls -1 ClickCherry-macos-*.dmg
 
       - name: Build release notes
         run: |
