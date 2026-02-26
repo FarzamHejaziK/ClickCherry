@@ -1,6 +1,8 @@
 import Foundation
 import AppKit
 import ApplicationServices
+import ImageIO
+import UniformTypeIdentifiers
 
 enum OpenAIExecutionPlannerError: Error, LocalizedError, Equatable {
     case missingAPIKey
@@ -1906,7 +1908,7 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
             throw OpenAIExecutionPlannerError.screenshotCaptureFailed
         }
 
-        let data = capture.pngData
+        let optimizedImage = optimizeScreenshotPayload(capture.pngData)
         return OpenAICapturedScreenshot(
             width: capture.width,
             height: capture.height,
@@ -1916,9 +1918,9 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
             coordinateSpaceHeightPx: coordSpaceH,
             coordinateSpaceOriginX: originX,
             coordinateSpaceOriginY: originY,
-            mediaType: "image/png",
-            base64Data: data.base64EncodedString(),
-            byteCount: data.count
+            mediaType: optimizedImage.mediaType,
+            base64Data: optimizedImage.data.base64EncodedString(),
+            byteCount: optimizedImage.data.count
         )
     }
 
@@ -1944,7 +1946,7 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
             throw OpenAIExecutionPlannerError.screenshotCaptureFailed
         }
 
-        let data = capture.pngData
+        let optimizedImage = optimizeScreenshotPayload(capture.pngData)
         return OpenAICapturedScreenshot(
             width: capture.width,
             height: capture.height,
@@ -1954,10 +1956,45 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
             coordinateSpaceHeightPx: coordSpaceH,
             coordinateSpaceOriginX: originX,
             coordinateSpaceOriginY: originY,
-            mediaType: "image/png",
-            base64Data: data.base64EncodedString(),
-            byteCount: data.count
+            mediaType: optimizedImage.mediaType,
+            base64Data: optimizedImage.data.base64EncodedString(),
+            byteCount: optimizedImage.data.count
         )
+    }
+
+    nonisolated private static func optimizeScreenshotPayload(_ pngData: Data) -> (data: Data, mediaType: String) {
+        guard
+            let imageSource = CGImageSourceCreateWithData(pngData as CFData, nil),
+            let cgImage = CGImageSourceCreateImageAtIndex(imageSource, 0, nil)
+        else {
+            return (pngData, "image/png")
+        }
+
+        let output = NSMutableData()
+        let webpTypeIdentifier = UTType(filenameExtension: "webp")?.identifier ?? "public.webp"
+        guard let destination = CGImageDestinationCreateWithData(
+            output,
+            webpTypeIdentifier as CFString,
+            1,
+            nil
+        ) else {
+            return (pngData, "image/png")
+        }
+
+        let properties: [CFString: Any] = [
+            kCGImageDestinationLossyCompressionQuality: 0.84
+        ]
+        CGImageDestinationAddImage(destination, cgImage, properties as CFDictionary)
+        guard CGImageDestinationFinalize(destination) else {
+            return (pngData, "image/png")
+        }
+
+        let webpData = output as Data
+        // Keep PNG when WebP is unexpectedly larger.
+        guard webpData.count < pngData.count else {
+            return (pngData, "image/png")
+        }
+        return (webpData, "image/webp")
     }
 }
 

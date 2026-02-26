@@ -9,6 +9,19 @@ The format is based on Keep a Changelog and this project uses Semantic Versionin
 ### Added
 - Open-source governance, contribution, and release scaffolding.
 
+## [0.1.34] - 2026-02-26
+
+### Changed
+- New Task capture entry-point UI was refined for faster intake decisions:
+  - page title updated to `Add Task Recording`.
+  - recording action label clarified as `Start recording`.
+  - upload action now uses a larger plain folder glyph (without circular chrome/accent tint) to improve visual balance and reduce noise.
+- OpenAI execution model for the automation prompt was upgraded from `gpt-5.2-codex` to `gpt-5.3-codex`.
+- Desktop screenshot payloads sent to OpenAI were optimized for lower request size:
+  - screenshots are now encoded to WebP (`image/webp`) when supported.
+  - automatic fallback to PNG (`image/png`) is used when WebP encode is unavailable/fails.
+  - encoded output is only switched to WebP when it is smaller than the PNG source, preserving quality-first behavior while reducing bandwidth.
+
 ## [0.1.33] - 2026-02-24
 
 ### Changed

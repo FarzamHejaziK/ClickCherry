@@ -10,7 +10,7 @@ struct NewTaskEmptyView: View {
 
                 VStack(spacing: 10) {
                     VStack(spacing: 4) {
-                        Text(mainShellStateStore.isCapturing ? "Recording..." : "Start recording")
+                        Text(mainShellStateStore.isCapturing ? "Recording..." : "Add Task Recording")
                             .font(.system(size: 34, weight: .semibold))
 
                         Text(mainShellStateStore.isCapturing ? "Click the button to stop." : "Explain your task in detail.")
@@ -19,23 +19,92 @@ struct NewTaskEmptyView: View {
                     }
                     .multilineTextAlignment(.center)
 
-                    Button {
-                        mainShellStateStore.toggleNewTaskRecording()
-                    } label: {
-                        Image("RecordIcon")
-                            .renderingMode(.template)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 28, height: 28)
-                            .foregroundStyle(mainShellStateStore.isCapturing ? Color.red : Color.primary)
-                            .padding(22)
-                            .background(.thinMaterial, in: Circle())
-                            .overlay(
-                                Circle()
-                                    .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
-                            )
+                    if mainShellStateStore.isCapturing {
+                        RecordingChoiceButton(
+                            title: "Stop recording",
+                            action: {
+                                mainShellStateStore.toggleNewTaskRecording()
+                            },
+                            icon: {
+                                Image("RecordIcon")
+                                    .renderingMode(.template)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 32, height: 32)
+                                    .foregroundStyle(.red)
+                            }
+                        )
+                    } else {
+                        ViewThatFits(in: .horizontal) {
+                            HStack(alignment: .top, spacing: 24) {
+                                RecordingChoiceButton(
+                                    title: "Start recording",
+                                    action: {
+                                        mainShellStateStore.toggleNewTaskRecording()
+                                    },
+                                    icon: {
+                                        Image("RecordIcon")
+                                            .renderingMode(.template)
+                                            .resizable()
+                                            .scaledToFit()
+                                            .frame(width: 32, height: 32)
+                                            .foregroundStyle(Color.primary)
+                                    }
+                                )
+                                .frame(width: 190)
+
+                                CaptureChoiceOrPillar()
+
+                                RecordingChoiceButton(
+                                    title: "Upload recording",
+                                    action: {
+                                        mainShellStateStore.uploadRecordingForNewTask()
+                                    },
+                                    showsCircularChrome: false,
+                                    icon: {
+                                        Image(systemName: "folder")
+                                            .font(.system(size: 40, weight: .semibold))
+                                            .foregroundStyle(.primary)
+                                    }
+                                )
+                                .frame(width: 190)
+                            }
+                            .frame(maxWidth: 560)
+
+                            VStack(spacing: 14) {
+                                RecordingChoiceButton(
+                                    title: "Start recording",
+                                    action: {
+                                        mainShellStateStore.toggleNewTaskRecording()
+                                    },
+                                    icon: {
+                                        Image("RecordIcon")
+                                            .renderingMode(.template)
+                                            .resizable()
+                                            .scaledToFit()
+                                            .frame(width: 32, height: 32)
+                                            .foregroundStyle(Color.primary)
+                                    }
+                                )
+
+                                CaptureChoiceOrRow()
+
+                                RecordingChoiceButton(
+                                    title: "Upload recording",
+                                    action: {
+                                        mainShellStateStore.uploadRecordingForNewTask()
+                                    },
+                                    showsCircularChrome: false,
+                                    icon: {
+                                        Image(systemName: "folder")
+                                            .font(.system(size: 40, weight: .semibold))
+                                            .foregroundStyle(.primary)
+                                    }
+                                )
+                            }
+                            .frame(maxWidth: 280)
+                        }
                     }
-                    .buttonStyle(.plain)
 
                     if !mainShellStateStore.isCapturing, mainShellStateStore.availableCaptureDisplays.count > 1 {
                         CaptureDisplayPickerView(mainShellStateStore: mainShellStateStore)
@@ -66,6 +135,80 @@ struct NewTaskEmptyView: View {
                     .padding(.top, 24)
             }
         }
+    }
+}
+
+private struct RecordingChoiceButton<Icon: View>: View {
+    let title: String
+    let action: () -> Void
+    var showsCircularChrome: Bool = true
+    @ViewBuilder var icon: () -> Icon
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 10) {
+                icon()
+                    .frame(width: 92, height: 92)
+                    .background {
+                        if showsCircularChrome {
+                            Circle().fill(.thinMaterial)
+                        }
+                    }
+                    .overlay {
+                        if showsCircularChrome {
+                            Circle()
+                                .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
+                        }
+                    }
+
+                Text(title)
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct CaptureChoiceOrPillar: View {
+    var body: some View {
+        VStack(spacing: 8) {
+            Capsule()
+                .fill(Color.primary.opacity(0.18))
+                .frame(width: 1, height: 34)
+
+            Text("or")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            Capsule()
+                .fill(Color.primary.opacity(0.18))
+                .frame(width: 1, height: 34)
+        }
+        .padding(.top, 16)
+        .frame(width: 30)
+    }
+}
+
+private struct CaptureChoiceOrRow: View {
+    var body: some View {
+        HStack(spacing: 10) {
+            Capsule()
+                .fill(Color.primary.opacity(0.18))
+                .frame(height: 1)
+
+            Text("or")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            Capsule()
+                .fill(Color.primary.opacity(0.18))
+                .frame(height: 1)
+        }
+        .frame(width: 220)
     }
 }
 
