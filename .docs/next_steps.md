@@ -4,23 +4,29 @@ description: Short, continuously updated plan of the immediate next implementati
 
 # Next Steps
 
-1. Step: Commit all pending source+docs changes and publish corrective release after `v0.1.34` build failure (in progress).
-2. Why now: The `v0.1.34` tag/release workflow failed because the tagged commit omitted required companion source updates; user requested committing everything and updating docs.
+1. Step: Publish `v0.1.36` with DMG extraction fix for bundled prompts (in progress).
+2. Why now: User can extract tasks in local Xcode builds but DMG-distributed app fails immediately because Release bundles lacked the required prompt catalog assets.
 3. Code tasks:
-  - Stage and commit all pending app/docs files in one atomic commit to preserve cross-file compile consistency.
-  - Ensure release-relevant changes include:
-    - New Task upload flow/state store support and tests.
-    - New Task page title/action copy/icon refinements.
-    - OpenAI screenshot WebP optimization fallback behavior.
-  - Update docs (`.docs/open_source.md`, `.docs/ui_ux_changes.md`, `.docs/next_steps.md`, `.docs/worklog.md`) to record failure cause and corrective release process.
+  - Update `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj/project.pbxproj` so prompt resources are bundled under `Contents/Resources/Prompts/<prompt-id>/` without duplicate filename collisions.
+  - Keep release/docs alignment by updating:
+    - `/Users/farzamh/code-git-local/task-agent-macos/CHANGELOG.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
+  - Commit, tag, and publish a new GitHub release with comprehensive notes.
 4. Automated tests:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-commit-everything -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO test`.
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Release -destination "platform=macOS" -derivedDataPath /tmp/taskagent-release-dd build` (pass on 2026-02-26).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests test` (pass on 2026-02-26).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/PromptCatalogServiceTests test` (pass on 2026-02-26).
 5. Manual tests:
-  - Launch built app from `/tmp/taskagent-dd-commit-everything/Build/Products/Debug/ClickCherry.app`, confirm startup via `pgrep`, terminate cleanly.
+  - Verified packaged Release app contains:
+    - `/tmp/taskagent-release-dd/Build/Products/Release/ClickCherry.app/Contents/Resources/Prompts/task_extraction/prompt.md`
+    - `/tmp/taskagent-release-dd/Build/Products/Release/ClickCherry.app/Contents/Resources/Prompts/task_extraction/config.yaml`
 6. Exit criteria:
-  - All pending files are committed together.
-  - Automated/manual validation pass on committed content.
-  - Corrective release is ready to publish without missing-file CI breakage.
+  - Release build bundles all prompt catalogs and tests pass.
+  - Commit and tag for `v0.1.36` are pushed.
+  - GitHub release is published with detailed notes and DMG workflow starts cleanly.
 
 1. Step: Fix missing-provider dialog buttons and backdrop dismissal (in progress).
 2. Why now: User reported dialog buttons were not working and clicking outside the dialog did not dismiss it.

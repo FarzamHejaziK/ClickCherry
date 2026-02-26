@@ -106,3 +106,7 @@ description: Open-source strategy decisions, governance, contribution model, and
   - Published `v0.1.34` release notes/tag, but the release workflow failed at build time because the tagged commit omitted a required companion source file (`MainShellStateStore.swift`) while UI changes in `NewTaskPageView.swift` referenced `uploadRecordingForNewTask()`.
   - Corrective process decision: release/tag commits must include all cross-file dependencies for changed call sites and be validated from the exact staged content before publishing.
   - Immediate follow-up: commit all currently pending code/docs updates together and cut a corrective release so CI/release workflows run from a complete, consistent source state.
+- Release packaging hardening for prompt assets:
+  - Identified DMG/runtime extraction failures caused by missing bundled prompt catalog files in Release builds (`prompt.md` / `config.yaml` were excluded to avoid flat-name collisions).
+  - Added a deterministic bundle-copy build phase that packages prompts under `Contents/Resources/Prompts/<prompt-id>/` for Debug and Release while keeping duplicate-name collision protection.
+  - Contributor-facing release guidance was updated in `/docs/release-process.md` with a prompt-catalog preflight check before tagging.

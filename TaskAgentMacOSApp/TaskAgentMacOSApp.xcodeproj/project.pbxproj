@@ -98,11 +98,12 @@
 		14A9ABEF2F36974F00537C6C /* TaskAgentMacOSApp */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 14A9AC112F36975100537C6C /* Build configuration list for PBXNativeTarget "TaskAgentMacOSApp" */;
-			buildPhases = (
-				14A9ABEC2F36974F00537C6C /* Sources */,
-				14A9ABED2F36974F00537C6C /* Frameworks */,
-				14A9ABEE2F36974F00537C6C /* Resources */,
-			);
+				buildPhases = (
+					14A9ABEC2F36974F00537C6C /* Sources */,
+					14A9ABED2F36974F00537C6C /* Frameworks */,
+					14A9ABEE2F36974F00537C6C /* Resources */,
+					F0A1B2C32F36975100ABC001 /* Copy Prompt Catalog */,
+				);
 			buildRules = (
 			);
 			dependencies = (
@@ -230,6 +231,46 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		F0A1B2C32F36975100ABC001 /* Copy Prompt Catalog */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/TaskAgentMacOSApp/Prompts/README.md",
+				"$(SRCROOT)/TaskAgentMacOSApp/Prompts/execution_agent",
+				"$(SRCROOT)/TaskAgentMacOSApp/Prompts/execution_agent/config.yaml",
+				"$(SRCROOT)/TaskAgentMacOSApp/Prompts/execution_agent/prompt.md",
+				"$(SRCROOT)/TaskAgentMacOSApp/Prompts/execution_agent_openai",
+				"$(SRCROOT)/TaskAgentMacOSApp/Prompts/execution_agent_openai/config.yaml",
+				"$(SRCROOT)/TaskAgentMacOSApp/Prompts/execution_agent_openai/prompt.md",
+				"$(SRCROOT)/TaskAgentMacOSApp/Prompts/task_extraction",
+				"$(SRCROOT)/TaskAgentMacOSApp/Prompts/task_extraction/config.yaml",
+				"$(SRCROOT)/TaskAgentMacOSApp/Prompts/task_extraction/prompt.md",
+			);
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/Prompts/README.md",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/Prompts/execution_agent",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/Prompts/execution_agent/config.yaml",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/Prompts/execution_agent/prompt.md",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/Prompts/execution_agent_openai",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/Prompts/execution_agent_openai/config.yaml",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/Prompts/execution_agent_openai/prompt.md",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/Prompts/task_extraction",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/Prompts/task_extraction/config.yaml",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/Prompts/task_extraction/prompt.md",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\nPROMPTS_SOURCE=\"${SRCROOT}/TaskAgentMacOSApp/Prompts\"\nPROMPTS_DEST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/Prompts\"\nmkdir -p \"${PROMPTS_DEST}/execution_agent\"\nmkdir -p \"${PROMPTS_DEST}/execution_agent_openai\"\nmkdir -p \"${PROMPTS_DEST}/task_extraction\"\ncp \"${PROMPTS_SOURCE}/README.md\" \"${PROMPTS_DEST}/README.md\"\ncp \"${PROMPTS_SOURCE}/execution_agent/config.yaml\" \"${PROMPTS_DEST}/execution_agent/config.yaml\"\ncp \"${PROMPTS_SOURCE}/execution_agent/prompt.md\" \"${PROMPTS_DEST}/execution_agent/prompt.md\"\ncp \"${PROMPTS_SOURCE}/execution_agent_openai/config.yaml\" \"${PROMPTS_DEST}/execution_agent_openai/config.yaml\"\ncp \"${PROMPTS_SOURCE}/execution_agent_openai/prompt.md\" \"${PROMPTS_DEST}/execution_agent_openai/prompt.md\"\ncp \"${PROMPTS_SOURCE}/task_extraction/config.yaml\" \"${PROMPTS_DEST}/task_extraction/config.yaml\"\ncp \"${PROMPTS_SOURCE}/task_extraction/prompt.md\" \"${PROMPTS_DEST}/task_extraction/prompt.md\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		14A9ABEC2F36974F00537C6C /* Sources */ = {
@@ -392,14 +433,14 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = QKN8WTSJYG;
-				ENABLE_APP_SANDBOX = NO;
-				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
-				EXCLUDED_SOURCE_FILE_NAMES = (
-					prompt.md,
-					config.yaml,
-				);
-				GENERATE_INFOPLIST_FILE = YES;
+					ENABLE_APP_SANDBOX = NO;
+					ENABLE_PREVIEWS = YES;
+					ENABLE_USER_SELECTED_FILES = readonly;
+					EXCLUDED_SOURCE_FILE_NAMES = (
+						prompt.md,
+						config.yaml,
+					);
+					GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = ClickCherry;
 				INFOPLIST_KEY_CFBundleName = ClickCherry;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
@@ -445,14 +486,14 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = QKN8WTSJYG;
-				ENABLE_APP_SANDBOX = NO;
-				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
-				EXCLUDED_SOURCE_FILE_NAMES = (
-					prompt.md,
-					config.yaml,
-				);
-				GENERATE_INFOPLIST_FILE = YES;
+					ENABLE_APP_SANDBOX = NO;
+					ENABLE_PREVIEWS = YES;
+					ENABLE_USER_SELECTED_FILES = readonly;
+					EXCLUDED_SOURCE_FILE_NAMES = (
+						prompt.md,
+						config.yaml,
+					);
+					GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = ClickCherry;
 				INFOPLIST_KEY_CFBundleName = ClickCherry;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";

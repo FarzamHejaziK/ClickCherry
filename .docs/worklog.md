@@ -8,6 +8,38 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-02-26
+- Step: Fix DMG extraction failure by packaging prompt catalogs in release bundles
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj/project.pbxproj`
+    - `/Users/farzamh/code-git-local/task-agent-macos/CHANGELOG.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
+  - Build/resource changes:
+    - restored `prompt.md`/`config.yaml` exclusion to prevent flat resource collisions.
+    - added a sandbox-safe `Copy Prompt Catalog` script phase that copies prompts into `Contents/Resources/Prompts/<prompt-id>/` for Debug and Release builds.
+    - verified packaged Release app now contains `task_extraction`, `execution_agent`, and `execution_agent_openai` prompt folders with both `prompt.md` and `config.yaml`.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Release -destination "platform=macOS" -derivedDataPath /tmp/taskagent-release-dd build` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests test` (pass).
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/PromptCatalogServiceTests test` (pass).
+- Manual tests run:
+  - Shell-validated Release app bundle content:
+    - `/tmp/taskagent-release-dd/Build/Products/Release/ClickCherry.app/Contents/Resources/Prompts/task_extraction/prompt.md`
+    - `/tmp/taskagent-release-dd/Build/Products/Release/ClickCherry.app/Contents/Resources/Prompts/task_extraction/config.yaml`
+    - `/tmp/taskagent-release-dd/Build/Products/Release/ClickCherry.app/Contents/Resources/Prompts/execution_agent/prompt.md`
+    - `/tmp/taskagent-release-dd/Build/Products/Release/ClickCherry.app/Contents/Resources/Prompts/execution_agent/config.yaml`
+    - `/tmp/taskagent-release-dd/Build/Products/Release/ClickCherry.app/Contents/Resources/Prompts/execution_agent_openai/prompt.md`
+    - `/tmp/taskagent-release-dd/Build/Products/Release/ClickCherry.app/Contents/Resources/Prompts/execution_agent_openai/config.yaml`
+- Result:
+  - Release packaging issue resolved; DMG build now includes required extraction prompt assets.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-26
 - Step: Correct release completeness issue and commit all pending source/docs changes
 - Changes made:
   - Updated:
@@ -219,27 +251,6 @@ description: Running implementation log of completed work, test evidence, blocke
   - Launched `/tmp/taskagent-dd-icon-round-no-resize/Build/Products/Debug/ClickCherry.app`, confirmed startup via `pgrep`, then terminated app process.
 - Result:
   - Complete for requested icon size rollback with roundness preserved.
-- Issues/blockers:
-  - None.
-
-## Entry
-- Date: 2026-02-22
-- Step: Align README with no-DCO contribution policy
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/README.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
-  - Docs updates:
-    - replaced stale README statement `DCO required: git commit -s` with `Contribution legal model: no DCO/CLA requirement`.
-    - recorded open-source strategy docs alignment note.
-- Automated tests run:
-  - N/A (docs-only).
-- Manual tests run:
-  - N/A (docs-only).
-- Result:
-  - Complete for contributor-policy docs alignment.
 - Issues/blockers:
   - None.
 

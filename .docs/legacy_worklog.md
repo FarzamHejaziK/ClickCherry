@@ -5820,3 +5820,24 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - Complete for local test stabilization and validation; pending CI rerun confirmation on GitHub.
 - Issues/blockers:
   - None.
+
+## Entry
+- Date: 2026-02-22
+- Step: Align README with no-DCO contribution policy
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/README.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
+  - Docs updates:
+    - replaced stale README statement `DCO required: git commit -s` with `Contribution legal model: no DCO/CLA requirement`.
+    - recorded open-source strategy docs alignment note.
+- Automated tests run:
+  - N/A (docs-only).
+- Manual tests run:
+  - N/A (docs-only).
+- Result:
+  - Complete for contributor-policy docs alignment.
+- Issues/blockers:
+  - None.

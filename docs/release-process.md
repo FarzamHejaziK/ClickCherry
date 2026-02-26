@@ -23,6 +23,24 @@ git tag v0.1.7
 git push origin v0.1.7
 ```
 
+## Release Preflight Checks
+
+Run a local Release build and verify prompt catalog assets are present in the app bundle before tagging:
+
+```bash
+xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Release -destination "platform=macOS" -derivedDataPath /tmp/taskagent-release-preflight build
+find /tmp/taskagent-release-preflight/Build/Products/Release/ClickCherry.app/Contents/Resources/Prompts -maxdepth 3 -type f
+```
+
+Expected files include:
+
+- `Prompts/task_extraction/prompt.md`
+- `Prompts/task_extraction/config.yaml`
+- `Prompts/execution_agent/prompt.md`
+- `Prompts/execution_agent/config.yaml`
+- `Prompts/execution_agent_openai/prompt.md`
+- `Prompts/execution_agent_openai/config.yaml`
+
 ## Required Secrets
 
 - `APPLE_DEVELOPER_ID_APPLICATION_CERT_BASE64`

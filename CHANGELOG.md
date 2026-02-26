@@ -9,6 +9,17 @@ The format is based on Keep a Changelog and this project uses Semantic Versionin
 ### Added
 - Open-source governance, contribution, and release scaffolding.
 
+## [0.1.36] - 2026-02-26
+
+### Fixed
+- Fixed DMG/distributed-build task extraction failures caused by missing bundled prompt assets in release app resources.
+- Ensured extraction prompts are packaged under `Contents/Resources/Prompts/task_extraction/` (`prompt.md` + `config.yaml`) so runtime prompt loading works outside local source trees.
+
+### Changed
+- Hardened Xcode resource packaging for prompt catalogs:
+  - kept duplicate flat resource exclusions for `prompt.md` and `config.yaml` to avoid name collisions.
+  - added a sandbox-safe build phase that copies prompt files into a structured `Prompts/` bundle directory for both Debug and Release.
+
 ## [0.1.34] - 2026-02-26
 
 ### Changed
