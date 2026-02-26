@@ -26,6 +26,163 @@ description: Canonical log for UI/UX plans, decisions, and implementation alignm
 ## Entries
 
 ## Entry
+- Date: 2026-02-26
+- Area: New Task title clarity follow-up
+- Change Summary:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/NewTaskPageView.swift`
+  - UI updates:
+    - Changed non-capturing page title from `Recordings` to `Add Task Recording`.
+    - Kept action-level labels as `Start recording` and `Upload recording` for direct affordance clarity.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` onboarding/capture clarity goals by making the page intent explicit before action selection.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` content hierarchy goals by separating page-level intent (`Add Task Recording`) from action-level verbs.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-release-v0-1-34 -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO test` (pass on 2026-02-26; 34 tests).
+  - Manual tests:
+    - Launched `/tmp/taskagent-dd-release-v0-1-34/Build/Products/Debug/ClickCherry.app`, confirmed process startup via `pgrep`, then terminated launched app process.
+- Notes:
+  - UI copy-only refinement; no capture/extraction behavior changes.
+
+## Entry
+- Date: 2026-02-26
+- Area: New Task recording/upload label and icon-size follow-up
+- Change Summary:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/NewTaskPageView.swift`
+  - UI updates:
+    - Changed recording action label from `Recordings` to `Start recording`.
+    - Increased upload folder icon size from `29` to `40`.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` usability refinement goals for recording-intake clarity.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` hierarchy and legibility goals by restoring clearer action naming and improving icon prominence.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-newtask-layout-3 -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO test` (pass on 2026-02-26; 34 tests).
+  - Manual tests:
+    - Launched `/tmp/taskagent-dd-newtask-layout-3/Build/Products/Debug/ClickCherry.app`, confirmed process startup via `pgrep`, then terminated launched app process.
+- Notes:
+  - UI-only copy/visual refinement; no recording behavior changes.
+
+## Entry
+- Date: 2026-02-26
+- Area: New Task capture copy and upload icon simplification
+- Change Summary:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/NewTaskPageView.swift`
+  - UI updates:
+    - Changed non-capturing page title from `Start recording` to `Recordings`.
+    - Changed left action label from `Start recording` to `Recordings` in both horizontal and compact layouts.
+    - Replaced upload glyph with plain `folder` symbol.
+    - Removed upload action circular material/background overlay so the folder icon renders without round chrome.
+    - Removed accent/red-style tint from upload icon and used primary foreground color.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` usability and clarity goals by reducing ambiguous copy and simplifying upload affordance visuals.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` hierarchy and consistency goals by preserving aligned action structure while reducing decorative treatment on secondary action.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-newtask-layout-2 -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO test` (pass on 2026-02-26; 34 tests).
+  - Manual tests:
+    - Launched `/tmp/taskagent-dd-newtask-layout-2/Build/Products/Debug/ClickCherry.app`, confirmed process startup via `pgrep`, then terminated launched debug app process.
+- Notes:
+  - This step is UI-only and does not alter recording persistence/import behavior.
+
+## Entry
+- Date: 2026-02-26
+- Area: New Task capture/upload action alignment polish
+- Change Summary:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/NewTaskPageView.swift`
+  - UI updates:
+    - Replaced the small text-only `Upload recording` link with a large icon action matching the visual weight of `Start recording`.
+    - Added centered `or` separators between the two actions, including a vertical separator in horizontal layout and a horizontal separator in compact fallback layout.
+    - Added responsive action layout (`ViewThatFits`) to preserve alignment and readability across narrower window widths.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` Step 2 manual-test usability goals by making both recording intake paths equally visible and easier to choose.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` UI architecture and recording-model clarity goals by presenting equivalent entry points with consistent hierarchy and spacing.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-newtask-layout -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO test` (pass on 2026-02-26; 34 tests).
+  - Manual tests:
+    - Launched `/tmp/taskagent-dd-newtask-layout/Build/Products/Debug/ClickCherry.app`, confirmed process startup via `pgrep`, then terminated the launched debug app.
+- Notes:
+  - Change is UI-only and does not modify recording persistence/extraction behavior.
+
+## Entry
+- Date: 2026-02-25
+- Area: Missing-provider dialog interaction reliability
+- Change Summary:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/MissingProviderKeyDialogCanvasView.swift`
+  - UI updates:
+    - Added backdrop tap-to-dismiss on the missing-provider dialog.
+    - Added explicit z-ordering for backdrop/card layers to ensure dialog controls stay interactive.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` UX reliability goals by fixing blocked modal actions in the capture-to-extract flow.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` interaction predictability goals by ensuring modal dismissal behavior is consistent with user expectations.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-dialog-fix -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO test` (pass on 2026-02-25; 33 tests).
+  - Manual tests:
+    - Launched `/tmp/taskagent-dd-dialog-fix/Build/Products/Debug/ClickCherry.app`, confirmed process startup via `pgrep`, then terminated the launched debug app.
+- Notes:
+  - This change is UI-layer only; no provider-key or extraction logic changed.
+
+## Entry
+- Date: 2026-02-25
+- Area: Error pages cleanup (remove LLM-specific canvas UI)
+- Change Summary:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/RecordingFinishedDialogView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/TaskDetailPageView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/MainShellView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift`
+  - UI updates:
+    - Removed `LLMUserFacingIssueCanvasView` from recording and task-detail error surfaces.
+    - Replaced those surfaces with plain error text/status rendering.
+    - Removed LLM-specific preview canvases and related dialog preview wiring.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` simplification goals by reducing specialized error UI and keeping error presentation direct.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` clarity goals by removing provider/LLM-specific decorative error cards from core flows.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-error-pages-cleanup -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO test` (pass on 2026-02-25; 33 tests).
+  - Manual tests:
+    - Launched `/tmp/taskagent-dd-error-pages-cleanup/Build/Products/Debug/ClickCherry.app`, confirmed process startup via `pgrep`, then terminated the launched debug app.
+- Notes:
+  - No extraction/backend behavior changed; this step is UI-only error-surface cleanup.
+
+## Entry
+- Date: 2026-02-25
+- Area: New Task recording intake (add upload path alongside live capture)
+- Change Summary:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/NewTaskPageView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
+  - UI updates:
+    - Added `Upload recording` action on the New Task page when not actively recording.
+    - Added file-picker intake for `.mp4`/`.mov` and routed uploaded media into the same post-recording review/extraction dialog used by live capture.
+- Plan Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` capture-to-extraction flow goals by reducing dependency on immediate live recording and supporting staged analysis from existing recordings.
+- Design Decision Alignment:
+  - Aligns with `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` consistency/usability goals by reusing the existing finished-recording review surface instead of introducing a parallel extraction UI path.
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-upload-recording-full -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass on 2026-02-25; 91 tests).
+  - Manual tests:
+    - Launched `/tmp/taskagent-dd-upload-recording-full/Build/Products/Debug/ClickCherry.app`, confirmed process startup via `pgrep`, then terminated the launched debug app.
+- Notes:
+  - Upload action is scoped to New Task intake and does not alter existing task recording controls.
+
+## Entry
 - Date: 2026-02-24
 - Area: Onboarding ready-step rollback to pre-v0.1.31 layout
 - Change Summary:

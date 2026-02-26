@@ -91,16 +91,7 @@ struct TaskDetailView: View {
             }
 
             if let issue = mainShellStateStore.activeLLMUserFacingIssue {
-                LLMUserFacingIssueCanvasView(
-                    issue: issue,
-                    onOpenSettings: {
-                        mainShellStateStore.openSettingsForActiveLLMUserFacingIssue()
-                    },
-                    onOpenProviderConsole: {
-                        mainShellStateStore.openProviderConsoleForActiveLLMUserFacingIssue()
-                    }
-                )
-                .frame(maxWidth: 880)
+                StatusLine(kind: .error, text: issue.detail)
             }
         }
         .frame(maxWidth: .infinity)

@@ -9,6 +9,11 @@ struct MissingProviderKeyDialogCanvasView: View {
         ZStack {
             Color.black.opacity(0.32)
                 .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    onDismiss()
+                }
+                .zIndex(0)
 
             VStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: 14) {
@@ -61,6 +66,7 @@ struct MissingProviderKeyDialogCanvasView: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .strokeBorder(Color.white.opacity(0.12), lineWidth: 1)
+                    .allowsHitTesting(false)
             )
             .overlay(
                 LinearGradient(
@@ -72,8 +78,10 @@ struct MissingProviderKeyDialogCanvasView: View {
                     endPoint: .bottomTrailing
                 )
                 .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .allowsHitTesting(false)
             )
             .padding(24)
+            .zIndex(1)
         }
     }
 }

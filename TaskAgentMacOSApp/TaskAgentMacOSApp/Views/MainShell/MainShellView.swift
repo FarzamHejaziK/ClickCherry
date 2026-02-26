@@ -56,7 +56,7 @@ struct MainShellView: View {
                 statusMessage: mainShellStateStore.extractionStatusMessage,
                 errorMessage: mainShellStateStore.errorMessage,
                 llmUserFacingIssue: mainShellStateStore.activeLLMUserFacingIssue,
-                missingProviderKeyDialog: mainShellStateStore.missingProviderKeyDialog,
+                missingProviderKeyDialog: $mainShellStateStore.missingProviderKeyDialog,
                 onRecordAgain: {
                     mainShellStateStore.recordAgainFromFinishedRecordingDialog()
                 },
@@ -68,12 +68,6 @@ struct MainShellView: View {
                 },
                 onOpenSettingsForMissingProviderKeyDialog: {
                     mainShellStateStore.openSettingsForMissingProviderKeyDialog()
-                },
-                onOpenSettingsForLLMIssue: {
-                    mainShellStateStore.openSettingsForActiveLLMUserFacingIssue()
-                },
-                onOpenProviderConsoleForLLMIssue: {
-                    mainShellStateStore.openProviderConsoleForActiveLLMUserFacingIssue()
                 }
             )
             .frame(width: 780, height: 560)

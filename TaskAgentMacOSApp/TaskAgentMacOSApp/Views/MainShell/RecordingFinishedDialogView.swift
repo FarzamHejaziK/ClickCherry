@@ -7,13 +7,11 @@ struct RecordingFinishedDialogView: View {
     let statusMessage: String?
     let errorMessage: String?
     let llmUserFacingIssue: LLMUserFacingIssue?
-    let missingProviderKeyDialog: MissingProviderKeyDialog?
+    @Binding var missingProviderKeyDialog: MissingProviderKeyDialog?
     let onRecordAgain: () -> Void
     let onExtractTask: () -> Void
     let onDismissMissingProviderKeyDialog: () -> Void
     let onOpenSettingsForMissingProviderKeyDialog: () -> Void
-    let onOpenSettingsForLLMIssue: () -> Void
-    let onOpenProviderConsoleForLLMIssue: () -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var player: AVPlayer?
@@ -42,6 +40,22 @@ struct RecordingFinishedDialogView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .padding(24)
+            .allowsHitTesting(missingProviderKeyDialog == nil)
+
+            if let dialog = missingProviderKeyDialog {
+                MissingProviderKeyDialogCanvasView(
+                    dialog: dialog,
+                    onDismiss: {
+                        self.missingProviderKeyDialog = nil
+                        onDismissMissingProviderKeyDialog()
+                    },
+                    onOpenSettings: {
+                        self.missingProviderKeyDialog = nil
+                        onOpenSettingsForMissingProviderKeyDialog()
+                    }
+                )
+                .zIndex(2)
+            }
         }
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
@@ -56,19 +70,6 @@ struct RecordingFinishedDialogView: View {
             playerSetupWorkItem = nil
             player?.pause()
             player = nil
-        }
-        .overlay {
-            if let missingProviderKeyDialog {
-                MissingProviderKeyDialogCanvasView(
-                    dialog: missingProviderKeyDialog,
-                    onDismiss: {
-                        onDismissMissingProviderKeyDialog()
-                    },
-                    onOpenSettings: {
-                        onOpenSettingsForMissingProviderKeyDialog()
-                    }
-                )
-            }
         }
     }
 
@@ -104,12 +105,10 @@ struct RecordingFinishedDialogView: View {
                 }
 
                 if let llmUserFacingIssue {
-                    LLMUserFacingIssueCanvasView(
-                        issue: llmUserFacingIssue,
-                        onOpenSettings: onOpenSettingsForLLMIssue,
-                        onOpenProviderConsole: onOpenProviderConsoleForLLMIssue
-                    )
-                    .padding(.top, 4)
+                    Text(llmUserFacingIssue.detail)
+                        .font(.caption)
+                        .foregroundStyle(.red.opacity(0.9))
+                        .lineLimit(3)
                 } else if let errorMessage, !errorMessage.isEmpty {
                     Text(errorMessage)
                         .font(.caption)

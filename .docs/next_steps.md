@@ -4,6 +4,72 @@ description: Short, continuously updated plan of the immediate next implementati
 
 # Next Steps
 
+1. Step: Commit all pending source+docs changes and publish corrective release after `v0.1.34` build failure (in progress).
+2. Why now: The `v0.1.34` tag/release workflow failed because the tagged commit omitted required companion source updates; user requested committing everything and updating docs.
+3. Code tasks:
+  - Stage and commit all pending app/docs files in one atomic commit to preserve cross-file compile consistency.
+  - Ensure release-relevant changes include:
+    - New Task upload flow/state store support and tests.
+    - New Task page title/action copy/icon refinements.
+    - OpenAI screenshot WebP optimization fallback behavior.
+  - Update docs (`.docs/open_source.md`, `.docs/ui_ux_changes.md`, `.docs/next_steps.md`, `.docs/worklog.md`) to record failure cause and corrective release process.
+4. Automated tests:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-commit-everything -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO test`.
+5. Manual tests:
+  - Launch built app from `/tmp/taskagent-dd-commit-everything/Build/Products/Debug/ClickCherry.app`, confirm startup via `pgrep`, terminate cleanly.
+6. Exit criteria:
+  - All pending files are committed together.
+  - Automated/manual validation pass on committed content.
+  - Corrective release is ready to publish without missing-file CI breakage.
+
+1. Step: Fix missing-provider dialog buttons and backdrop dismissal (in progress).
+2. Why now: User reported dialog buttons were not working and clicking outside the dialog did not dismiss it.
+3. Code tasks:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/MissingProviderKeyDialogCanvasView.swift`:
+    - added backdrop `onTapGesture` to call dismiss.
+    - set explicit z-order (`zIndex`) for backdrop and dialog card to improve hit-testing consistency.
+4. Automated tests:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-dialog-fix -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO test` (pass on 2026-02-25; 33 tests).
+5. Manual tests:
+  - Launched `/tmp/taskagent-dd-dialog-fix/Build/Products/Debug/ClickCherry.app`, confirmed process startup via `pgrep`, then terminated the launched debug app.
+6. Exit criteria:
+  - User confirms `Not now`/`Open Settings` are clickable and outside-click closes the dialog.
+
+1. Step: Remove LLM-specific UI from error pages (in progress).
+2. Why now: User requested simplifying error pages and removing LLM-specific canvas components from those surfaces.
+3. Code tasks:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/RecordingFinishedDialogView.swift`:
+    - replaced `LLMUserFacingIssueCanvasView` usage with plain error text.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/TaskDetailPageView.swift`:
+    - replaced LLM issue canvas with `StatusLine` error display.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/MainShellView.swift`:
+    - removed now-unused LLM issue callback wiring for recording-finished dialog.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift`:
+    - removed LLM issue canvas previews and updated dialog preview initializer.
+4. Automated tests:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-error-pages-cleanup -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO test` (pass on 2026-02-25; 33 tests).
+5. Manual tests:
+  - Launched `/tmp/taskagent-dd-error-pages-cleanup/Build/Products/Debug/ClickCherry.app`, confirmed process startup via `pgrep`, then terminated the launched debug app.
+6. Exit criteria:
+  - User confirms error pages no longer show LLM-specific canvas UI and the simplified error display is acceptable.
+
+1. Step: Support uploaded recordings in New Task capture flow (in progress).
+2. Why now: User requested a path to upload existing recordings instead of only doing live capture.
+3. Code tasks:
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/NewTaskPageView.swift`:
+    - added `Upload recording` action for New Task when not actively capturing.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`:
+    - added upload picker (`NSOpenPanel`) for `.mp4`/`.mov`.
+    - added `importRecordingForNewTask(from:)` staging path that copies uploads into `.staging` and opens the existing finished-recording review dialog.
+  - Updated `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`:
+    - added tests for successful upload staging and unsupported-format rejection.
+4. Automated tests:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-upload-recording-full -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass on 2026-02-25; 91 tests).
+5. Manual tests:
+  - Launched `/tmp/taskagent-dd-upload-recording-full/Build/Products/Debug/ClickCherry.app`, confirmed process startup via `pgrep`, then terminated the launched debug app.
+6. Exit criteria:
+  - User confirms New Task supports both live recording and uploaded `.mp4/.mov` recordings through the same extraction-ready review flow.
+
 1. Step: Publish `v0.1.33` with onboarding ready-step rollback (in progress).
 2. Why now: User requested releasing the rollback that restores usable Step 4 layout in non-fullscreen windows.
 3. Code tasks:

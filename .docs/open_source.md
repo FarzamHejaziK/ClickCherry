@@ -99,3 +99,10 @@ description: Open-source strategy decisions, governance, contribution model, and
 - Release execution alignment:
   - Prepared release `v0.1.33` with changelog notes for onboarding ready-step rollback.
   - Release payload focuses on restoring non-fullscreen onboarding layout stability on Step 4 (`Ready`).
+
+## Updates (2026-02-26)
+
+- Release execution incident and process correction:
+  - Published `v0.1.34` release notes/tag, but the release workflow failed at build time because the tagged commit omitted a required companion source file (`MainShellStateStore.swift`) while UI changes in `NewTaskPageView.swift` referenced `uploadRecordingForNewTask()`.
+  - Corrective process decision: release/tag commits must include all cross-file dependencies for changed call sites and be validated from the exact staged content before publishing.
+  - Immediate follow-up: commit all currently pending code/docs updates together and cut a corrective release so CI/release workflows run from a complete, consistent source state.

@@ -2,6 +2,7 @@ import Foundation
 import Observation
 import AppKit
 import CoreGraphics
+import UniformTypeIdentifiers
 
 enum MainShellRoute: Equatable {
     case newTask
@@ -570,6 +571,76 @@ final class MainShellStateStore {
         startCapture()
     }
 
+    func uploadRecordingForNewTask() {
+        guard !isCapturing else {
+            errorMessage = "Stop the current recording before uploading."
+            return
+        }
+
+        let panel = NSOpenPanel()
+        panel.title = "Upload Recording"
+        panel.prompt = "Upload"
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [.mpeg4Movie, .quickTimeMovie]
+
+        guard panel.runModal() == .OK, let selectedURL = panel.url else {
+            return
+        }
+
+        _ = importRecordingForNewTask(from: selectedURL)
+    }
+
+    @discardableResult
+    func importRecordingForNewTask(from sourceURL: URL) -> Bool {
+        guard !isCapturing else {
+            errorMessage = "Stop the current recording before uploading."
+            return false
+        }
+
+        let ext = sourceURL.pathExtension.lowercased()
+        guard ext == "mp4" || ext == "mov" else {
+            errorMessage = "Only .mp4 or .mov recordings are supported."
+            return false
+        }
+
+        do {
+            let baseStagingURL = try taskService.makeStagingCaptureOutputURL()
+            let stagingURL = baseStagingURL
+                .deletingPathExtension()
+                .appendingPathExtension(ext)
+            if FileManager.default.fileExists(atPath: stagingURL.path) {
+                try FileManager.default.removeItem(at: stagingURL)
+            }
+            try FileManager.default.copyItem(at: sourceURL, to: stagingURL)
+
+            guard let record = makeRecordingRecordFromFileURL(stagingURL) else {
+                try? FileManager.default.removeItem(at: stagingURL)
+                errorMessage = "Uploaded recording is empty or unreadable."
+                return false
+            }
+
+            selectedTaskID = nil
+            route = .newTask
+            recordingStatusMessage = "Uploaded \(record.fileName)."
+            extractionStatusMessage = nil
+            errorMessage = nil
+
+            let review = FinishedRecordingReview(recording: record, mode: .newTaskStaging)
+            finishedRecordingReview = review
+            lastPresentedFinishedRecordingReview = review
+            finishedRecordingDidCreateTask = false
+            return true
+        } catch TaskServiceError.recordingTooLarge {
+            errorMessage = "Recording is too large (max 2 GB)."
+        } catch {
+            errorMessage = "Failed to upload recording."
+        }
+
+        return false
+    }
+
     func refreshProviderKeysState() {
         providerSetupState = ProviderSetupState(
             hasOpenAIKey: apiKeyStore.hasKey(for: .openAI),
@@ -936,6 +1007,12 @@ final class MainShellStateStore {
     }
 
     func openSettingsForMissingProviderKeyDialog() {
+        if finishedRecordingReview != nil {
+            // User intentionally leaves the finished-recording flow to configure a key.
+            // Avoid staged-file cleanup on this transition.
+            finishedRecordingDidCreateTask = true
+            finishedRecordingReview = nil
+        }
         openSettings()
         dismissMissingProviderKeyDialog()
     }

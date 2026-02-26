@@ -1030,6 +1030,70 @@ struct MainShellStateStoreTests {
     }
 
     @Test
+    func importRecordingForNewTaskStagesFileAndPresentsReview() throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let store = MainShellStateStore(
+            taskService: taskService,
+            apiKeyStore: MockAPIKeyStore(),
+            captureService: MockRecordingCaptureService(),
+            overlayService: MockRecordingOverlayService()
+        )
+
+        let sourceURL = tempRoot.appendingPathComponent("upload-source.mp4", isDirectory: false)
+        try Data("uploaded-video".utf8).write(to: sourceURL)
+
+        let imported = store.importRecordingForNewTask(from: sourceURL)
+
+        #expect(imported)
+        #expect(store.errorMessage == nil)
+        #expect(store.route == .newTask)
+        #expect(store.selectedTaskID == nil)
+        #expect(store.recordingStatusMessage?.hasPrefix("Uploaded ") == true)
+        #expect(store.finishedRecordingReview?.mode == .newTaskStaging)
+        #expect(store.finishedRecordingReview?.recording.fileURL.pathExtension.lowercased() == "mp4")
+        #expect(store.finishedRecordingReview?.recording.fileURL.path != sourceURL.path)
+        #expect(FileManager.default.fileExists(atPath: store.finishedRecordingReview?.recording.fileURL.path ?? ""))
+    }
+
+    @Test
+    func importRecordingForNewTaskRejectsUnsupportedFormat() throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let store = MainShellStateStore(
+            taskService: taskService,
+            apiKeyStore: MockAPIKeyStore(),
+            captureService: MockRecordingCaptureService(),
+            overlayService: MockRecordingOverlayService()
+        )
+
+        let sourceURL = tempRoot.appendingPathComponent("upload-source.txt", isDirectory: false)
+        try Data("not-video".utf8).write(to: sourceURL)
+
+        let imported = store.importRecordingForNewTask(from: sourceURL)
+
+        #expect(!imported)
+        #expect(store.finishedRecordingReview == nil)
+        #expect(store.errorMessage == "Only .mp4 or .mov recordings are supported.")
+    }
+
+    @Test
     @MainActor
     func startRunTaskNowWithoutOpenAIKeyShowsRunPreflightDialog() throws {
         let fm = FileManager.default
@@ -1137,6 +1201,43 @@ struct MainShellStateStoreTests {
 
         #expect(store.route == .settings)
         #expect(store.missingProviderKeyDialog == nil)
+    }
+
+    @Test
+    func openSettingsForMissingProviderKeyDialogClosesFinishedRecordingReview() throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let store = MainShellStateStore(
+            taskService: taskService,
+            apiKeyStore: MockAPIKeyStore()
+        )
+
+        let stagedURL = tempRoot.appendingPathComponent("staged.mov", isDirectory: false)
+        try Data("mov".utf8).write(to: stagedURL)
+        let staged = RecordingRecord(
+            id: stagedURL.lastPathComponent,
+            fileName: stagedURL.lastPathComponent,
+            addedAt: Date(),
+            fileURL: stagedURL,
+            fileSizeBytes: 3
+        )
+
+        store.finishedRecordingReview = FinishedRecordingReview(recording: staged, mode: .newTaskStaging)
+        store.missingProviderKeyDialog = MissingProviderKeyDialog(provider: .gemini, action: .extractTask)
+
+        store.openSettingsForMissingProviderKeyDialog()
+
+        #expect(store.route == .settings)
+        #expect(store.missingProviderKeyDialog == nil)
+        #expect(store.finishedRecordingReview == nil)
     }
 
     @Test
