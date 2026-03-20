@@ -6,6 +6,12 @@ The format is based on Keep a Changelog and this project uses Semantic Versionin
 
 ## [Unreleased]
 
+## [0.1.40] - 2026-03-20
+
+### Fixed
+- Unified microphone authorization handling so the permissions screen and recording startup now use the same `PermissionService` flow instead of drifting into different macOS states.
+- Fixed the stale microphone action label bug so `Grant Access` now flips to `Open Settings` as soon as macOS leaves the first-time authorization state, even while the pill still reads `Not Granted`.
+
 ## [0.1.39] - 2026-03-20
 
 ### Fixed

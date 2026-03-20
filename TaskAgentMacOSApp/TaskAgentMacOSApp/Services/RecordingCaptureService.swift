@@ -56,8 +56,13 @@ final class ShellRecordingCaptureService: RecordingCaptureService {
     private var currentArguments: [String] = []
     private var originalDefaultInputDeviceID: AudioDeviceID?
     private var didOverrideDefaultInputDevice: Bool = false
+    private let permissionService: any PermissionService
     private(set) var lastCaptureIncludesMicrophone: Bool = false
     private(set) var lastCaptureStartWarning: String?
+
+    init(permissionService: any PermissionService = MacPermissionService()) {
+        self.permissionService = permissionService
+    }
 
     var isCapturing: Bool {
         process?.isRunning ?? false
@@ -442,23 +447,7 @@ final class ShellRecordingCaptureService: RecordingCaptureService {
     }
 
     private func requestMicrophoneAccessIfNeeded() -> Bool {
-        switch AVCaptureDevice.authorizationStatus(for: .audio) {
-        case .authorized:
-            return true
-        case .denied, .restricted:
-            return false
-        case .notDetermined:
-            var granted = false
-            let semaphore = DispatchSemaphore(value: 0)
-            AVCaptureDevice.requestAccess(for: .audio) { allowed in
-                granted = allowed
-                semaphore.signal()
-            }
-            _ = semaphore.wait(timeout: .now() + 30)
-            return granted
-        @unknown default:
-            return false
-        }
+        permissionService.requestMicrophoneAccessSynchronouslyIfNeeded(timeout: 30)
     }
 
     private func launchCapture(outputURL: URL, displayID: Int, includeMicrophone: Bool) throws -> (process: Process, stderrPipe: Pipe, stdoutPipe: Pipe) {

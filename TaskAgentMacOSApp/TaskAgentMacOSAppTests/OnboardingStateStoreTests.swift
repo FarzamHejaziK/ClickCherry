@@ -156,4 +156,21 @@ struct OnboardingStateStoreTests {
         #expect(store.permissionActionLabel(for: .microphone) == "Grant Access")
         #expect(store.permissionActionLabel(for: .screenRecording) == "Open Settings")
     }
+
+    @Test
+    func pollPermissionStatusesRefreshesMicrophoneActionWhenStatusBucketDoesNotChange() {
+        let permissionService = StatusOnlyPermissionService(
+            statuses: [.microphone: .notGranted],
+            actions: [.microphone: .requestAccess]
+        )
+        let store = makeStore(permissionService: permissionService)
+
+        #expect(store.permissionActionLabel(for: .microphone) == "Grant Access")
+
+        permissionService.actions[.microphone] = .openSettings
+        store.pollPermissionStatuses()
+
+        #expect(store.microphoneStatus == .notGranted)
+        #expect(store.permissionActionLabel(for: .microphone) == "Open Settings")
+    }
 }

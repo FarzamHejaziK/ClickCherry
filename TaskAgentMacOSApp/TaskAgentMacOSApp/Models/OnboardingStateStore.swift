@@ -36,6 +36,7 @@ final class OnboardingStateStore {
     var providerSetupState: ProviderSetupState
     var screenRecordingStatus: PermissionGrantStatus
     var microphoneStatus: PermissionGrantStatus
+    var microphonePrimaryAction: PermissionPrimaryAction
     var accessibilityStatus: PermissionGrantStatus
     var inputMonitoringStatus: PermissionGrantStatus
     var hasCompletedOnboarding: Bool
@@ -60,6 +61,7 @@ final class OnboardingStateStore {
         self.providerSetupState = providerSetupState ?? Self.loadProviderSetupState(from: keyStore)
         self.screenRecordingStatus = hasScreenRecordingPermission ? .granted : .notGranted
         self.microphoneStatus = hasMicrophonePermission ? .granted : .notGranted
+        self.microphonePrimaryAction = hasMicrophonePermission ? .openSettings : permissionService.primaryAction(for: .microphone)
         self.accessibilityStatus = hasAccessibilityPermission ? .granted : .notGranted
         self.inputMonitoringStatus = hasInputMonitoringPermission ? .granted : .notGranted
         self.hasCompletedOnboarding = hasCompletedOnboarding ?? completionStore.hasCompletedOnboarding
@@ -182,10 +184,18 @@ final class OnboardingStateStore {
 
     func openPermissionSettings(for permission: AppPermission) {
         permissionService.requestAccessAndOpenSystemSettings(for: permission)
+        if permission == .microphone {
+            microphonePrimaryAction = permissionService.primaryAction(for: .microphone)
+        }
     }
 
     func permissionActionLabel(for permission: AppPermission) -> String {
-        permissionService.primaryAction(for: permission).buttonTitle
+        switch permission {
+        case .microphone:
+            return microphonePrimaryAction.buttonTitle
+        case .screenRecording, .accessibility, .inputMonitoring:
+            return permissionService.primaryAction(for: permission).buttonTitle
+        }
     }
 
     /// Passive status poll (no prompts). Used for the onboarding Permissions step UI.
@@ -198,6 +208,10 @@ final class OnboardingStateStore {
         let microphone = permissionService.currentStatus(for: .microphone)
         if microphone != microphoneStatus {
             microphoneStatus = microphone
+        }
+        let microphonePrimaryAction = permissionService.primaryAction(for: .microphone)
+        if microphonePrimaryAction != self.microphonePrimaryAction {
+            self.microphonePrimaryAction = microphonePrimaryAction
         }
 
         let accessibility = permissionService.currentStatus(for: .accessibility)
@@ -219,6 +233,7 @@ final class OnboardingStateStore {
             screenRecordingStatus = status
         case .microphone:
             microphoneStatus = status
+            microphonePrimaryAction = permissionService.primaryAction(for: .microphone)
         case .accessibility:
             accessibilityStatus = status
         case .inputMonitoring:

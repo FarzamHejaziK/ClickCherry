@@ -512,8 +512,12 @@ final class MainShellStateStore {
         permissionService.requestAccessAndOpenSystemSettings(for: permission)
     }
 
+    func permissionPrimaryAction(for permission: AppPermission) -> PermissionPrimaryAction {
+        permissionService.primaryAction(for: permission)
+    }
+
     func permissionActionLabel(for permission: AppPermission) -> String {
-        permissionService.primaryAction(for: permission).buttonTitle
+        permissionPrimaryAction(for: permission).buttonTitle
     }
 
     func resetOnboardingAndReturnToSetup() {

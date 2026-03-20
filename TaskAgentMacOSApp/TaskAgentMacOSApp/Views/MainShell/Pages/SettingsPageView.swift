@@ -227,7 +227,7 @@ struct MainShellSettingsView: View {
                     title: "Microphone (Voice)",
                     status: permissionStatuses.microphone,
                     footnote: "Needed to record your voice during screen recordings.",
-                    buttonTitle: mainShellStateStore.permissionActionLabel(for: .microphone),
+                    buttonTitle: permissionStatuses.microphonePrimaryAction.buttonTitle,
                     onOpenSettings: {
                         mainShellStateStore.openPermissionSettings(for: .microphone)
                     }
@@ -264,6 +264,7 @@ struct MainShellSettingsView: View {
         permissionStatuses = PermissionStatuses(
             screenRecording: mainShellStateStore.permissionStatus(for: .screenRecording),
             microphone: mainShellStateStore.permissionStatus(for: .microphone),
+            microphonePrimaryAction: mainShellStateStore.permissionPrimaryAction(for: .microphone),
             accessibility: mainShellStateStore.permissionStatus(for: .accessibility)
         )
     }
@@ -272,6 +273,7 @@ struct MainShellSettingsView: View {
 private struct PermissionStatuses: Equatable {
     var screenRecording: PermissionGrantStatus = .unknown
     var microphone: PermissionGrantStatus = .unknown
+    var microphonePrimaryAction: PermissionPrimaryAction = .openSettings
     var accessibility: PermissionGrantStatus = .unknown
 }
 
