@@ -6,6 +6,12 @@ The format is based on Keep a Changelog and this project uses Semantic Versionin
 
 ## [Unreleased]
 
+## [0.1.41] - 2026-03-20
+
+### Fixed
+- Synced the app bundle version metadata with the release train so local installs now report the shipped release version instead of the stale `1.0 (1)` defaults.
+- Updated the release workflow to derive `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` from the pushed tag, preventing future DMGs from shipping with mismatched version metadata.
+
 ## [0.1.40] - 2026-03-20
 
 ### Fixed

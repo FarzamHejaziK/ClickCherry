@@ -15,6 +15,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Derive app version metadata
+        run: |
+          if [[ "${GITHUB_REF_NAME:-}" == v* ]]; then
+            APP_MARKETING_VERSION="${GITHUB_REF_NAME#v}"
+          else
+            APP_MARKETING_VERSION="$(ruby -ne 'if $_ =~ /MARKETING_VERSION = ([0-9.]+);/ then puts $1; exit; end' TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj/project.pbxproj)"
+          fi
+
+          IFS='.' read -r APP_VERSION_MAJOR APP_VERSION_MINOR APP_VERSION_PATCH <<< "$APP_MARKETING_VERSION"
+          APP_VERSION_MAJOR="${APP_VERSION_MAJOR:-0}"
+          APP_VERSION_MINOR="${APP_VERSION_MINOR:-0}"
+          APP_VERSION_PATCH="${APP_VERSION_PATCH:-0}"
+          APP_BUILD_NUMBER=$((10#$APP_VERSION_MAJOR * 1000000 + 10#$APP_VERSION_MINOR * 1000 + 10#$APP_VERSION_PATCH))
+
+          echo "APP_MARKETING_VERSION=$APP_MARKETING_VERSION" >> "$GITHUB_ENV"
+          echo "APP_BUILD_NUMBER=$APP_BUILD_NUMBER" >> "$GITHUB_ENV"
+          echo "Using app version $APP_MARKETING_VERSION ($APP_BUILD_NUMBER)"
+
       - name: Validate signing/notarization secrets
         run: |
           test -n "${{ secrets.APPLE_DEVELOPER_ID_APPLICATION_CERT_BASE64 }}"
@@ -43,11 +61,14 @@ jobs:
 
       - name: Build app
         run: |
+          echo "Building ClickCherry $APP_MARKETING_VERSION ($APP_BUILD_NUMBER)"
           xcodebuild -project TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj \
             -scheme TaskAgentMacOSApp \
             -configuration Release \
             -destination "platform=macOS" \
             -derivedDataPath /tmp/taskagent-dd-release \
+            MARKETING_VERSION="$APP_MARKETING_VERSION" \
+            CURRENT_PROJECT_VERSION="$APP_BUILD_NUMBER" \
             CODE_SIGNING_ALLOWED=NO build
 
       - name: Sign app bundle
