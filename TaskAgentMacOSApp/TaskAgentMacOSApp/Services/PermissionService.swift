@@ -68,7 +68,7 @@ extension PermissionService {
 final class MacPermissionService: PermissionService {
     private enum SettingsOpenTiming {
         static let screenRecordingDelay: TimeInterval = 1.0
-        static let microphoneDelay: TimeInterval = 0.8
+        static let microphoneDelay: TimeInterval = 1.4
         static let accessibilityDelay: TimeInterval = 0.7
         static let inputMonitoringDelay: TimeInterval = 1.5
         static let retryDelay: TimeInterval = 1.3
@@ -224,14 +224,14 @@ final class MacPermissionService: PermissionService {
                         return
                     }
 
-                    self.openSystemSettingsAfterRegistration(
-                        for: permission,
-                        initialDelay: SettingsOpenTiming.microphoneDelay
-                    )
+                    self.clearRequestedInSession(.microphone)
+                    self.primeMicrophonePermissionRegistrationAsync()
                 }
                 return
             }
 
+            clearRequestedInSession(.microphone)
+            primeMicrophonePermissionRegistrationAsync()
             openSystemSettingsAfterRegistration(
                 for: permission,
                 initialDelay: SettingsOpenTiming.microphoneDelay
@@ -576,6 +576,21 @@ final class MacPermissionService: PermissionService {
             session.startRunning()
             Thread.sleep(forTimeInterval: 0.35)
             session.stopRunning()
+        }
+    }
+
+    private func primeMicrophonePermissionRegistrationAsync() {
+        DispatchQueue.global(qos: .utility).async {
+            _ = AVCaptureDevice.default(for: .audio)
+
+            let semaphore = DispatchSemaphore(value: 0)
+            AVCaptureDevice.requestAccess(for: .audio) { granted in
+                if granted {
+                    self.probeMicrophoneCaptureStackAsync()
+                }
+                semaphore.signal()
+            }
+            _ = semaphore.wait(timeout: .now() + 0.4)
         }
     }
 

@@ -6,6 +6,12 @@ The format is based on Keep a Changelog and this project uses Semantic Versionin
 
 ## [Unreleased]
 
+## [0.1.39] - 2026-03-20
+
+### Fixed
+- Hardened release-app microphone remediation after denial by priming macOS microphone registration before opening the Microphone privacy pane.
+- Stopped immediately bouncing first-time microphone denials into System Settings, reducing the chance of opening a pane before `ClickCherry` is registered there.
+
 ## [0.1.38] - 2026-03-20
 
 ### Fixed
