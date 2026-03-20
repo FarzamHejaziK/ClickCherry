@@ -28,11 +28,26 @@ enum PermissionGrantStatus: Equatable {
     }
 }
 
+enum PermissionPrimaryAction: Equatable {
+    case requestAccess
+    case openSettings
+
+    var buttonTitle: String {
+        switch self {
+        case .requestAccess:
+            return "Grant Access"
+        case .openSettings:
+            return "Open Settings"
+        }
+    }
+}
+
 protocol PermissionService {
     func openSystemSettings(for permission: AppPermission)
     func currentStatus(for permission: AppPermission) -> PermissionGrantStatus
     func requestAccessIfNeeded(for permission: AppPermission) -> PermissionGrantStatus
     func requestAccessAndOpenSystemSettings(for permission: AppPermission)
+    func primaryAction(for permission: AppPermission) -> PermissionPrimaryAction
 }
 
 extension PermissionService {
@@ -43,6 +58,10 @@ extension PermissionService {
     func requestAccessAndOpenSystemSettings(for permission: AppPermission) {
         _ = requestAccessIfNeeded(for: permission)
         openSystemSettings(for: permission)
+    }
+
+    func primaryAction(for permission: AppPermission) -> PermissionPrimaryAction {
+        .openSettings
     }
 }
 
@@ -72,6 +91,17 @@ final class MacPermissionService: PermissionService {
     private var inputMonitoringPersistentTap: CFMachPort?
     private var inputMonitoringPersistentSource: CFRunLoopSource?
     private var inputMonitoringGlobalMonitor: Any?
+
+    static func microphonePrimaryAction(for authorizationStatus: AVAuthorizationStatus) -> PermissionPrimaryAction {
+        switch authorizationStatus {
+        case .notDetermined:
+            return .requestAccess
+        case .authorized, .denied, .restricted:
+            return .openSettings
+        @unknown default:
+            return .openSettings
+        }
+    }
 
     func openSystemSettings(for permission: AppPermission) {
         for candidate in settingsURLStrings(for: permission) {
@@ -115,6 +145,15 @@ final class MacPermissionService: PermissionService {
                 return .granted
             }
             return .notGranted
+        }
+    }
+
+    func primaryAction(for permission: AppPermission) -> PermissionPrimaryAction {
+        switch permission {
+        case .microphone:
+            return Self.microphonePrimaryAction(for: AVCaptureDevice.authorizationStatus(for: .audio))
+        case .screenRecording, .accessibility, .inputMonitoring:
+            return .openSettings
         }
     }
 
@@ -181,7 +220,14 @@ final class MacPermissionService: PermissionService {
                 AVCaptureDevice.requestAccess(for: .audio) { granted in
                     if granted {
                         self.probeMicrophoneCaptureStackAsync()
+                        self.clearRequestedInSession(.microphone)
+                        return
                     }
+
+                    self.openSystemSettingsAfterRegistration(
+                        for: permission,
+                        initialDelay: SettingsOpenTiming.microphoneDelay
+                    )
                 }
                 return
             }

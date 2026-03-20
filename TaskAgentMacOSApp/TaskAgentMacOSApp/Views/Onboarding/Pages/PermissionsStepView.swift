@@ -69,6 +69,7 @@ private struct PermissionsPanelView: View {
                 title: "Microphone (Voice)",
                 status: onboardingStateStore.microphoneStatus,
                 footnote: "Needed to record your voice during screen recordings.",
+                buttonTitle: onboardingStateStore.permissionActionLabel(for: .microphone),
                 onOpenSettings: {
                     onboardingStateStore.openPermissionSettings(for: .microphone)
                 }

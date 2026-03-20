@@ -184,6 +184,10 @@ final class OnboardingStateStore {
         permissionService.requestAccessAndOpenSystemSettings(for: permission)
     }
 
+    func permissionActionLabel(for permission: AppPermission) -> String {
+        permissionService.primaryAction(for: permission).buttonTitle
+    }
+
     /// Passive status poll (no prompts). Used for the onboarding Permissions step UI.
     func pollPermissionStatuses() {
         let screenRecording = permissionService.currentStatus(for: .screenRecording)

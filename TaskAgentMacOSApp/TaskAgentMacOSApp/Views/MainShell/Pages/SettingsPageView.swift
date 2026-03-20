@@ -227,6 +227,7 @@ struct MainShellSettingsView: View {
                     title: "Microphone (Voice)",
                     status: permissionStatuses.microphone,
                     footnote: "Needed to record your voice during screen recordings.",
+                    buttonTitle: mainShellStateStore.permissionActionLabel(for: .microphone),
                     onOpenSettings: {
                         mainShellStateStore.openPermissionSettings(for: .microphone)
                     }

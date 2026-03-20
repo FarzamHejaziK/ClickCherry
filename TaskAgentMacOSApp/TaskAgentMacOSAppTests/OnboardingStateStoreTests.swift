@@ -22,15 +22,24 @@ private final class StaticCompletionStore: OnboardingCompletionStore {
 
 private final class StatusOnlyPermissionService: PermissionService {
     var statuses: [AppPermission: PermissionGrantStatus]
+    var actions: [AppPermission: PermissionPrimaryAction]
 
-    init(statuses: [AppPermission: PermissionGrantStatus] = [:]) {
+    init(
+        statuses: [AppPermission: PermissionGrantStatus] = [:],
+        actions: [AppPermission: PermissionPrimaryAction] = [:]
+    ) {
         self.statuses = statuses
+        self.actions = actions
     }
 
     func openSystemSettings(for permission: AppPermission) {}
 
     func currentStatus(for permission: AppPermission) -> PermissionGrantStatus {
         statuses[permission] ?? .unknown
+    }
+
+    func primaryAction(for permission: AppPermission) -> PermissionPrimaryAction {
+        actions[permission] ?? .openSettings
     }
 }
 
@@ -135,5 +144,16 @@ struct OnboardingStateStoreTests {
 
         store.completeOnboarding()
         #expect(store.route == .mainShell)
+    }
+
+    @Test
+    func permissionActionLabelUsesPermissionServicePrimaryAction() {
+        let permissionService = StatusOnlyPermissionService(
+            actions: [.microphone: .requestAccess]
+        )
+        let store = makeStore(permissionService: permissionService)
+
+        #expect(store.permissionActionLabel(for: .microphone) == "Grant Access")
+        #expect(store.permissionActionLabel(for: .screenRecording) == "Open Settings")
     }
 }

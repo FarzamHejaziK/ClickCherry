@@ -6,8 +6,12 @@ The format is based on Keep a Changelog and this project uses Semantic Versionin
 
 ## [Unreleased]
 
-### Added
-- Open-source governance, contribution, and release scaffolding.
+## [0.1.38] - 2026-03-20
+
+### Fixed
+- Restored first-time microphone permission flow so `ClickCherry Dev` uses the native macOS microphone prompt instead of sending users to a blank Settings pane.
+- Updated onboarding and settings permission rows to show `Grant Access` for first-time microphone authorization and `Open Settings` after a permission decision already exists.
+- Fixed the Debug unit-test host path so test targets continue to build after renaming the Debug app to `ClickCherry Dev`.
 
 ## [0.1.37] - 2026-02-26
 

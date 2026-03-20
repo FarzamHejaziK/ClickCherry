@@ -11,6 +11,7 @@ struct PermissionRowView<ExtraContent: View>: View {
     let title: String
     let status: PermissionGrantStatus
     let footnote: String?
+    let buttonTitle: String
     let onOpenSettings: () -> Void
     @ViewBuilder let extraContent: () -> ExtraContent
 
@@ -18,11 +19,13 @@ struct PermissionRowView<ExtraContent: View>: View {
         title: String,
         status: PermissionGrantStatus,
         footnote: String? = nil,
+        buttonTitle: String = "Open Settings",
         onOpenSettings: @escaping () -> Void
     ) where ExtraContent == EmptyView {
         self.title = title
         self.status = status
         self.footnote = footnote
+        self.buttonTitle = buttonTitle
         self.onOpenSettings = onOpenSettings
         self.extraContent = { EmptyView() }
     }
@@ -31,12 +34,14 @@ struct PermissionRowView<ExtraContent: View>: View {
         title: String,
         status: PermissionGrantStatus,
         footnote: String? = nil,
+        buttonTitle: String = "Open Settings",
         onOpenSettings: @escaping () -> Void,
         @ViewBuilder extraContent: @escaping () -> ExtraContent
     ) {
         self.title = title
         self.status = status
         self.footnote = footnote
+        self.buttonTitle = buttonTitle
         self.onOpenSettings = onOpenSettings
         self.extraContent = extraContent
     }
@@ -49,7 +54,7 @@ struct PermissionRowView<ExtraContent: View>: View {
 
                 Spacer()
 
-                Button("Open Settings", action: onOpenSettings)
+                Button(buttonTitle, action: onOpenSettings)
                     .buttonStyle(.bordered)
                     .frame(width: PermissionRowMetrics.buttonWidth)
 
@@ -105,4 +110,3 @@ struct PermissionStatusPillView: View {
             .foregroundStyle(foregroundStyle)
     }
 }
-
