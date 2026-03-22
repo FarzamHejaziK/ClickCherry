@@ -6,6 +6,12 @@ The format is based on Keep a Changelog and this project uses Semantic Versionin
 
 ## [Unreleased]
 
+## [0.1.43] - 2026-03-22
+
+### Fixed
+- Removed the lingering duplicate microphone authorization flow so onboarding clicks and recording startup now share one main-thread prompt path.
+- Stopped the hidden background re-request that could flip the microphone row from `Grant Access` to `Open Settings` without showing a visible macOS permission dialog.
+
 ## [0.1.42] - 2026-03-22
 
 ### Fixed

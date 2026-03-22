@@ -127,15 +127,27 @@ final class MacPermissionService: PermissionService {
     }
 
     static func requestMicrophoneAccessAsync(completion: @escaping (AVAuthorizationStatus) -> Void) {
-        if #available(macOS 14.0, *) {
-            AVAudioApplication.requestRecordPermission { _ in
-                completion(currentMicrophoneAuthorizationStatus())
+        let requestAuthorization = {
+            if #available(macOS 14.0, *) {
+                AVAudioApplication.requestRecordPermission { _ in
+                    DispatchQueue.main.async {
+                        completion(currentMicrophoneAuthorizationStatus())
+                    }
+                }
+                return
             }
-            return
+
+            AVCaptureDevice.requestAccess(for: .audio) { _ in
+                DispatchQueue.main.async {
+                    completion(currentMicrophoneAuthorizationStatus())
+                }
+            }
         }
 
-        AVCaptureDevice.requestAccess(for: .audio) { _ in
-            completion(currentMicrophoneAuthorizationStatus())
+        if Thread.isMainThread {
+            requestAuthorization()
+        } else {
+            DispatchQueue.main.async(execute: requestAuthorization)
         }
     }
 
@@ -147,12 +159,42 @@ final class MacPermissionService: PermissionService {
 
         var resolvedStatus = status
         let semaphore = DispatchSemaphore(value: 0)
-        AVCaptureDevice.requestAccess(for: .audio) { _ in
-            resolvedStatus = currentMicrophoneAuthorizationStatus()
+        requestMicrophoneAccessAsync { newStatus in
+            resolvedStatus = newStatus
             semaphore.signal()
         }
-        _ = semaphore.wait(timeout: .now() + timeout)
+
+        if Thread.isMainThread {
+            let deadline = Date().addingTimeInterval(timeout)
+            while semaphore.wait(timeout: .now()) != .success {
+                guard Date() < deadline else {
+                    break
+                }
+                RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.05))
+            }
+        } else {
+            _ = semaphore.wait(timeout: .now() + timeout)
+        }
+
         return resolvedStatus == .notDetermined ? currentMicrophoneAuthorizationStatus() : resolvedStatus
+    }
+
+    private func handleResolvedMicrophoneAuthorization(_ resolvedStatus: AVAuthorizationStatus) {
+        clearRequestedInSession(.microphone)
+        if resolvedStatus == .authorized {
+            probeMicrophoneCaptureStackAsync()
+        }
+    }
+
+    static func shouldOpenMicrophoneSettings(for authorizationStatus: AVAuthorizationStatus) -> Bool {
+        switch authorizationStatus {
+        case .denied, .restricted, .authorized:
+            return true
+        case .notDetermined:
+            return false
+        @unknown default:
+            return true
+        }
     }
 
     static func microphonePrimaryAction(for authorizationStatus: AVAuthorizationStatus) -> PermissionPrimaryAction {
@@ -237,15 +279,17 @@ final class MacPermissionService: PermissionService {
             let status = Self.currentMicrophoneAuthorizationStatus()
             if status == .authorized {
                 probeMicrophoneCaptureStackAsync()
+                clearRequestedInSession(.microphone)
                 return .granted
             }
             if status == .notDetermined {
+                markRequestedInSession(.microphone)
                 // Trigger the system prompt; the onboarding poller will update the status pill once the user responds.
                 Self.requestMicrophoneAccessIfNeededAsync { resolvedStatus in
-                    if resolvedStatus == .authorized {
-                        self.probeMicrophoneCaptureStackAsync()
-                    }
+                    self.handleResolvedMicrophoneAuthorization(resolvedStatus)
                 }
+            } else {
+                clearRequestedInSession(.microphone)
             }
             return microphoneStatus()
         case .accessibility:
@@ -285,24 +329,15 @@ final class MacPermissionService: PermissionService {
             if microphoneAuthorizationStatus == .notDetermined {
                 markRequestedInSession(.microphone)
                 Self.requestMicrophoneAccessIfNeededAsync { resolvedStatus in
-                    if resolvedStatus == .authorized {
-                        self.probeMicrophoneCaptureStackAsync()
-                        self.clearRequestedInSession(.microphone)
-                        return
-                    }
-
-                    self.clearRequestedInSession(.microphone)
-                    self.primeMicrophonePermissionRegistrationAsync()
+                    self.handleResolvedMicrophoneAuthorization(resolvedStatus)
                 }
                 return
             }
 
             clearRequestedInSession(.microphone)
-            primeMicrophonePermissionRegistrationAsync()
-            openSystemSettingsAfterRegistration(
-                for: permission,
-                initialDelay: SettingsOpenTiming.microphoneDelay
-            )
+            if Self.shouldOpenMicrophoneSettings(for: microphoneAuthorizationStatus) {
+                openSystemSettings(for: permission)
+            }
         case .inputMonitoring:
             if currentStatus(for: permission) == .granted {
                 recordInputMonitoringProbeResult(granted: true)
@@ -653,19 +688,6 @@ final class MacPermissionService: PermissionService {
             session.startRunning()
             Thread.sleep(forTimeInterval: 0.35)
             session.stopRunning()
-        }
-    }
-
-    private func primeMicrophonePermissionRegistrationAsync() {
-        DispatchQueue.global(qos: .utility).async {
-            _ = AVCaptureDevice.default(for: .audio)
-
-            Self.requestMicrophoneAccessAsync { resolvedStatus in
-                guard resolvedStatus == .authorized else {
-                    return
-                }
-                self.probeMicrophoneCaptureStackAsync()
-            }
         }
     }
 
