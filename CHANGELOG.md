@@ -6,6 +6,11 @@ The format is based on Keep a Changelog and this project uses Semantic Versionin
 
 ## [Unreleased]
 
+## [0.1.42] - 2026-03-22
+
+### Fixed
+- Switched macOS microphone authorization to `AVAudioApplication` so the release app now triggers the native microphone permission prompt and registers `ClickCherry` in Privacy & Security > Microphone.
+
 ## [0.1.41] - 2026-03-20
 
 ### Fixed

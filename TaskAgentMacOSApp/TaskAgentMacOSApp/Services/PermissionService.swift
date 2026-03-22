@@ -1,5 +1,8 @@
 import AppKit
 import ApplicationServices
+#if canImport(AVFAudio)
+import AVFAudio
+#endif
 import AVFoundation
 import CoreGraphics
 import Foundation
@@ -98,6 +101,18 @@ final class MacPermissionService: PermissionService {
     private var inputMonitoringGlobalMonitor: Any?
 
     static func currentMicrophoneAuthorizationStatus() -> AVAuthorizationStatus {
+        if #available(macOS 14.0, *) {
+            switch AVAudioApplication.shared.recordPermission {
+            case .undetermined:
+                return .notDetermined
+            case .denied:
+                return .denied
+            case .granted:
+                return .authorized
+            @unknown default:
+                return .denied
+            }
+        }
         AVCaptureDevice.authorizationStatus(for: .audio)
     }
 
@@ -112,6 +127,13 @@ final class MacPermissionService: PermissionService {
     }
 
     static func requestMicrophoneAccessAsync(completion: @escaping (AVAuthorizationStatus) -> Void) {
+        if #available(macOS 14.0, *) {
+            AVAudioApplication.requestRecordPermission { _ in
+                completion(currentMicrophoneAuthorizationStatus())
+            }
+            return
+        }
+
         AVCaptureDevice.requestAccess(for: .audio) { _ in
             completion(currentMicrophoneAuthorizationStatus())
         }
