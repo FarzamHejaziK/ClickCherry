@@ -184,7 +184,7 @@ final class OnboardingStateStore {
 
     func openPermissionSettings(for permission: AppPermission) {
         permissionService.requestAccessAndOpenSystemSettings(for: permission)
-        if permission == .microphone {
+        if permission == .microphone && !permissionService.isRequestInFlight(for: .microphone) {
             microphonePrimaryAction = permissionService.primaryAction(for: .microphone)
         }
     }
@@ -205,13 +205,15 @@ final class OnboardingStateStore {
             screenRecordingStatus = screenRecording
         }
 
-        let microphone = permissionService.currentStatus(for: .microphone)
-        if microphone != microphoneStatus {
-            microphoneStatus = microphone
-        }
-        let microphonePrimaryAction = permissionService.primaryAction(for: .microphone)
-        if microphonePrimaryAction != self.microphonePrimaryAction {
-            self.microphonePrimaryAction = microphonePrimaryAction
+        if !permissionService.isRequestInFlight(for: .microphone) {
+            let microphone = permissionService.currentStatus(for: .microphone)
+            if microphone != microphoneStatus {
+                microphoneStatus = microphone
+            }
+            let microphonePrimaryAction = permissionService.primaryAction(for: .microphone)
+            if microphonePrimaryAction != self.microphonePrimaryAction {
+                self.microphonePrimaryAction = microphonePrimaryAction
+            }
         }
 
         let accessibility = permissionService.currentStatus(for: .accessibility)
@@ -226,17 +228,22 @@ final class OnboardingStateStore {
     }
 
     func refreshPermissionStatus(for permission: AppPermission) {
-        let status = permissionService.currentStatus(for: permission)
-
         switch permission {
         case .screenRecording:
+            let status = permissionService.currentStatus(for: .screenRecording)
             screenRecordingStatus = status
         case .microphone:
+            guard !permissionService.isRequestInFlight(for: .microphone) else {
+                return
+            }
+            let status = permissionService.currentStatus(for: .microphone)
             microphoneStatus = status
             microphonePrimaryAction = permissionService.primaryAction(for: .microphone)
         case .accessibility:
+            let status = permissionService.currentStatus(for: .accessibility)
             accessibilityStatus = status
         case .inputMonitoring:
+            let status = permissionService.currentStatus(for: .inputMonitoring)
             inputMonitoringStatus = status
         }
     }

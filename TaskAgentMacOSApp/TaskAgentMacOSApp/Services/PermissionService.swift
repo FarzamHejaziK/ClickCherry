@@ -1,8 +1,5 @@
 import AppKit
 import ApplicationServices
-#if canImport(AVFAudio)
-import AVFAudio
-#endif
 import AVFoundation
 import CoreGraphics
 import Foundation
@@ -52,6 +49,7 @@ protocol PermissionService {
     func requestAccessAndOpenSystemSettings(for permission: AppPermission)
     func requestMicrophoneAccessSynchronouslyIfNeeded(timeout: TimeInterval) -> Bool
     func primaryAction(for permission: AppPermission) -> PermissionPrimaryAction
+    func isRequestInFlight(for permission: AppPermission) -> Bool
 }
 
 extension PermissionService {
@@ -70,6 +68,10 @@ extension PermissionService {
 
     func primaryAction(for permission: AppPermission) -> PermissionPrimaryAction {
         .openSettings
+    }
+
+    func isRequestInFlight(for permission: AppPermission) -> Bool {
+        false
     }
 }
 
@@ -91,6 +93,7 @@ final class MacPermissionService: PermissionService {
 
     private let stateLock = NSLock()
     private var requestedInSession: Set<AppPermission> = []
+    private var microphoneRequestInFlight = false
 
     private var screenRecordingProbeCycleID: UInt64 = 0
     private var screenRecordingProbeGrantedAt: Date?
@@ -101,18 +104,6 @@ final class MacPermissionService: PermissionService {
     private var inputMonitoringGlobalMonitor: Any?
 
     static func currentMicrophoneAuthorizationStatus() -> AVAuthorizationStatus {
-        if #available(macOS 14.0, *) {
-            switch AVAudioApplication.shared.recordPermission {
-            case .undetermined:
-                return .notDetermined
-            case .denied:
-                return .denied
-            case .granted:
-                return .authorized
-            @unknown default:
-                return .denied
-            }
-        }
         AVCaptureDevice.authorizationStatus(for: .audio)
     }
 
@@ -128,15 +119,7 @@ final class MacPermissionService: PermissionService {
 
     static func requestMicrophoneAccessAsync(completion: @escaping (AVAuthorizationStatus) -> Void) {
         let requestAuthorization = {
-            if #available(macOS 14.0, *) {
-                AVAudioApplication.requestRecordPermission { _ in
-                    DispatchQueue.main.async {
-                        completion(currentMicrophoneAuthorizationStatus())
-                    }
-                }
-                return
-            }
-
+            NSApp.activate(ignoringOtherApps: true)
             AVCaptureDevice.requestAccess(for: .audio) { _ in
                 DispatchQueue.main.async {
                     completion(currentMicrophoneAuthorizationStatus())
@@ -180,6 +163,7 @@ final class MacPermissionService: PermissionService {
     }
 
     private func handleResolvedMicrophoneAuthorization(_ resolvedStatus: AVAuthorizationStatus) {
+        setMicrophoneRequestInFlight(false)
         clearRequestedInSession(.microphone)
         if resolvedStatus == .authorized {
             probeMicrophoneCaptureStackAsync()
@@ -279,16 +263,22 @@ final class MacPermissionService: PermissionService {
             let status = Self.currentMicrophoneAuthorizationStatus()
             if status == .authorized {
                 probeMicrophoneCaptureStackAsync()
+                setMicrophoneRequestInFlight(false)
                 clearRequestedInSession(.microphone)
                 return .granted
             }
             if status == .notDetermined {
+                guard !isRequestInFlight(for: .microphone) else {
+                    return .notGranted
+                }
                 markRequestedInSession(.microphone)
+                setMicrophoneRequestInFlight(true)
                 // Trigger the system prompt; the onboarding poller will update the status pill once the user responds.
                 Self.requestMicrophoneAccessIfNeededAsync { resolvedStatus in
                     self.handleResolvedMicrophoneAuthorization(resolvedStatus)
                 }
             } else {
+                setMicrophoneRequestInFlight(false)
                 clearRequestedInSession(.microphone)
             }
             return microphoneStatus()
@@ -322,18 +312,24 @@ final class MacPermissionService: PermissionService {
             let microphoneAuthorizationStatus = Self.currentMicrophoneAuthorizationStatus()
             if microphoneAuthorizationStatus == .authorized {
                 probeMicrophoneCaptureStackAsync()
+                setMicrophoneRequestInFlight(false)
                 clearRequestedInSession(.microphone)
                 openSystemSettings(for: permission)
                 return
             }
             if microphoneAuthorizationStatus == .notDetermined {
+                guard !isRequestInFlight(for: .microphone) else {
+                    return
+                }
                 markRequestedInSession(.microphone)
+                setMicrophoneRequestInFlight(true)
                 Self.requestMicrophoneAccessIfNeededAsync { resolvedStatus in
                     self.handleResolvedMicrophoneAuthorization(resolvedStatus)
                 }
                 return
             }
 
+            setMicrophoneRequestInFlight(false)
             clearRequestedInSession(.microphone)
             if Self.shouldOpenMicrophoneSettings(for: microphoneAuthorizationStatus) {
                 openSystemSettings(for: permission)
@@ -439,10 +435,21 @@ final class MacPermissionService: PermissionService {
         let status = Self.requestMicrophoneAccessSynchronously(timeout: timeout)
         if status == .authorized {
             probeMicrophoneCaptureStackAsync()
+            setMicrophoneRequestInFlight(false)
             clearRequestedInSession(.microphone)
             return true
         }
         return false
+    }
+
+    func isRequestInFlight(for permission: AppPermission) -> Bool {
+        guard permission == .microphone else {
+            return false
+        }
+        stateLock.lock()
+        let inFlight = microphoneRequestInFlight
+        stateLock.unlock()
+        return inFlight
     }
 
     private func installInputMonitoringEventTap(duration: TimeInterval?) -> Bool {
@@ -524,6 +531,12 @@ final class MacPermissionService: PermissionService {
     private func clearRequestedInSession(_ permission: AppPermission) {
         stateLock.lock()
         requestedInSession.remove(permission)
+        stateLock.unlock()
+    }
+
+    private func setMicrophoneRequestInFlight(_ inFlight: Bool) {
+        stateLock.lock()
+        microphoneRequestInFlight = inFlight
         stateLock.unlock()
     }
 

@@ -6,6 +6,12 @@ The format is based on Keep a Changelog and this project uses Semantic Versionin
 
 ## [Unreleased]
 
+## [0.1.44] - 2026-03-22
+
+### Fixed
+- Added the microphone entitlement to the hardened-runtime release signing path so notarized DMG builds now trigger the native macOS microphone permission prompt and register `ClickCherry` in Privacy & Security > Microphone.
+- Preserved the in-flight microphone request state in onboarding and settings so the button no longer flips from `Grant Access` to `Open Settings` before macOS resolves the live permission request.
+
 ## [0.1.43] - 2026-03-22
 
 ### Fixed

@@ -78,10 +78,20 @@ jobs:
             echo "Release app not found" >&2
             exit 1
           fi
+          ENTITLEMENTS_PATH="TaskAgentMacOSApp/TaskAgentMacOSApp/ClickCherry.entitlements"
+          if [ ! -f "$ENTITLEMENTS_PATH" ]; then
+            echo "Entitlements file not found: $ENTITLEMENTS_PATH" >&2
+            exit 1
+          fi
           codesign --force --deep --options runtime --timestamp \
+            --entitlements "$ENTITLEMENTS_PATH" \
             --sign "Developer ID Application: Farzam Hejazikookamari (QKN8WTSJYG)" \
             "$APP_PATH"
           codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+          if ! codesign -d --entitlements :- "$APP_PATH" 2>&1 | grep -q "com.apple.security.device.audio-input"; then
+            echo "Signed app is missing microphone entitlement" >&2
+            exit 1
+          fi
 
       - name: Package app for notarization
         run: |

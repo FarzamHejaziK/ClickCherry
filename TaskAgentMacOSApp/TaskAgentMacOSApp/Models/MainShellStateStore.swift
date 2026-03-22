@@ -516,6 +516,10 @@ final class MainShellStateStore {
         permissionService.primaryAction(for: permission)
     }
 
+    func isPermissionRequestInFlight(for permission: AppPermission) -> Bool {
+        permissionService.isRequestInFlight(for: permission)
+    }
+
     func permissionActionLabel(for permission: AppPermission) -> String {
         permissionPrimaryAction(for: permission).buttonTitle
     }

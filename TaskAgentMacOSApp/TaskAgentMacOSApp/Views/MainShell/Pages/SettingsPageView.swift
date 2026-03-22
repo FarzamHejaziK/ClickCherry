@@ -261,11 +261,15 @@ struct MainShellSettingsView: View {
     }
 
     private func refreshPermissionStatuses() {
+        let screenRecording = mainShellStateStore.permissionStatus(for: .screenRecording)
+        let accessibility = mainShellStateStore.permissionStatus(for: .accessibility)
+        let isMicrophoneRequestInFlight = mainShellStateStore.isPermissionRequestInFlight(for: .microphone)
+
         permissionStatuses = PermissionStatuses(
-            screenRecording: mainShellStateStore.permissionStatus(for: .screenRecording),
-            microphone: mainShellStateStore.permissionStatus(for: .microphone),
-            microphonePrimaryAction: mainShellStateStore.permissionPrimaryAction(for: .microphone),
-            accessibility: mainShellStateStore.permissionStatus(for: .accessibility)
+            screenRecording: screenRecording,
+            microphone: isMicrophoneRequestInFlight ? permissionStatuses.microphone : mainShellStateStore.permissionStatus(for: .microphone),
+            microphonePrimaryAction: isMicrophoneRequestInFlight ? permissionStatuses.microphonePrimaryAction : mainShellStateStore.permissionPrimaryAction(for: .microphone),
+            accessibility: accessibility
         )
     }
 }

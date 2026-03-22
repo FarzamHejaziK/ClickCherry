@@ -23,13 +23,16 @@ private final class StaticCompletionStore: OnboardingCompletionStore {
 private final class StatusOnlyPermissionService: PermissionService {
     var statuses: [AppPermission: PermissionGrantStatus]
     var actions: [AppPermission: PermissionPrimaryAction]
+    var inFlightPermissions: Set<AppPermission>
 
     init(
         statuses: [AppPermission: PermissionGrantStatus] = [:],
-        actions: [AppPermission: PermissionPrimaryAction] = [:]
+        actions: [AppPermission: PermissionPrimaryAction] = [:],
+        inFlightPermissions: Set<AppPermission> = []
     ) {
         self.statuses = statuses
         self.actions = actions
+        self.inFlightPermissions = inFlightPermissions
     }
 
     func openSystemSettings(for permission: AppPermission) {}
@@ -40,6 +43,10 @@ private final class StatusOnlyPermissionService: PermissionService {
 
     func primaryAction(for permission: AppPermission) -> PermissionPrimaryAction {
         actions[permission] ?? .openSettings
+    }
+
+    func isRequestInFlight(for permission: AppPermission) -> Bool {
+        inFlightPermissions.contains(permission)
     }
 }
 
@@ -171,6 +178,23 @@ struct OnboardingStateStoreTests {
         store.pollPermissionStatuses()
 
         #expect(store.microphoneStatus == .notGranted)
+        #expect(store.permissionActionLabel(for: .microphone) == "Open Settings")
+    }
+
+    @Test
+    func pollPermissionStatusesSkipsMicrophoneWhileRequestIsInFlight() {
+        let permissionService = StatusOnlyPermissionService(
+            statuses: [.microphone: .notGranted],
+            actions: [.microphone: .requestAccess],
+            inFlightPermissions: [.microphone]
+        )
+        let store = makeStore(permissionService: permissionService)
+
+        store.microphoneStatus = .granted
+        store.microphonePrimaryAction = .openSettings
+        store.pollPermissionStatuses()
+
+        #expect(store.microphoneStatus == .granted)
         #expect(store.permissionActionLabel(for: .microphone) == "Open Settings")
     }
 }
