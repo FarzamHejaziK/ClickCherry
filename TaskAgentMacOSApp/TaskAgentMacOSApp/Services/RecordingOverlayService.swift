@@ -8,6 +8,11 @@ protocol RecordingOverlayService {
 }
 
 final class ScreenRecordingOverlayService: RecordingOverlayService {
+    private final class BorderPanel: NSPanel {
+        override var canBecomeKey: Bool { false }
+        override var canBecomeMain: Bool { false }
+    }
+
     private final class BorderView: NSView {
         override init(frame frameRect: NSRect) {
             super.init(frame: frameRect)
@@ -23,8 +28,9 @@ final class ScreenRecordingOverlayService: RecordingOverlayService {
         }
     }
 
-    private var overlayWindow: NSWindow?
+    private var overlayWindow: BorderPanel?
     private var overlayWindowNumber: Int?
+    private var activationObserver: NSObjectProtocol?
 
     func showBorder(displayID: Int) {
         guard Thread.isMainThread else {
@@ -40,9 +46,9 @@ final class ScreenRecordingOverlayService: RecordingOverlayService {
             return
         }
 
-        let window = NSWindow(
+        let window = BorderPanel(
             contentRect: screen.frame,
-            styleMask: .borderless,
+            styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )
@@ -58,10 +64,14 @@ final class ScreenRecordingOverlayService: RecordingOverlayService {
         // Use a high level so the border remains visible above full-screen and presentation layers.
         window.level = .screenSaver
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
+        window.isFloatingPanel = true
+        window.isReleasedWhenClosed = false
+        window.animationBehavior = .none
         window.contentView = BorderView(frame: NSRect(origin: .zero, size: screen.frame.size))
         window.orderFrontRegardless()
         overlayWindow = window
         overlayWindowNumber = window.windowNumber
+        ensureActivationObserver()
     }
 
     func hideBorder() {
@@ -74,11 +84,27 @@ final class ScreenRecordingOverlayService: RecordingOverlayService {
         overlayWindow?.orderOut(nil)
         overlayWindow = nil
         overlayWindowNumber = nil
+
+        if let activationObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(activationObserver)
+            self.activationObserver = nil
+        }
     }
 
     func windowNumberForScreenshotExclusion() -> Int? {
         // Use the cached window number so this method is safe off-main-thread.
         overlayWindowNumber
+    }
+
+    private func ensureActivationObserver() {
+        guard activationObserver == nil else { return }
+        activationObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.overlayWindow?.orderFrontRegardless()
+        }
     }
 
     // Screen indexing is handled by `ScreenDisplayIndexService`.
