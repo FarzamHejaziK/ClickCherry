@@ -4,67 +4,33 @@ description: Active unresolved issues with concrete repro details, mitigation, a
 
 # Open Issues
 
-## Issue OI-2026-02-21-015
-- Issue ID: OI-2026-02-21-015
-- Title: DMG-installed app can be missing from Privacy lists when permission panes open too early
-- Status: Open
+## Issue OI-2026-03-25-016
+- Issue ID: OI-2026-03-25-016
+- Title: OpenAI built-in computer-use path regresses simple visual tasks and can falsely report success
+- Status: Mitigated
 - Severity: High
-- First Seen: 2026-02-21
+- First Seen: 2026-03-25
 - Scope:
-  - Affects permission onboarding/settings actions for release DMG installs.
-  - Most visible on first permission grant attempts for Screen Recording, Microphone, Accessibility, and Input Monitoring.
+  - Affects the experimental OpenAI built-in `computer` execution path.
+  - Most visible on simple visual pointer-targeting tasks such as hovering over a Dock icon.
+  - Impacts confidence in model-reported success because the task can be marked complete when the cursor is not on the requested target.
 - Repro Steps:
-  1. Install `ClickCherry` from release DMG and launch it.
-  2. In onboarding or Settings -> Permissions, click `Open Settings` for a required permission.
-  3. Observe that System Settings opens but `ClickCherry` is intermittently missing from the target privacy list.
+  1. Use the OpenAI built-in `computer` execution path.
+  2. Run a simple hover task such as `Hover over Google Chrome in Dock`.
+  3. Inspect the tool log and the final screenshot captured for the run.
 - Observed:
-  - Permission pane can open before TCC registration settles, so the app row is not yet visible.
-  - Prior implementation also issued duplicate request calls (`refreshPermissionStatus` + `openPermissionSettings`), increasing race probability.
-  - Follow-up user report (2026-02-21): only Accessibility list showed `ClickCherry`; Screen Recording, Microphone, and Input Monitoring lists still missed app registration.
-  - Follow-up UX report (2026-02-21): previous first-click de-conflict behavior could require extra clicks before Settings opened, which felt slow/confusing for Screen Recording, Accessibility, and Input Monitoring.
-  - Latest two-device validation (2026-02-22):
-    - macOS 26 dev machine: Settings panes open for all permissions, but `ClickCherry` appears only in Accessibility list; Screen Recording, Microphone, and Input Monitoring rows are missing.
-    - macOS 15 laptop: Screen Recording + Accessibility can show prompt then Settings with `ClickCherry` present; Microphone click can no-op; Input Monitoring still opens pane without `ClickCherry` row.
-  - Latest follow-up validation (2026-02-22, release `v0.1.25`):
-    - Screen Recording can show `ClickCherry` enabled in System Settings, but app-side status remains `Not Granted` in onboarding.
-    - Screen Recording native dialog can feel stuck/reappearing after Settings navigation.
-    - Input Monitoring pane still opens without `ClickCherry` row on both tested macOS versions.
-  - Latest follow-up validation (2026-02-22, release `v0.1.26`):
-    - Screen Recording dialog can still repeatedly appear and cannot be dismissed reliably during onboarding flow.
-  - Latest follow-up validation (2026-02-22, post-fix local build + runtime logs):
-    - Screen Recording/OpenAI run calls can show transient transport failures and retries, then recover.
-    - Input Monitoring list registration remains inconsistent across machines; OS behavior is still not fully deterministic.
+  - The model can issue a move to the wrong Dock coordinate and still return `SUCCESS`.
+  - Evaluation of the migrated path showed the initial request started without an initial screenshot attached, so the first visual action could be a blind guess.
+  - The runner trusted model-reported `SUCCESS` without local postcondition verification, so a miss could still be accepted as a completed task.
+  - The previous implementation handled the same task more reliably.
 - Expected:
-  - Clicking `Open Settings` should consistently show `ClickCherry` in the relevant privacy list after request registration.
+  - A computer-use implementation should receive initial visual grounding before the first move and should not report success unless the final state matches the requested hover target.
 - Current Mitigation:
-  - `MacPermissionService` keeps delayed permission-pane opening and retries after request/probe calls to reduce TCC registration races.
-    - Screen Recording delay: 1.0s
-    - Microphone delay: 0.8s
-    - Accessibility delay: 0.7s
-    - Input Monitoring delay: 1.5s
-    - Retry delay/count: 1.3s, 2 retries
-  - Screen Recording flow no longer calls native request API in onboarding click path.
-    - Polling path uses passive check only (`CGPreflightScreenCaptureAccess`) plus temporary cache.
-    - Screen Recording `Open Settings` click path is Settings-only with passive bounded recheck probes (no `CGRequestScreenCaptureAccess` call).
-  - Screen Recording status sync now uses bounded post-click recheck probes (`1.2s`, `3.5s`, `8.0s`) plus temporary grant cache (TTL `180s`) to capture grant flips without continuous prompt churn.
-  - Input Monitoring registration keepalive now holds event-tap/global-monitor registration attempts longer (`30s`) and uses temporary grant cache (TTL `180s`) to reflect successful registration earlier.
-  - Product policy updated to reduce blocking friction:
-    - Input Monitoring remains in onboarding permissions checklist.
-    - Input Monitoring is no longer enforced as a hard blocker for recording start.
-    - Input Monitoring is no longer enforced as a hard blocker for agent run start.
-    - If unavailable, run/record continue with reduced Escape-stop reliability.
-  - Microphone and Accessibility keep native macOS-first request behavior and Settings fallback/open behavior.
-  - For all four permissions, if status is already granted when user clicks `Open Settings`, the app now still opens the corresponding Settings pane (previously some paths returned early and looked like no-op).
-  - onboarding/status refresh path remains passive (`currentStatus`) to avoid accidental prompt dialogs during polling.
-  - Permission-row handlers in onboarding/settings now use a single request-open path (removed duplicate pre-request calls).
-  - Added explicit guidance in onboarding/settings permissions copy to run `ClickCherry` from `/Applications` and retry `Open Settings` if list entries are still missing.
+  - Do not use the OpenAI built-in `computer` path in the active product implementation.
+  - Keep the previous computer-use implementation as the current path.
 - Next Action:
-  - Ship this increment through GitHub release flow (tag + workflow artifact), then run two-device runtime validation from the GitHub DMG:
-    - confirm Screen Recording prompt does not loop/stick after Settings-first click flow.
-    - confirm Screen Recording and Accessibility granted states converge in-app after toggle.
-    - confirm recording/agent run are not blocked by missing Input Monitoring grant.
-    - document remaining Input Monitoring list non-registration cases with timestamps/screenshots as OS-level residual risk.
-- Owner: Codex + user validation in DMG runtime
+  - None planned unless OpenAI computer use is intentionally re-evaluated in a future isolated spike with stronger grounding and verification requirements.
+- Owner: Codex + product decision
 
 ## Issue OI-2026-02-20-014
 - Issue ID: OI-2026-02-20-014
@@ -474,6 +440,35 @@ description: Active unresolved issues with concrete repro details, mitigation, a
 - Owner: Codex + user validation in local Xcode runtime
 
 # Closed Issues
+
+## Issue OI-2026-02-21-015
+- Issue ID: OI-2026-02-21-015
+- Title: DMG-installed app can be missing from Privacy lists when permission panes open too early
+- Status: Closed
+- Severity: High
+- First Seen: 2026-02-21
+- Scope:
+  - Affected permission onboarding/settings actions for release DMG installs.
+  - Was most visible on first permission grant attempts for Screen Recording, Microphone, Accessibility, and Input Monitoring.
+- Repro Steps:
+  1. Install `ClickCherry` from release DMG and launch it.
+  2. In onboarding or Settings -> Permissions, click the action for a required permission.
+  3. Observe that System Settings can open without the expected app row, or the microphone flow can skip the native dialog.
+- Observed:
+  - Release DMG behavior diverged from local Xcode runs.
+  - Microphone could fail specifically in hardened-runtime / Developer ID builds while still working in Apple Development local builds.
+  - Screen Recording could display stale renamed test-app rows after local signing experiments, masking the actual app identity.
+- Expected:
+  - GitHub DMG installs should match local permission behavior and register `ClickCherry` correctly in the relevant privacy surfaces.
+- Current Mitigation:
+  - Release signing now includes checked-in entitlements from `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/ClickCherry.entitlements`.
+  - The workflow fails if the final signed app is missing `com.apple.security.device.audio-input`.
+  - Clean-slate DMG validation now resets Screen Recording globally and removes duplicate app copies before testing.
+- Next Action:
+  - Monitor future DMG releases for regression using the clean-slate public-artifact checklist in `.docs/testing.md`.
+- Owner: Codex + user validation in DMG runtime
+- Resolution Date: 2026-03-22
+- Resolution Summary: Closed after A/B signing validation proved the DMG bug was caused by hardened-runtime signing without the microphone entitlement. `v0.1.44` now ships with `com.apple.security.device.audio-input`, and a fresh GitHub DMG install was validated from clean state. Screen Recording stale-name rows were traced to local experimental app copies and cleared with a global `tccutil reset ScreenCapture`.
 
 ## Issue OI-2026-02-17-011
 - Issue ID: OI-2026-02-17-011

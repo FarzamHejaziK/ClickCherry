@@ -4,7 +4,101 @@ description: Running implementation log of completed work, test evidence, blocke
 
 # Worklog
 
-> Previous archived entries are in `/Users/farzamh/code-git-local/task-agent-macos/.docs/legacy_worklog.md`.
+> Previous archived entries are in `/Users/ferzamh/code-git-local/ClickCherry/.docs/legacy_worklog.md`.
+
+## Entry
+- Date: 2026-03-25
+- Step: Record OpenAI computer-use regression and decision not to adopt it
+- Changes made:
+  - Updated docs:
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/open_issues.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/worklog.md`
+  - Findings recorded:
+    - the OpenAI built-in `computer` experiment regressed a simple `Hover over Google Chrome in Dock` task that the previous implementation handled more reliably.
+    - analysis indicated the migrated runner started without the initial screenshot attached and accepted model-reported `SUCCESS` without local postcondition verification.
+  - Decision recorded:
+    - do not use OpenAI built-in `computer` in the active implementation at this time.
+    - keep the previous computer-use implementation as the current path.
+- Automated tests run:
+  - N/A (docs-only).
+- Manual tests run:
+  - N/A (docs-only; decision based on user-observed local runtime regression evidence).
+- Result:
+  - Open issue and execution queue now reflect the decision not to adopt OpenAI built-in computer use.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-03-24
+- Step: Fix selected-display agent screenshots capturing only wallpaper/desktop
+- Changes made:
+  - Updated runtime screenshot path:
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomationEngine.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/DesktopScreenshotService.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AgentControlOverlayService.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/RecordingOverlayService.swift`
+  - Updated run/setup behavior:
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/RunTaskPreflightDialogCanvasView.swift`
+  - Added/updated test coverage:
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSAppTests/PermissionServiceTests.swift`
+  - Updated docs:
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/open_issues.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/worklog.md`
+  - Behavior changes:
+    - `Run Task` now requires Screen Recording permission before the agent can start.
+    - Agent screenshots now temporarily hide the run HUD/border and use exact-fidelity `/usr/sbin/screencapture -D <displayIndex>` capture so the model sees the selected display as the user sees it.
+    - Screen Recording status now uses `CGPreflightScreenCaptureAccess()` as the source of truth instead of treating a successful ScreenCaptureKit probe as proof of grant.
+- Automated tests run:
+  - `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/clickcherry-screenshot-fix-tests -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests -only-testing:TaskAgentMacOSAppTests/PermissionServiceTests CODE_SIGNING_ALLOWED=NO test` (pass; 41 tests).
+- Manual tests run:
+  - N/A (user-side runtime validation still pending for live multi-display behavior).
+- Result:
+  - Selected-display agent screenshot path now targets exact user-visible display content and blocks runs when Screen Recording is missing.
+- Issues/blockers:
+  - Manual validation is still needed on a real multi-display setup with visible app windows (for example Chrome on the selected display).
+
+## Entry
+- Date: 2026-03-22
+- Step: Fix hardened-runtime DMG permission behavior and document the root cause
+- Changes made:
+  - Updated code and release-signing paths:
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/ClickCherry.entitlements`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj/project.pbxproj`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.github/workflows/release.yml`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/OnboardingStateStore.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSAppTests/OnboardingStateStoreTests.swift`
+  - Updated docs:
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/xcode_signing_setup.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/testing.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/permissions_incident_report.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/open_issues.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/worklog.md`
+  - Root-cause findings recorded:
+    - public DMGs diverged from local Xcode runs because hardened-runtime signing originally omitted `com.apple.security.device.audio-input`.
+    - Screen Recording stale-name rows came from temporary local backup/test apps and required global `tccutil reset ScreenCapture` for a true clean-slate test.
+    - Microphone does not have a manual `+` add flow in System Settings, so the native macOS permission dialog is the critical first-registration path.
+- Automated tests run:
+  - `xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Release -destination "platform=macOS" -derivedDataPath /tmp/clickcherry-release-1044 build` (pass).
+  - `xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/clickcherry-tests-1044 -only-testing:TaskAgentMacOSAppTests test` (pass).
+- Manual tests run:
+  - A/B signing experiment on 2026-03-22:
+    - hardened runtime without microphone entitlement: no native microphone dialog
+    - hardened runtime with microphone entitlement: native microphone dialog appeared
+    - non-runtime local-signing variant: native microphone dialog appeared
+  - Installed the published `v0.1.44` GitHub DMG to `/Applications`, reset TCC state, and confirmed the clean public artifact path now behaves correctly.
+- Result:
+  - Hardened-runtime DMG permission regression resolved and documented; `v0.1.44` is the first release with the corrected microphone entitlement path.
+- Issues/blockers:
+  - None.
 
 ## Entry
 - Date: 2026-02-26
@@ -222,35 +316,3 @@ description: Running implementation log of completed work, test evidence, blocke
   - Ready to publish `v0.1.33`.
 - Issues/blockers:
   - None.
-
-## Entry
-- Date: 2026-02-24
-- Step: Restore app icon size while keeping rounder enclosure
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_16x16.png`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_16x16@2x.png`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_32x32.png`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_32x32@2x.png`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_128x128.png`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_128x128@2x.png`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_256x256.png`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_256x256@2x.png`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_512x512.png`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Assets.xcassets/AppIcon.appiconset/icon_512x512@2x.png`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
-  - Icon behavior changes:
-    - restored icon content scale/composition from `v0.1.31`.
-    - retained stronger rounded enclosure from recent icon updates.
-    - regenerated all app icon slots from one master.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-icon-round-no-resize CODE_SIGNING_ALLOWED=NO build` (pass).
-- Manual tests run:
-  - Launched `/tmp/taskagent-dd-icon-round-no-resize/Build/Products/Debug/ClickCherry.app`, confirmed startup via `pgrep`, then terminated app process.
-- Result:
-  - Complete for requested icon size rollback with roundness preserved.
-- Issues/blockers:
-  - None.
-

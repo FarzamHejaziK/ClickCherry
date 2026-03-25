@@ -1,51 +1,52 @@
 ---
-description: Testing guidance for TaskAgentMacOSApp, including local commands and known sandbox limitations.
+description: Testing guidance for TaskAgentMacOSApp, including local commands, release-artifact validation, and permission-specific caveats.
 ---
 
 # Testing Guide
 
-## Why test results differ between Codex and local machine
-
-- The Codex runtime is sandboxed.
-- This app uses Swift Observation macros (`@Observable`), which require `swift-plugin-server` during compile/test.
-- In this sandbox, macro expansion may fail with:
-  - `ObservationMacros.ObservableMacro could not be found`
-  - `swift-plugin-server produced malformed response`
-- That failure is environmental, not a deterministic app-code assertion failure.
-
 ## Source of truth
 
-- Treat local Xcode or local terminal runs as the authoritative test result.
-- Use Codex test runs here mainly for quick smoke checks when environment permits.
+- Treat local Xcode or local terminal runs as the authoritative build/test result for source changes.
+- Treat the GitHub DMG as the authoritative runtime artifact for release-permission validation.
+- For permission regressions, do not stop at local Xcode validation. Compare:
+  - Apple Development local build
+  - GitHub release DMG / Developer ID hardened-runtime artifact
+
+## Why local and public builds can differ
+
+- Local Xcode runs are signed as `Apple Development`.
+- Public DMGs are re-signed as `Developer ID Application` with hardened runtime.
+- A local build can pass while the public DMG fails if signing or entitlements differ.
+- This is exactly how the March 2026 microphone regression reproduced: local builds showed the native prompt, while the public DMG failed until the hardened-runtime signature included `com.apple.security.device.audio-input`.
 
 ## Recommended local test commands
 
-CI-exact build command:
+Release build:
 
 ```bash
-xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj \
+xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj \
   -scheme TaskAgentMacOSApp \
-  -destination "platform=macOS,arch=arm64" \
-  -derivedDataPath /tmp/taskagent-dd-ci-build \
-  CODE_SIGNING_ALLOWED=NO build
+  -configuration Release \
+  -destination "platform=macOS" \
+  -derivedDataPath /tmp/clickcherry-release-local \
+  build
 ```
 
-CI-exact unit-test command:
+Unit tests:
 
 ```bash
-xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj \
+xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj \
   -scheme TaskAgentMacOSApp \
-  -destination "platform=macOS,arch=arm64" \
-  -derivedDataPath /tmp/taskagent-dd-ci-test \
-  -parallel-testing-enabled NO \
+  -destination "platform=macOS" \
+  -derivedDataPath /tmp/clickcherry-tests-local \
   -only-testing:TaskAgentMacOSAppTests \
-  CODE_SIGNING_ALLOWED=NO test
+  test
 ```
 
 Optional: force a specific Xcode when multiple versions are installed.
 
 ```bash
-DEVELOPER_DIR=/Applications/Xcode_16.4.app/Contents/Developer xcodebuild ...
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild ...
 ```
 
 ## Operational notes
@@ -53,6 +54,39 @@ DEVELOPER_DIR=/Applications/Xcode_16.4.app/Contents/Developer xcodebuild ...
 - Use a dedicated `-derivedDataPath` to avoid permission or lock conflicts.
 - Avoid running multiple `xcodebuild` commands concurrently against the same DerivedData path.
 - If you hit stale lock issues, remove the chosen DerivedData directory and rerun.
-- CI currently runs with Xcode 16.4; command parity alone does not guarantee result parity if local Xcode is different.
 - Unit tests run inside an XCTest host app process. To avoid macOS Keychain popups during test runs, `KeychainAPIKeyStore` automatically uses in-memory storage when `XCTestConfigurationFilePath` is present.
 - Runtime behavior is unchanged outside XCTest: provider keys are still read/written in macOS Keychain.
+
+## Public DMG permission verification
+
+Use this when the bug might depend on release signing, notarization, or hardened runtime.
+
+1. Download the GitHub DMG for the tag under test.
+2. Remove all other `ClickCherry` copies and eject all mounted ClickCherry DMGs.
+3. Drag `ClickCherry.app` into `/Applications`.
+4. Reset permission state before each clean pass:
+
+```bash
+tccutil reset ScreenCapture
+tccutil reset Microphone com.farzamh.TaskAgentMacOS.TaskAgentMacOSApp
+tccutil reset Accessibility com.farzamh.TaskAgentMacOS.TaskAgentMacOSApp
+tccutil reset ListenEvent com.farzamh.TaskAgentMacOS.TaskAgentMacOSApp
+killall tccd || true
+```
+
+5. Launch only `/Applications/ClickCherry.app`.
+6. Validate permission flows in this order:
+   - Microphone: expect native macOS dialog on first request.
+   - Screen Recording: expect System Settings list entry for the installed app.
+   - Accessibility / Input Monitoring: expect Settings-first flow.
+
+## Permission-specific caveats
+
+- Microphone:
+  - The native macOS dialog is the critical first-registration path.
+  - There is no manual `+` add flow in System Settings.
+- Screen Recording:
+  - The Settings list can preserve stale renamed local test app entries.
+  - If Screen Recording shows a backup/test app name instead of `ClickCherry`, treat that as test-environment contamination and redo the clean reset before evaluating product behavior.
+- Accessibility / Input Monitoring:
+  - These remain Settings-first validations and are more sensitive to duplicate app copies than to signing-entitlement drift.

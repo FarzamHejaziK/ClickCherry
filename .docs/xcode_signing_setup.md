@@ -8,87 +8,89 @@ Use this setup whenever testing Screen Recording, Accessibility, Input Monitorin
 
 ## Why this is required
 
-- `swift run` can produce transient binary identities.
-- macOS TCC ties permission grants to app identity (bundle ID + signing + path).
-- Permission tests are only valid when run from a stable Xcode app target identity.
+- macOS TCC ties permission behavior to app identity, signing, and install path.
+- Local Xcode runs and public GitHub DMGs are different artifacts:
+  - Xcode run: `Apple Development`
+  - GitHub DMG: `Developer ID Application` + hardened runtime
+- A permission flow can work locally and still fail in the public DMG if the release-signing path drops a required entitlement.
 
-## One-time setup in Xcode
+## App identities used in this repo
 
-This repo currently uses Swift Package Manager for development logic/tests. For stable permission testing, create a real macOS app target once and keep using it.
+1. Open `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj`.
+2. Use scheme `TaskAgentMacOSApp`.
+3. Keep the checked-in bundle IDs stable:
+   - Debug: `com.farzamh.TaskAgentMacOS.TaskAgentMacOSApp.dev` (`ClickCherry Dev`)
+   - Release: `com.farzamh.TaskAgentMacOS.TaskAgentMacOSApp` (`ClickCherry`)
 
-1. Open the project/workspace in Xcode.
-2. Create a new macOS app target (SwiftUI App lifecycle).
-3. Add existing sources from `app/Sources/TaskAgentMacOS/` to that app target.
-4. Remove the generated default `App` file in the new target so `app/Sources/TaskAgentMacOS/AppMain.swift` remains the only `@main` entry point.
-5. In target `Signing & Capabilities`:
-   - Team: your development team
+## Xcode signing requirements
+
+1. In target `Signing & Capabilities`:
+   - Team: your Apple development team
    - Signing Certificate: `Apple Development`
    - Automatically manage signing: enabled
-6. In target `General`:
-   - Bundle Identifier: use a stable value (example: `com.farzamh.TaskAgentMacOS`)
-7. Keep this target/scheme as the default one for local permission testing.
+2. Keep the app target wired to:
+   - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/ClickCherry.entitlements`
+3. The entitlements file must continue to include:
+   - `com.apple.security.device.audio-input`
+   - `com.apple.security.files.user-selected.read-only`
 
-## Run configuration requirements
+## Release signing requirements discovered in 2026-03
 
-1. Launch using Xcode `Run` (same scheme/target each time).
+The March 2026 DMG investigation proved the microphone regression was caused by hardened-runtime signing without `com.apple.security.device.audio-input`.
+
+Required release-signing contract:
+
+1. `/Users/ferzamh/code-git-local/ClickCherry/.github/workflows/release.yml` must sign the built app with:
+   - `--options runtime`
+   - `--entitlements TaskAgentMacOSApp/TaskAgentMacOSApp/ClickCherry.entitlements`
+2. The release workflow should fail if the final signed app is missing `com.apple.security.device.audio-input`.
+3. If a permission bug reproduces only in a public DMG, compare the signed entitlements in the final `.app` before changing permission UI code.
+
+## Local Xcode validation checklist
+
+1. Launch using Xcode `Run` with the same scheme/target each time.
 2. Do not switch bundle ID between runs.
-3. Do not keep recreating the target/app identity.
-4. Do not test permission persistence using `swift run`.
-
-## Release DMG runtime checklist (permission registration)
-
-Use this checklist when validating a release DMG install (not Xcode-run builds):
-
-1. Install by dragging `ClickCherry.app` to `/Applications`.
-2. Eject the mounted DMG before launching app for permission checks.
-3. Launch `ClickCherry` from `/Applications`.
-4. Use app `Open Settings` actions to open each privacy pane.
-5. Confirm `Open Settings` behavior:
-   - Screen Recording, Accessibility, Input Monitoring: app routes to System Settings lists.
-   - Microphone: first grant may use native macOS dialog; denied/restricted state should route to System Settings.
-6. If a pane does not show `ClickCherry`, relaunch from `/Applications` and retry `Open Settings`.
-
-## Identity diagnostics (must pass)
-
-1. In Xcode, the active scheme must be your macOS App target (not a package executable scheme).
-2. In target `Signing & Capabilities`, ensure:
-   - Team is selected.
-   - `Automatically manage signing` is enabled.
-   - Signing Certificate is `Apple Development` (not `Sign to Run Locally`).
 3. After build, verify the built app identity from Terminal:
    - `codesign -dv --verbose=4 "<path-to-your-app>.app"`
-   - Check that `Identifier=` matches your bundle ID and `Authority=` is present (not ad-hoc).
-4. Verify the app has a stable bundle ID:
    - `defaults read "<path-to-your-app>.app/Contents/Info.plist" CFBundleIdentifier`
+4. Confirm `Authority=` is present and matches your development signing identity.
 
-## Permission walkthrough checklist
+## Release DMG runtime checklist
 
-1. Launch app from Xcode Run.
-2. In the onboarding Permissions step, click `Open Settings` for:
-   - Screen Recording
-   - Microphone
-   - Accessibility
-   - Input Monitoring
-3. Grant permissions in System Settings.
-4. Return to the app:
-    - Status updates automatically (within ~0.5s).
-5. Confirm UI shows `Granted` for all required permissions.
-6. Quit app and run again from Xcode.
-7. Confirm permissions remain granted for the same app identity.
-8. If the app still does not appear, use `+` in the Screen Recording pane and add the built `.app` from DerivedData manually.
+Use this checklist when validating a GitHub DMG install:
 
-## If permission keeps resetting
+1. Download the DMG for the tag under test.
+2. Drag `ClickCherry.app` into `/Applications`.
+3. Eject the mounted DMG before launching app for permission checks.
+4. Launch only `/Applications/ClickCherry.app`.
+5. Use app actions to open each privacy pane.
+6. Confirm expected behavior:
+   - Microphone: first-time request should show the native macOS dialog.
+   - Screen Recording / Accessibility / Input Monitoring: app should route to System Settings lists.
 
-1. Verify the active Xcode scheme is still the same app target.
-2. Verify bundle identifier did not change.
-3. Verify signing team/certificate did not change.
-4. Remove duplicate old test identities from:
-   - `System Settings > Privacy & Security > Screen & System Audio Recording`
-   - `System Settings > Privacy & Security > Accessibility`
-5. Re-run once from Xcode and re-grant for the stable identity.
-6. If signing remains ad-hoc (`Sign to Run Locally`), recreate/run from a real App target with automatic signing.
+## Clean-slate permission reset checklist
+
+Use this before end-to-end DMG validation when prior local experiments may have polluted TCC state:
+
+1. Delete all local `ClickCherry` variants from `/Applications`, `Downloads`, mounted DMGs, and temporary backup locations.
+2. Keep exactly one app copy for the test: `/Applications/ClickCherry.app`.
+3. Reset:
+   - `tccutil reset ScreenCapture`
+   - `tccutil reset Microphone com.farzamh.TaskAgentMacOS.TaskAgentMacOSApp`
+   - `tccutil reset Accessibility com.farzamh.TaskAgentMacOS.TaskAgentMacOSApp`
+   - `tccutil reset ListenEvent com.farzamh.TaskAgentMacOS.TaskAgentMacOSApp`
+4. Optionally restart the daemon between passes:
+   - `killall tccd || true`
+5. Relaunch `ClickCherry` from `/Applications`.
+
+Important behavior discovered during investigation:
+
+- Screen Recording can retain stale renamed backup/test app entries because the Settings list is path-sensitive enough to preserve earlier experimental app paths.
+- Microphone does not provide a manual `+` add flow in System Settings; the native permission dialog is the critical first-registration path.
+- If Screen Recording shows a stale backup/test app name, run a global `tccutil reset ScreenCapture` and reinstall only the GitHub DMG app before re-testing.
 
 ## Exit criteria
 
-- Permission state is reproducible across two Xcode runs.
-- Onboarding permission gate reflects real granted status and allows continue only when all required permissions are granted/confirmed.
+- Permission state is reproducible across two Xcode runs for the development app identity.
+- Public GitHub DMG testing from `/Applications` shows the native microphone dialog on first request.
+- No duplicate local app copies remain during DMG permission validation.

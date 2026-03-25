@@ -469,6 +469,7 @@ private struct RunLogListView: View {
 
 private struct RunScreenshotStripView: View {
     let entries: [LLMScreenshotLogEntry]
+    @State private var selectedEntry: LLMScreenshotLogEntry?
 
     private static let timeFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -478,35 +479,109 @@ private struct RunScreenshotStripView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Screenshots (temporary)")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Screenshots (temporary)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                Text("Click a screenshot to inspect it.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary.opacity(0.9))
+            }
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
                     ForEach(entries) { entry in
-                        VStack(alignment: .leading, spacing: 6) {
-                            if let image = NSImage(data: entry.imageData) {
-                                Image(nsImage: image)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 180, height: 112)
-                                    .clipped()
-                                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                            } else {
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .fill(Color.black.opacity(0.15))
-                                    .frame(width: 180, height: 112)
-                            }
+                        Button {
+                            selectedEntry = entry
+                        } label: {
+                            VStack(alignment: .leading, spacing: 6) {
+                                if let image = NSImage(data: entry.imageData) {
+                                    Image(nsImage: image)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 180, height: 112)
+                                        .clipped()
+                                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                                } else {
+                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                        .fill(Color.black.opacity(0.15))
+                                        .frame(width: 180, height: 112)
+                                }
 
-                            Text("\(entry.source.rawValue) • \(Self.timeFormatter.string(from: entry.timestamp))")
-                                .font(.caption2.monospacedDigit())
-                                .foregroundStyle(.secondary)
+                                Text("\(entry.source.rawValue) • \(Self.timeFormatter.string(from: entry.timestamp))")
+                                    .font(.caption2.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
                         }
+                        .buttonStyle(.plain)
                     }
                 }
             }
         }
+        .sheet(item: $selectedEntry) { entry in
+            RunScreenshotInspectorSheet(entry: entry)
+        }
+    }
+}
+
+private struct RunScreenshotInspectorSheet: View {
+    let entry: LLMScreenshotLogEntry
+    @Environment(\.dismiss) private var dismiss
+
+    private static let timestampFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .medium
+        return formatter
+    }()
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Run Screenshot")
+                        .font(.headline)
+
+                    Text("\(entry.source.rawValue) • \(Self.timestampFormatter.string(from: entry.timestamp))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Text("\(entry.width)x\(entry.height) shown • capture \(entry.captureWidthPx)x\(entry.captureHeightPx)")
+                        .font(.caption2.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 0)
+
+                Button("Done") {
+                    dismiss()
+                }
+            }
+
+            Group {
+                if let image = NSImage(data: entry.imageData) {
+                    ScrollView([.horizontal, .vertical]) {
+                        Image(nsImage: image)
+                            .interpolation(.high)
+                            .antialiased(true)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    }
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(Color.black.opacity(0.08))
+                    )
+                } else {
+                    ContentUnavailableView(
+                        "Screenshot Unavailable",
+                        systemImage: "photo",
+                        description: Text("The screenshot data for this run log entry could not be decoded.")
+                    )
+                }
+            }
+            .frame(minWidth: 880, minHeight: 560)
+        }
+        .padding(18)
     }
 }
 

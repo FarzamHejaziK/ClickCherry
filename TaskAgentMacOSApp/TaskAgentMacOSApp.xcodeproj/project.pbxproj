@@ -24,7 +24,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		14A9ABF02F36974F00537C6C /* TaskAgentMacOSApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = TaskAgentMacOSApp.app; path = ClickCherry.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		14A9ABF02F36974F00537C6C /* TaskAgentMacOSApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = TaskAgentMacOSApp.app; path = "ClickCherry Dev.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		14A9ABFD2F36975100537C6C /* TaskAgentMacOSAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TaskAgentMacOSAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		14A9AC072F36975100537C6C /* TaskAgentMacOSAppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TaskAgentMacOSAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -98,12 +98,12 @@
 		14A9ABEF2F36974F00537C6C /* TaskAgentMacOSApp */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 14A9AC112F36975100537C6C /* Build configuration list for PBXNativeTarget "TaskAgentMacOSApp" */;
-				buildPhases = (
-					14A9ABEC2F36974F00537C6C /* Sources */,
-					14A9ABED2F36974F00537C6C /* Frameworks */,
-					14A9ABEE2F36974F00537C6C /* Resources */,
-					F0A1B2C32F36975100ABC001 /* Copy Prompt Catalog */,
-				);
+			buildPhases = (
+				14A9ABEC2F36974F00537C6C /* Sources */,
+				14A9ABED2F36974F00537C6C /* Frameworks */,
+				14A9ABEE2F36974F00537C6C /* Resources */,
+				F0A1B2C32F36975100ABC001 /* ShellScript */,
+			);
 			buildRules = (
 			);
 			dependencies = (
@@ -233,7 +233,7 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		F0A1B2C32F36975100ABC001 /* Copy Prompt Catalog */ = {
+		F0A1B2C32F36975100ABC001 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -429,19 +429,19 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = TaskAgentMacOSApp/ClickCherry.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CODE_SIGN_ENTITLEMENTS = TaskAgentMacOSApp/ClickCherry.entitlements;
-					CURRENT_PROJECT_VERSION = 1044;
+				CURRENT_PROJECT_VERSION = 1044;
 				DEVELOPMENT_TEAM = QKN8WTSJYG;
-					ENABLE_APP_SANDBOX = NO;
-					ENABLE_PREVIEWS = YES;
-					ENABLE_USER_SELECTED_FILES = readonly;
-					EXCLUDED_SOURCE_FILE_NAMES = (
-						prompt.md,
-						config.yaml,
-					);
-					GENERATE_INFOPLIST_FILE = YES;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				EXCLUDED_SOURCE_FILE_NAMES = (
+					prompt.md,
+					config.yaml,
+				);
+				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "ClickCherry Dev";
 				INFOPLIST_KEY_CFBundleName = "ClickCherry Dev";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
@@ -460,7 +460,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-					MARKETING_VERSION = 0.1.44;
+				MARKETING_VERSION = 0.1.44;
 				PRODUCT_BUNDLE_IDENTIFIER = com.farzamh.TaskAgentMacOS.TaskAgentMacOSApp.dev;
 				PRODUCT_MODULE_NAME = TaskAgentMacOSApp;
 				PRODUCT_NAME = "ClickCherry Dev";
@@ -483,19 +483,19 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = TaskAgentMacOSApp/ClickCherry.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CODE_SIGN_ENTITLEMENTS = TaskAgentMacOSApp/ClickCherry.entitlements;
-					CURRENT_PROJECT_VERSION = 1044;
+				CURRENT_PROJECT_VERSION = 1044;
 				DEVELOPMENT_TEAM = QKN8WTSJYG;
-					ENABLE_APP_SANDBOX = NO;
-					ENABLE_PREVIEWS = YES;
-					ENABLE_USER_SELECTED_FILES = readonly;
-					EXCLUDED_SOURCE_FILE_NAMES = (
-						prompt.md,
-						config.yaml,
-					);
-					GENERATE_INFOPLIST_FILE = YES;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				EXCLUDED_SOURCE_FILE_NAMES = (
+					prompt.md,
+					config.yaml,
+				);
+				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = ClickCherry;
 				INFOPLIST_KEY_CFBundleName = ClickCherry;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
@@ -514,7 +514,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-					MARKETING_VERSION = 0.1.44;
+				MARKETING_VERSION = 0.1.44;
 				PRODUCT_BUNDLE_IDENTIFIER = com.farzamh.TaskAgentMacOS.TaskAgentMacOSApp;
 				PRODUCT_MODULE_NAME = TaskAgentMacOSApp;
 				PRODUCT_NAME = ClickCherry;
@@ -539,11 +539,11 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-					CURRENT_PROJECT_VERSION = 1044;
+				CURRENT_PROJECT_VERSION = 1044;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-					MARKETING_VERSION = 0.1.44;
+				MARKETING_VERSION = 0.1.44;
 				PRODUCT_BUNDLE_IDENTIFIER = com.farzamh.TaskAgentMacOS.TaskAgentMacOSAppTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -564,11 +564,11 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-					CURRENT_PROJECT_VERSION = 1044;
+				CURRENT_PROJECT_VERSION = 1044;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-					MARKETING_VERSION = 0.1.44;
+				MARKETING_VERSION = 0.1.44;
 				PRODUCT_BUNDLE_IDENTIFIER = com.farzamh.TaskAgentMacOS.TaskAgentMacOSAppTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -588,11 +588,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-					CURRENT_PROJECT_VERSION = 1044;
+				CURRENT_PROJECT_VERSION = 1044;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-					MARKETING_VERSION = 0.1.44;
+				MARKETING_VERSION = 0.1.44;
 				PRODUCT_BUNDLE_IDENTIFIER = com.farzamh.TaskAgentMacOS.TaskAgentMacOSAppUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -612,11 +612,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-					CURRENT_PROJECT_VERSION = 1044;
+				CURRENT_PROJECT_VERSION = 1044;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-					MARKETING_VERSION = 0.1.44;
+				MARKETING_VERSION = 0.1.44;
 				PRODUCT_BUNDLE_IDENTIFIER = com.farzamh.TaskAgentMacOS.TaskAgentMacOSAppUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
