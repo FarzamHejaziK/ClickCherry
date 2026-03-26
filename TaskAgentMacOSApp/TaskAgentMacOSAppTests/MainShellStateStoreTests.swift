@@ -1181,6 +1181,50 @@ struct MainShellStateStoreTests {
     }
 
     @Test
+    @MainActor
+    func startRunTaskNowWithMissingInputMonitoringShowsRunPreflightDialog() throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let task = try taskService.createTask(title: "Needs input monitoring")
+        let engine = MockAutomationEngine(
+            nextResult: AutomationRunResult(
+                outcome: .success,
+                executedSteps: [],
+                generatedQuestions: [],
+                errorMessage: nil,
+                llmSummary: nil
+            )
+        )
+        let permissionService = ConfigurablePermissionService()
+        permissionService.inputMonitoring = .notGranted
+
+        let store = MainShellStateStore(
+            taskService: taskService,
+            automationEngine: engine,
+            apiKeyStore: MockAPIKeyStore(initialValues: [.openAI: "openai-test-key"]),
+            permissionService: permissionService,
+            captureService: MockRecordingCaptureService(),
+            overlayService: MockRecordingOverlayService()
+        )
+
+        store.reloadTasks()
+        store.selectTask(task.id)
+        store.startRunTaskNow()
+
+        #expect(store.isRunningTask == false)
+        #expect(store.runTaskPreflightDialogState?.missingRequirements == [.inputMonitoring])
+        #expect(engine.receivedMarkdowns.isEmpty)
+    }
+
+    @Test
     func openSettingsForMissingProviderKeyDialogRoutesToSettings() throws {
         let fm = FileManager.default
         let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -1739,6 +1783,7 @@ struct MainShellStateStoreTests {
         let borderOverlay = MockRecordingOverlayService()
         let monitor = MockUserInterruptionMonitor()
         let cursorPresentation = MockAgentCursorPresentationService()
+        var revealCalls = 0
 
         let store = MainShellStateStore(
             taskService: taskService,
@@ -1749,7 +1794,10 @@ struct MainShellStateStoreTests {
             overlayService: borderOverlay,
             agentControlOverlayService: overlay,
             userInterruptionMonitor: monitor,
-            agentCursorPresentationService: cursorPresentation
+            agentCursorPresentationService: cursorPresentation,
+            revealAppAfterRunCancellation: {
+                revealCalls += 1
+            }
         )
 
         store.reloadTasks()
@@ -1770,6 +1818,7 @@ struct MainShellStateStoreTests {
         #expect(borderOverlay.hideCallCount >= 1)
         #expect(monitor.stopCount >= 1)
         #expect(cursorPresentation.deactivateCount >= 1)
+        #expect(revealCalls == 1)
 
         engine.finish(
             with: AutomationRunResult(

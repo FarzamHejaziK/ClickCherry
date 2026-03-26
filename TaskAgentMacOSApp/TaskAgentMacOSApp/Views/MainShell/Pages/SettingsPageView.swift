@@ -242,6 +242,17 @@ struct MainShellSettingsView: View {
                         mainShellStateStore.openPermissionSettings(for: .accessibility)
                     }
                 )
+
+                permissionDivider
+
+                PermissionRowView(
+                    title: "Input Monitoring",
+                    status: permissionStatuses.inputMonitoring,
+                    footnote: "Needed so Escape can stop an active recording or run.",
+                    onOpenSettings: {
+                        mainShellStateStore.openPermissionSettings(for: .inputMonitoring)
+                    }
+                )
             }
             .background(.ultraThinMaterial)
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
@@ -263,13 +274,15 @@ struct MainShellSettingsView: View {
     private func refreshPermissionStatuses() {
         let screenRecording = mainShellStateStore.permissionStatus(for: .screenRecording)
         let accessibility = mainShellStateStore.permissionStatus(for: .accessibility)
+        let inputMonitoring = mainShellStateStore.permissionStatus(for: .inputMonitoring)
         let isMicrophoneRequestInFlight = mainShellStateStore.isPermissionRequestInFlight(for: .microphone)
 
         permissionStatuses = PermissionStatuses(
             screenRecording: screenRecording,
             microphone: isMicrophoneRequestInFlight ? permissionStatuses.microphone : mainShellStateStore.permissionStatus(for: .microphone),
             microphonePrimaryAction: isMicrophoneRequestInFlight ? permissionStatuses.microphonePrimaryAction : mainShellStateStore.permissionPrimaryAction(for: .microphone),
-            accessibility: accessibility
+            accessibility: accessibility,
+            inputMonitoring: inputMonitoring
         )
     }
 }
@@ -279,6 +292,7 @@ private struct PermissionStatuses: Equatable {
     var microphone: PermissionGrantStatus = .unknown
     var microphonePrimaryAction: PermissionPrimaryAction = .openSettings
     var accessibility: PermissionGrantStatus = .unknown
+    var inputMonitoring: PermissionGrantStatus = .unknown
 }
 
 private struct SettingsMenuRow: View {

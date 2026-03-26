@@ -163,7 +163,7 @@ struct RunTaskPreflightDialogCanvasView: View {
             }
             .padding(.horizontal, PermissionRowMetrics.rowPaddingX)
             .padding(.vertical, PermissionRowMetrics.rowPaddingY)
-        case .accessibility:
+        case .accessibility, .inputMonitoring:
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(requirement.title)
