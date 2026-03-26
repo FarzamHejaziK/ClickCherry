@@ -7,6 +7,38 @@ description: Running implementation log of completed work, test evidence, blocke
 > Previous archived entries are in `/Users/ferzamh/code-git-local/ClickCherry/.docs/legacy_worklog.md`.
 
 ## Entry
+- Date: 2026-03-26
+- Step: Split `MainShellStateStore` into maintainable domain files with no intended behavior change
+- Changes made:
+  - Reorganized MainShell model files:
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/MainShellStateStore.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/MainShellRoute.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/MainShellDialogs.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/MainShellStateStore+NavigationAndTasks.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/MainShellStateStore+ProviderSetup.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/MainShellStateStore+Preflight.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/MainShellStateStore+Heartbeat.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/MainShellStateStore+Diagnostics.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/MainShellStateStore+RunTask.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/MainShellStateStore+Recording.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/MainShellStateStore+Extraction.swift`
+  - Preserved the existing `MainShellStateStore` public facade and kept recorder classes in the core store file for this pass.
+  - Updated docs:
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/worklog.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/testing.md`
+- Automated tests run:
+  - `xcodebuild test -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass; used as the baseline and rerun after each refactor slice plus the final cleanup pass).
+  - `xcodebuild build -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS"` (pass).
+- Manual tests run:
+  - Launched `/Users/ferzamh/Library/Developer/Xcode/DerivedData/TaskAgentMacOSApp-gskaqmcqndoejiefhqxytxdhbljh/Build/Products/Debug/ClickCherry Dev.app`, confirmed the debug app process started, then terminated the launched app.
+  - Full interactive MainShell smoke validation remains queued in `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`.
+- Result:
+  - `MainShellStateStore` is now split into smaller domain files, targeted tests stayed green through the refactor, and the broader app build still succeeds.
+- Issues/blockers:
+  - Interactive UI smoke coverage is still pending for the refactored MainShell flows.
+
+## Entry
 - Date: 2026-03-25
 - Step: Record OpenAI computer-use regression and decision not to adopt it
 - Changes made:
@@ -242,77 +274,3 @@ description: Running implementation log of completed work, test evidence, blocke
 - Issues/blockers:
   - None.
 
-## Entry
-- Date: 2026-02-25
-- Step: Remove LLM-specific canvas UI from error pages
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/RecordingFinishedDialogView.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/TaskDetailPageView.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/MainShellView.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
-  - UI behavior changes:
-    - removed LLM issue canvas rendering from recording-finished and task-detail pages.
-    - replaced with simple inline error presentation.
-    - removed LLM issue preview canvases.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-error-pages-cleanup -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO test` (pass; 33 tests).
-- Manual tests run:
-  - Launched `/tmp/taskagent-dd-error-pages-cleanup/Build/Products/Debug/ClickCherry.app`, confirmed startup via `pgrep`, then terminated the launched debug app.
-- Result:
-  - Complete for requested error-page UI cleanup.
-- Issues/blockers:
-  - None.
-
-## Entry
-- Date: 2026-02-25
-- Step: Add upload-recording path to New Task flow
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/NewTaskPageView.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
-  - UI/behavior changes:
-    - added `Upload recording` button to New Task page (visible when not capturing).
-    - added `.mp4/.mov` upload picker and staging copy path.
-    - reused existing finished-recording review sheet for extraction after upload.
-  - Tests:
-    - added `importRecordingForNewTaskStagesFileAndPresentsReview`.
-    - added `importRecordingForNewTaskRejectsUnsupportedFormat`.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-upload-recording-full -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass; 91 tests).
-- Manual tests run:
-  - Launched `/tmp/taskagent-dd-upload-recording-full/Build/Products/Debug/ClickCherry.app`, confirmed startup via `pgrep`, then terminated the launched debug app.
-- Result:
-  - Complete for requested New Task upload path.
-- Issues/blockers:
-  - None.
-
-## Entry
-- Date: 2026-02-24
-- Step: Roll back onboarding ready-step redesign and cut release `v0.1.33`
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/ReadyStepView.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/CHANGELOG.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
-  - UI/release behavior changes:
-    - reverted Step 4 (`Ready`) to the pre-v0.1.31 compact layout to avoid non-fullscreen clipping/overflow.
-    - prepared release notes for `0.1.33` documenting the rollback.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ready-rollback CODE_SIGNING_ALLOWED=NO build` (pass).
-- Manual tests run:
-  - Launched `/tmp/taskagent-dd-ready-rollback/Build/Products/Debug/ClickCherry.app`, confirmed process startup via `pgrep`, then quit launched instance.
-- Result:
-  - Ready to publish `v0.1.33`.
-- Issues/blockers:
-  - None.

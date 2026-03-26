@@ -5872,3 +5872,78 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - Complete for requested icon size rollback with roundness preserved.
 - Issues/blockers:
   - None.
+
+## Entry
+- Date: 2026-02-25
+- Step: Remove LLM-specific canvas UI from error pages
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/RecordingFinishedDialogView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/TaskDetailPageView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/MainShellView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Previews/RootViewPreviews.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
+  - UI behavior changes:
+    - removed LLM issue canvas rendering from recording-finished and task-detail pages.
+    - replaced with simple inline error presentation.
+    - removed LLM issue preview canvases.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-error-pages-cleanup -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO test` (pass; 33 tests).
+- Manual tests run:
+  - Launched `/tmp/taskagent-dd-error-pages-cleanup/Build/Products/Debug/ClickCherry.app`, confirmed startup via `pgrep`, then terminated the launched debug app.
+- Result:
+  - Complete for requested error-page UI cleanup.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-25
+- Step: Add upload-recording path to New Task flow
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/NewTaskPageView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
+  - UI/behavior changes:
+    - added `Upload recording` button to New Task page (visible when not capturing).
+    - added `.mp4/.mov` upload picker and staging copy path.
+    - reused existing finished-recording review sheet for extraction after upload.
+  - Tests:
+    - added `importRecordingForNewTaskStagesFileAndPresentsReview`.
+    - added `importRecordingForNewTaskRejectsUnsupportedFormat`.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-upload-recording-full -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests CODE_SIGNING_ALLOWED=NO test` (pass; 91 tests).
+- Manual tests run:
+  - Launched `/tmp/taskagent-dd-upload-recording-full/Build/Products/Debug/ClickCherry.app`, confirmed startup via `pgrep`, then terminated the launched debug app.
+- Result:
+  - Complete for requested New Task upload path.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-02-24
+- Step: Roll back onboarding ready-step redesign and cut release `v0.1.33`
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Onboarding/Pages/ReadyStepView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/CHANGELOG.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
+  - UI/release behavior changes:
+    - reverted Step 4 (`Ready`) to the pre-v0.1.31 compact layout to avoid non-fullscreen clipping/overflow.
+    - prepared release notes for `0.1.33` documenting the rollback.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-ready-rollback CODE_SIGNING_ALLOWED=NO build` (pass).
+- Manual tests run:
+  - Launched `/tmp/taskagent-dd-ready-rollback/Build/Products/Debug/ClickCherry.app`, confirmed process startup via `pgrep`, then quit launched instance.
+- Result:
+  - Ready to publish `v0.1.33`.
+- Issues/blockers:
+  - None.

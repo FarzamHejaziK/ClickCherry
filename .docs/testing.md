@@ -57,6 +57,39 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild ...
 - Unit tests run inside an XCTest host app process. To avoid macOS Keychain popups during test runs, `KeychainAPIKeyStore` automatically uses in-memory storage when `XCTestConfigurationFilePath` is present.
 - Runtime behavior is unchanged outside XCTest: provider keys are still read/written in macOS Keychain.
 
+## MainShell refactor smoke test
+
+Use this focused pass after structural refactors to `MainShellStateStore` or its extension files.
+
+1. Run the targeted store suite:
+
+```bash
+xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj \
+  -scheme TaskAgentMacOSApp \
+  -destination "platform=macOS" \
+  -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests \
+  test
+```
+
+2. Run a broader build:
+
+```bash
+xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj \
+  -scheme TaskAgentMacOSApp \
+  -destination "platform=macOS" \
+  build
+```
+
+3. Perform this interactive smoke checklist in the app:
+   - Create a task, open another task, and switch back to confirm selection and heartbeat reloads.
+   - Open Settings, save a provider key, then clear it and confirm missing-key flows still route correctly.
+   - Pin a task, verify it moves to the pinned area, then delete the selected pinned task and confirm the app returns to the new-task route.
+   - Edit and save heartbeat content, then reopen the task to confirm persistence.
+   - If clarification questions are present, answer one and verify it remains resolved after reload.
+   - Trigger run preflight failures, then run a valid task and cancel it with `Esc`.
+   - Start and stop capture, then verify the finished-recording review flow appears.
+   - Import a supported recording and verify extraction to both a new task and an existing task.
+
 ## Public DMG permission verification
 
 Use this when the bug might depend on release signing, notarization, or hardened runtime.

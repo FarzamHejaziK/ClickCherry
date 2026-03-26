@@ -4,16 +4,22 @@ description: Short, continuously updated plan of the immediate next implementati
 
 # Next Steps
 
-1. Step: Keep the previous computer-use implementation and defer OpenAI built-in `computer` adoption.
-2. Why now: The OpenAI built-in `computer` evaluation regressed a simple Dock hover task that the previous implementation handled reliably, and the migrated path could falsely report success.
+1. Step: Validate and stabilize the split `MainShellStateStore` structure before any deeper cleanup.
+2. Why now: `MainShellStateStore` has been reorganized into domain files under `TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/` with targeted tests and a broader app build passing, so the next highest-value work is to finish interactive smoke coverage and only then do small no-behavior-change cleanup passes.
 3. Code tasks:
-  - Keep the reverted non-OpenAI state as the baseline implementation.
-  - Do not reintroduce the OpenAI built-in `computer` path, prompt changes, or supporting screenshot-viewer work into the active app path.
-  - If OpenAI computer use is revisited later, require a fresh spike that proves initial screenshot grounding and reliable postcondition verification before any product integration.
+  - Run the MainShell manual smoke checklist across task creation/selection, settings/provider keys, heartbeat clarifications, run preflight/cancel, recording, and extraction.
+  - Fix any regressions found in the split without broadening scope.
+  - If the split stays stable, follow up with small internal deduplication passes in `MainShellStateStore+RunTask.swift`, `MainShellStateStore+Recording.swift`, and `MainShellStateStore+Extraction.swift` without changing public API or UX.
 4. Automated tests:
-  - N/A (docs-only decision update).
+  - Keep `xcodebuild test -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests test` green after each follow-up change.
+  - Run `xcodebuild build -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" build` before merging release-facing cleanup.
 5. Manual tests:
-  - N/A (docs-only decision update; decision based on the user-observed Dock hover regression during local runtime evaluation).
+  - Open/new/select/delete/pin tasks.
+  - Save and clear provider keys; verify missing-key routes still open Settings correctly.
+  - Save heartbeat changes and apply a clarification answer on a task that has questions.
+  - Trigger run preflight failures, start a run with valid setup, and cancel with `Esc`.
+  - Start/stop capture, import a recording, and verify extraction to both a new task and an existing task.
 6. Exit criteria:
-  - Open issue records the OpenAI computer-use regression and the mitigation decision.
-  - Current execution queue no longer assumes OpenAI built-in `computer` will ship.
+  - No regressions are found in the MainShell interactive smoke pass.
+  - `MainShellStateStoreTests` and a broader app build remain green.
+  - Any post-split cleanup remains semantics-preserving.
