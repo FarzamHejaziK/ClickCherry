@@ -281,6 +281,32 @@ This means: if the agent still has unresolved questions, should execution stop o
     - `questions`
 - If the OpenAI API key is missing, the run fails with explicit key-save guidance.
 
+## OpenAI execution-runner source layout (locked: 2026-03-26)
+
+- Maintainability refactors to the OpenAI execution path must preserve behavior exactly:
+  - no request/response shape changes
+  - no tool-schema changes
+  - no timing/timeout/retry changes
+  - no error-message or policy-message changes
+  - no user-visible UX changes
+- `OpenAIComputerUseRunner` remains the single orchestration type for the OpenAI Responses tool loop.
+- `OpenAIAutomationEngine` remains a thin adapter that converts runner output into `AutomationEngine` results.
+- The OpenAI execution implementation is split by concern under `TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomation/`:
+  - `OpenAIComputerUseRunner.swift`
+  - `OpenAIComputerUseRunner+Transport.swift`
+  - `OpenAIComputerUseRunner+ToolExecution.swift`
+  - `OpenAIComputerUseRunner+Capture.swift`
+  - `OpenAIComputerUseRunner+ResponseParsing.swift`
+  - `OpenAIResponsesModels.swift`
+- Responsibility boundaries:
+  - orchestration stays in the core runner file
+  - transport/retry/request building stays in `+Transport`
+  - tool dispatch and terminal execution stay in `+ToolExecution`
+  - screenshot/coordinate logic stays in `+Capture`
+  - response parsing/summarization stays in `+ResponseParsing`
+  - decode/encode payload models stay in `OpenAIResponsesModels.swift`
+- This split is organizational only. Do not introduce new behavior-level abstractions that reinterpret the tool loop.
+
 ## Execution takeover UX (locked: 2026-02-10)
 
 - While a run is executing, the app must show a centered on-screen HUD overlay indicating the agent is running and in control.

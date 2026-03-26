@@ -156,6 +156,33 @@ description: Step-by-step implementation plan with code scope, automated tests, 
 - Answer the generated question in-app, rerun, and confirm progression.
 - Reopen task/relaunch app and confirm clarification + run state persists.
 
+### Maintainability follow-up: OpenAI execution-runner split
+
+#### Code
+- Status: implemented and validated on 2026-03-26; focused OpenAI runner tests, the full unit-test target, a clean app build, local launch smoke, and the live provider-backed smoke pass are complete.
+- Refactor `OpenAIAutomationEngine.swift` into concern-based files under `TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomation/` without changing behavior.
+- Keep `OpenAIComputerUseRunner` as the single orchestration type and keep `OpenAIAutomationEngine` as the thin `AutomationEngine` adapter.
+- Preserve all existing request payloads, response parsing, constants, tool schemas, error text, policy boundaries, coordinate math, screenshot behavior, and logging semantics exactly.
+- Move code by concern only:
+  - orchestration
+  - transport/retry/request building
+  - tool execution / terminal execution
+  - capture / coordinate mapping
+  - response parsing / summarization
+  - request/response DTOs
+
+#### Automated tests
+- Keep `TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests.swift` green after each extraction slice.
+- Run the full `TaskAgentMacOSAppTests` target after the final split.
+- Add characterization coverage only where needed to lock existing OpenAI runner behavior before moving code.
+
+#### Manual test
+- Launch the app and run a known-safe OpenAI task against a controlled desktop target.
+- Verify normal success path, cancellation path, and a run that exercises both `desktop_action` and `terminal_exec`.
+- Validation note:
+  - Completed on 2026-03-26 with user-reported success after following the OpenAI runner smoke checklist.
+- Confirm there is no visible regression in run startup, HUD behavior, screenshot-driven interaction, or error presentation.
+
 ## Step 5: Scheduling (cron-style while app is open)
 
 ### Code

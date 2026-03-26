@@ -5947,3 +5947,24 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - Ready to publish `v0.1.33`.
 - Issues/blockers:
   - None.
+
+## Entry
+- Date: 2026-02-25
+- Step: Fix missing-provider dialog interaction bugs
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/MissingProviderKeyDialogCanvasView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
+  - UI behavior changes:
+    - added outside-tap dismissal on dialog backdrop.
+    - enforced dialog-above-backdrop layering via `zIndex` to keep action buttons responsive.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-dialog-fix -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO test` (pass; 33 tests).
+- Manual tests run:
+  - Launched `/tmp/taskagent-dd-dialog-fix/Build/Products/Debug/ClickCherry.app`, confirmed startup via `pgrep`, then terminated the launched debug app.
+- Result:
+  - Complete for requested dialog interaction fix.
+- Issues/blockers:
+  - None.

@@ -8,6 +8,37 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-03-26
+- Step: Split `OpenAIAutomationEngine.swift` into maintainable concern-based files with no intended behavior change
+- Changes made:
+  - Reorganized OpenAI automation source files:
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomationEngine.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomation/OpenAIComputerUseRunner.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomation/OpenAIComputerUseRunner+Transport.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomation/OpenAIComputerUseRunner+ToolExecution.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomation/OpenAIComputerUseRunner+Capture.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomation/OpenAIComputerUseRunner+ResponseParsing.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomation/OpenAIResponsesModels.swift`
+  - Kept `OpenAIAutomationEngine` as the thin adapter and preserved the existing `OpenAIComputerUseRunner` orchestration surface while moving helpers into same-type extensions.
+  - Updated docs:
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/design.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/plan.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/testing.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/worklog.md`
+- Automated tests run:
+  - `xcodebuild test -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/clickcherry-openai-runner-focused -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests test` (pass; 11 tests).
+  - `xcodebuild test -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/clickcherry-openai-full-tests -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests test` (pass; 98 tests).
+  - `xcodebuild build -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/clickcherry-openai-build -parallel-testing-enabled NO build` (pass).
+- Manual tests run:
+  - Launched `/tmp/clickcherry-openai-build/Build/Products/Debug/ClickCherry Dev.app`, confirmed the debug app process started, then terminated the launched app.
+  - User-reported live provider-backed smoke validation passed on 2026-03-26 after following the OpenAI runner success, `terminal_exec`, cancellation, and diagnostics checklist.
+- Result:
+  - `OpenAIAutomationEngine.swift` is now reduced to the adapter role and the OpenAI runner logic is split by concern under `Services/OpenAIAutomation/` with automated and manual smoke verification complete.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-03-26
 - Step: Split `MainShellStateStore` into maintainable domain files with no intended behavior change
 - Changes made:
   - Reorganized MainShell model files:
@@ -252,25 +283,3 @@ description: Running implementation log of completed work, test evidence, blocke
   - Complete for requested New Task action-layout polish; pending user visual approval.
 - Issues/blockers:
   - None.
-
-## Entry
-- Date: 2026-02-25
-- Step: Fix missing-provider dialog interaction bugs
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/MissingProviderKeyDialogCanvasView.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
-  - UI behavior changes:
-    - added outside-tap dismissal on dialog backdrop.
-    - enforced dialog-above-backdrop layering via `zIndex` to keep action buttons responsive.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-dialog-fix -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO test` (pass; 33 tests).
-- Manual tests run:
-  - Launched `/tmp/taskagent-dd-dialog-fix/Build/Products/Debug/ClickCherry.app`, confirmed startup via `pgrep`, then terminated the launched debug app.
-- Result:
-  - Complete for requested dialog interaction fix.
-- Issues/blockers:
-  - None.
-

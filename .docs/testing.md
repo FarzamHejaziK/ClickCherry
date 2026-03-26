@@ -90,6 +90,49 @@ xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/
    - Start and stop capture, then verify the finished-recording review flow appears.
    - Import a supported recording and verify extraction to both a new task and an existing task.
 
+## OpenAI runner refactor smoke test
+
+Use this focused pass after structural refactors to `OpenAIAutomationEngine.swift` or files under `TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomation/`.
+
+Status:
+- Executed successfully on 2026-03-26. Automated coverage passed, app launch smoke passed, and the user reported the live provider-backed smoke pass looked good after following the checklist below.
+
+1. Run the targeted OpenAI runner suite after each extraction slice:
+
+```bash
+xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj \
+  -scheme TaskAgentMacOSApp \
+  -destination "platform=macOS" \
+  -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests \
+  test
+```
+
+2. After the final split, run the broader unit-test target:
+
+```bash
+xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj \
+  -scheme TaskAgentMacOSApp \
+  -destination "platform=macOS" \
+  -only-testing:TaskAgentMacOSAppTests \
+  test
+```
+
+3. Run a broader build:
+
+```bash
+xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj \
+  -scheme TaskAgentMacOSApp \
+  -destination "platform=macOS" \
+  build
+```
+
+4. Perform this interactive smoke checklist in the app:
+   - Run one known-safe OpenAI-backed task and confirm the run completes successfully.
+   - Run a task that exercises `desktop_action` interactions and verify screenshots and actions still align with the selected display.
+   - Run a task that exercises `terminal_exec` and verify stdout/stderr/exit-code behavior is unchanged.
+   - Start a run and cancel with `Esc`; confirm the overlay hides and the run ends cleanly.
+   - Open diagnostics/run history and confirm trace/log ordering and user-facing error text remain unchanged.
+
 ## Public DMG permission verification
 
 Use this when the bug might depend on release signing, notarization, or hardened runtime.
