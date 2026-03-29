@@ -4,6 +4,52 @@ description: Active unresolved issues with concrete repro details, mitigation, a
 
 # Open Issues
 
+## Issue OI-2026-03-27-017
+- Issue ID: OI-2026-03-27-017
+- Title: Screenshot-driven pointer targeting still needs live runtime validation after the vision-grounding upgrade
+- Status: Mitigated
+- Severity: High
+- First Seen: 2026-03-27
+- Scope:
+  - Affects OpenAI screenshot-driven pointer targeting, especially small targets, crowded layouts, and tasks that benefit from zoomed visual grounding.
+  - Applies to the active OpenAI execution runner, not the deprecated built-in OpenAI `computer` spike.
+- Repro Steps:
+  1. Run a task that requires a small precise click or hover target.
+  2. Observe how the model localizes the target from the screenshot and whether the final click lands correctly.
+  3. Repeat on light and dark backgrounds and on a non-primary display.
+- Observed:
+  - Before the 2026-03-27 mitigation, the runner relied on a single full screenshot, lossy image handling, and direct full-screen coordinate guesses.
+  - The model had no crop/zoom tool path, no overlay support, and no runtime guardrail preventing dependent same-turn visual action chains such as screenshot -> click.
+- Expected:
+  - The runner should let the model localize targets with a coarse-to-fine workflow:
+    - full screenshot
+    - crop/zoom
+    - optional fine grid
+    - precise click on a later turn
+  - Returned click coordinates should always map back to the correct real screen region represented by the latest screenshot.
+- Current Mitigation:
+  - Added `desktop_action` screenshot modes `full`, `crop`, and `current`.
+  - Added runner-owned active vision state for image-to-screen coordinate remapping.
+  - Added high-contrast grid overlay rendering with edge labels.
+  - Switched control-loop screenshots to PNG and send them with `detail: "original"`.
+  - Added guardrails that defer later same-turn dependent visual actions with `wait_for_visual_feedback`.
+  - Added automated coverage:
+    - `OpenAIComputerUseRunnerVisionTests`
+    - `DesktopScreenshotTransformServiceTests`
+- Next Action:
+  - Perform user-side runtime validation on live desktop tasks:
+    - small precise targets
+    - nested crop flows
+    - light/dark overlay readability
+    - multi-display targeting
+    - full-view reset after non-screenshot actions
+  - If misses remain after that validation, implement the next follow-up:
+    - stepped mouse movement
+    - hover dwell
+    - click timing
+    - post-move verification
+- Owner: Codex + user validation in local runtime
+
 ## Issue OI-2026-03-25-016
 - Issue ID: OI-2026-03-25-016
 - Title: OpenAI built-in computer-use path regresses simple visual tasks and can falsely report success

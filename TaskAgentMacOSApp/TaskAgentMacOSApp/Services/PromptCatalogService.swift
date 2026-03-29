@@ -4,11 +4,14 @@ struct PromptTemplate: Equatable {
     let name: String
     let prompt: String
     let config: PromptConfig
+    let sourceURL: URL?
 }
 
 struct PromptConfig: Equatable {
     let version: String
     let llm: String
+    let reasoningEffort: String?
+    let reasoningSummary: String?
 }
 
 enum PromptCatalogError: Error, Equatable {
@@ -37,8 +40,8 @@ struct PromptCatalogService {
         }
 
         var foundPromptDirectory = false
-        var foundPromptFile = false
         var foundConfigFile = false
+        var foundPromptFile = false
         var firstParseError: PromptCatalogError?
 
         for promptsRootURL in promptsRootURLs {
@@ -49,11 +52,6 @@ struct PromptCatalogService {
             foundPromptDirectory = true
 
             let promptURL = promptDirectory.appendingPathComponent("prompt.md", isDirectory: false)
-            guard fileManager.fileExists(atPath: promptURL.path) else {
-                continue
-            }
-            foundPromptFile = true
-
             let configURL = promptDirectory.appendingPathComponent("config.yaml", isDirectory: false)
             guard fileManager.fileExists(atPath: configURL.path) else {
                 continue
@@ -61,10 +59,28 @@ struct PromptCatalogService {
             foundConfigFile = true
 
             do {
-                let prompt = try String(contentsOf: promptURL, encoding: .utf8)
                 let configRaw = try String(contentsOf: configURL, encoding: .utf8)
-                let config = try parseConfig(configRaw, promptName: promptName)
-                return PromptTemplate(name: promptName, prompt: prompt, config: config)
+                let topLevelConfig = try parseConfig(configRaw, promptName: promptName)
+
+                let versionedDirectory = promptDirectory.appendingPathComponent(topLevelConfig.version, isDirectory: true)
+                let versionedPromptURL = versionedDirectory.appendingPathComponent("prompt.md", isDirectory: false)
+                let resolvedPromptURL: URL
+                if fileManager.fileExists(atPath: versionedPromptURL.path) {
+                    resolvedPromptURL = versionedPromptURL
+                } else if fileManager.fileExists(atPath: promptURL.path) {
+                    resolvedPromptURL = promptURL
+                } else {
+                    continue
+                }
+                foundPromptFile = true
+
+                let prompt = try String(contentsOf: resolvedPromptURL, encoding: .utf8)
+                return PromptTemplate(
+                    name: promptName,
+                    prompt: prompt,
+                    config: topLevelConfig,
+                    sourceURL: resolvedPromptURL
+                )
             } catch let error as PromptCatalogError {
                 if firstParseError == nil {
                     firstParseError = error
@@ -121,7 +137,12 @@ struct PromptCatalogService {
             throw PromptCatalogError.invalidConfig("Missing required key 'llm' for prompt '\(promptName)'")
         }
 
-        return PromptConfig(version: version, llm: llm)
+        return PromptConfig(
+            version: version,
+            llm: llm,
+            reasoningEffort: values["reasoning_effort"],
+            reasoningSummary: values["reasoning_summary"]
+        )
     }
 
     private static func resolveDefaultPromptsRoots(fileManager: FileManager) -> [URL] {

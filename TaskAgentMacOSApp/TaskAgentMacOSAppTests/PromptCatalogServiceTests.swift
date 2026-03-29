@@ -10,20 +10,12 @@ struct PromptCatalogServiceTests {
         try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
         defer { try? fm.removeItem(at: tempRoot) }
 
-        let promptDir = tempRoot.appendingPathComponent("task_extraction", isDirectory: true)
-        try fm.createDirectory(at: promptDir, withIntermediateDirectories: true)
-        try """
-        version: v2
-        llm: gemini-3-pro
-        """.write(
-            to: promptDir.appendingPathComponent("config.yaml", isDirectory: false),
-            atomically: true,
-            encoding: .utf8
-        )
-        try "Prompt body".write(
-            to: promptDir.appendingPathComponent("prompt.md", isDirectory: false),
-            atomically: true,
-            encoding: .utf8
+        let sourceConfig = try TestPromptFixtureSupport.sourcePromptConfig(named: "task_extraction")
+        try TestPromptFixtureSupport.writePromptFixture(
+            named: "task_extraction",
+            into: tempRoot,
+            promptBody: "Prompt body",
+            fileManager: fm
         )
 
         let service = PromptCatalogService(promptsRootURL: tempRoot, fileManager: fm)
@@ -31,8 +23,11 @@ struct PromptCatalogServiceTests {
 
         #expect(loaded.name == "task_extraction")
         #expect(loaded.prompt == "Prompt body")
-        #expect(loaded.config.version == "v2")
-        #expect(loaded.config.llm == "gemini-3-pro")
+        #expect(loaded.config.version == sourceConfig.version)
+        #expect(loaded.config.llm == sourceConfig.llm)
+        #expect(loaded.config.reasoningEffort == sourceConfig.reasoningEffort)
+        #expect(loaded.config.reasoningSummary == sourceConfig.reasoningSummary)
+        #expect(loaded.sourceURL?.lastPathComponent == "prompt.md")
     }
 
     @Test
@@ -69,5 +64,153 @@ struct PromptCatalogServiceTests {
             }
             #expect(message.contains("llm"))
         }
+    }
+
+    @Test
+    func loadPromptUsesVersionedPromptSelectedByTopLevelConfig() throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let promptDir = tempRoot.appendingPathComponent("execution_agent_openai", isDirectory: true)
+        let versionDir = promptDir.appendingPathComponent("v3", isDirectory: true)
+        try fm.createDirectory(at: versionDir, withIntermediateDirectories: true)
+
+        try """
+        version: v3
+        llm: gpt-5.3-codex
+        """.write(
+            to: promptDir.appendingPathComponent("config.yaml", isDirectory: false),
+            atomically: true,
+            encoding: .utf8
+        )
+        try "Flat prompt".write(
+            to: promptDir.appendingPathComponent("prompt.md", isDirectory: false),
+            atomically: true,
+            encoding: .utf8
+        )
+        try """
+        version: ignored
+        llm: ignored-model
+        """.write(
+            to: versionDir.appendingPathComponent("config.yaml", isDirectory: false),
+            atomically: true,
+            encoding: .utf8
+        )
+        try "Versioned prompt".write(
+            to: versionDir.appendingPathComponent("prompt.md", isDirectory: false),
+            atomically: true,
+            encoding: .utf8
+        )
+
+        let service = PromptCatalogService(promptsRootURL: tempRoot, fileManager: fm)
+        let loaded = try service.loadPrompt(named: "execution_agent_openai")
+
+        #expect(loaded.prompt == "Versioned prompt")
+        #expect(loaded.config.version == "v3")
+        #expect(loaded.config.llm == "gpt-5.3-codex")
+        #expect(loaded.sourceURL?.path.hasSuffix("/execution_agent_openai/v3/prompt.md") == true)
+    }
+
+    @Test
+    func loadPromptUsesVersionedPromptWithoutRequiringFlatPromptFile() throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let promptDir = tempRoot.appendingPathComponent("execution_agent_openai", isDirectory: true)
+        let versionDir = promptDir.appendingPathComponent("v2", isDirectory: true)
+        try fm.createDirectory(at: versionDir, withIntermediateDirectories: true)
+
+        try """
+        version: v2
+        llm: gpt-5.3-codex
+        """.write(
+            to: promptDir.appendingPathComponent("config.yaml", isDirectory: false),
+            atomically: true,
+            encoding: .utf8
+        )
+        try "Versioned only prompt".write(
+            to: versionDir.appendingPathComponent("prompt.md", isDirectory: false),
+            atomically: true,
+            encoding: .utf8
+        )
+
+        let service = PromptCatalogService(promptsRootURL: tempRoot, fileManager: fm)
+        let loaded = try service.loadPrompt(named: "execution_agent_openai")
+
+        #expect(loaded.prompt == "Versioned only prompt")
+        #expect(loaded.config.version == "v2")
+        #expect(loaded.config.llm == "gpt-5.3-codex")
+        #expect(loaded.sourceURL?.path.hasSuffix("/execution_agent_openai/v2/prompt.md") == true)
+    }
+
+    @Test
+    func loadPromptFallsBackToFlatPromptWhenSelectedVersionFolderIsMissing() throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let promptDir = tempRoot.appendingPathComponent("execution_agent_openai", isDirectory: true)
+        try fm.createDirectory(at: promptDir, withIntermediateDirectories: true)
+
+        try """
+        version: v9
+        llm: gpt-5.3-codex
+        """.write(
+            to: promptDir.appendingPathComponent("config.yaml", isDirectory: false),
+            atomically: true,
+            encoding: .utf8
+        )
+        try "Flat prompt".write(
+            to: promptDir.appendingPathComponent("prompt.md", isDirectory: false),
+            atomically: true,
+            encoding: .utf8
+        )
+
+        let service = PromptCatalogService(promptsRootURL: tempRoot, fileManager: fm)
+        let loaded = try service.loadPrompt(named: "execution_agent_openai")
+
+        #expect(loaded.prompt == "Flat prompt")
+        #expect(loaded.config.version == "v9")
+        #expect(loaded.config.llm == "gpt-5.3-codex")
+        #expect(loaded.sourceURL?.path.hasSuffix("/execution_agent_openai/prompt.md") == true)
+    }
+
+    @Test
+    func loadPromptParsesOptionalReasoningSettingsFromTopLevelConfig() throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let promptDir = tempRoot.appendingPathComponent("execution_agent_openai", isDirectory: true)
+        let versionDir = promptDir.appendingPathComponent("v2", isDirectory: true)
+        try fm.createDirectory(at: versionDir, withIntermediateDirectories: true)
+
+        try """
+        version: v2
+        llm: gpt-5.3-codex
+        reasoning_effort: medium
+        reasoning_summary: auto
+        """.write(
+            to: promptDir.appendingPathComponent("config.yaml", isDirectory: false),
+            atomically: true,
+            encoding: .utf8
+        )
+        try "Versioned prompt".write(
+            to: versionDir.appendingPathComponent("prompt.md", isDirectory: false),
+            atomically: true,
+            encoding: .utf8
+        )
+
+        let service = PromptCatalogService(promptsRootURL: tempRoot, fileManager: fm)
+        let loaded = try service.loadPrompt(named: "execution_agent_openai")
+
+        #expect(loaded.config.reasoningEffort == "medium")
+        #expect(loaded.config.reasoningSummary == "auto")
     }
 }

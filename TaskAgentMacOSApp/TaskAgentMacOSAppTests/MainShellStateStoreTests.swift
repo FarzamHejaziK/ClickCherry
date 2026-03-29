@@ -677,20 +677,11 @@ struct MainShellStateStoreTests {
         defer { try? fm.removeItem(at: tempRoot) }
 
         let promptsRoot = tempRoot.appendingPathComponent("prompts", isDirectory: true)
-        let promptDir = promptsRoot.appendingPathComponent("task_extraction", isDirectory: true)
-        try fm.createDirectory(at: promptDir, withIntermediateDirectories: true)
-        try """
-        version: v2
-        llm: gemini-3-pro
-        """.write(
-            to: promptDir.appendingPathComponent("config.yaml", isDirectory: false),
-            atomically: true,
-            encoding: .utf8
-        )
-        try "Prompt body".write(
-            to: promptDir.appendingPathComponent("prompt.md", isDirectory: false),
-            atomically: true,
-            encoding: .utf8
+        try TestPromptFixtureSupport.writePromptFixture(
+            named: "task_extraction",
+            into: promptsRoot,
+            promptBody: "Prompt body",
+            fileManager: fm
         )
 
         let taskService = TaskService(
@@ -751,20 +742,11 @@ struct MainShellStateStoreTests {
         defer { try? fm.removeItem(at: tempRoot) }
 
         let promptsRoot = tempRoot.appendingPathComponent("prompts", isDirectory: true)
-        let promptDir = promptsRoot.appendingPathComponent("task_extraction", isDirectory: true)
-        try fm.createDirectory(at: promptDir, withIntermediateDirectories: true)
-        try """
-        version: v2
-        llm: gemini-3-pro
-        """.write(
-            to: promptDir.appendingPathComponent("config.yaml", isDirectory: false),
-            atomically: true,
-            encoding: .utf8
-        )
-        try "Prompt body".write(
-            to: promptDir.appendingPathComponent("prompt.md", isDirectory: false),
-            atomically: true,
-            encoding: .utf8
+        try TestPromptFixtureSupport.writePromptFixture(
+            named: "task_extraction",
+            into: promptsRoot,
+            promptBody: "Prompt body",
+            fileManager: fm
         )
 
         let taskService = TaskService(
@@ -816,20 +798,11 @@ struct MainShellStateStoreTests {
         defer { try? fm.removeItem(at: tempRoot) }
 
         let promptsRoot = tempRoot.appendingPathComponent("prompts", isDirectory: true)
-        let promptDir = promptsRoot.appendingPathComponent("task_extraction", isDirectory: true)
-        try fm.createDirectory(at: promptDir, withIntermediateDirectories: true)
-        try """
-        version: v2
-        llm: gemini-3-pro
-        """.write(
-            to: promptDir.appendingPathComponent("config.yaml", isDirectory: false),
-            atomically: true,
-            encoding: .utf8
-        )
-        try "Prompt body".write(
-            to: promptDir.appendingPathComponent("prompt.md", isDirectory: false),
-            atomically: true,
-            encoding: .utf8
+        let promptConfig = try TestPromptFixtureSupport.writePromptFixture(
+            named: "task_extraction",
+            into: promptsRoot,
+            promptBody: "Prompt body",
+            fileManager: fm
         )
 
         let taskService = TaskService(
@@ -894,7 +867,7 @@ struct MainShellStateStoreTests {
         #expect(store.errorMessage == nil)
         #expect(
             store.extractionStatusMessage ==
-            "No actionable task detected. HEARTBEAT.md was not changed (gemini-3-pro, v2)."
+            "No actionable task detected. HEARTBEAT.md was not changed (\(promptConfig.llm), \(promptConfig.version))."
         )
     }
 
@@ -906,20 +879,11 @@ struct MainShellStateStoreTests {
         defer { try? fm.removeItem(at: tempRoot) }
 
         let promptsRoot = tempRoot.appendingPathComponent("prompts", isDirectory: true)
-        let promptDir = promptsRoot.appendingPathComponent("task_extraction", isDirectory: true)
-        try fm.createDirectory(at: promptDir, withIntermediateDirectories: true)
-        try """
-        version: v2
-        llm: gemini-3-pro
-        """.write(
-            to: promptDir.appendingPathComponent("config.yaml", isDirectory: false),
-            atomically: true,
-            encoding: .utf8
-        )
-        try "Prompt body".write(
-            to: promptDir.appendingPathComponent("prompt.md", isDirectory: false),
-            atomically: true,
-            encoding: .utf8
+        try TestPromptFixtureSupport.writePromptFixture(
+            named: "task_extraction",
+            into: promptsRoot,
+            promptBody: "Prompt body",
+            fileManager: fm
         )
 
         let taskService = TaskService(
@@ -1621,6 +1585,61 @@ struct MainShellStateStoreTests {
         store.reloadTasks()
         store.openTask(task.id)
         #expect(store.runHistory == [run])
+    }
+
+    @Test
+    func reopeningTaskLoadsPersistedRunScreenshots() throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let task = try taskService.createTask(title: "Persisted run screenshots task")
+
+        let started = Date(timeIntervalSince1970: 1_700_000_456)
+        let run = AgentRunRecord(
+            id: UUID(uuidString: "cccccccc-dddd-eeee-ffff-000000000000")!,
+            startedAt: started,
+            finishedAt: started.addingTimeInterval(1),
+            outcome: .success,
+            displayIndex: 1
+        )
+        let screenshot = LLMScreenshotLogEntry(
+            id: UUID(uuidString: "12121212-3434-5656-7878-909090909090")!,
+            timestamp: started.addingTimeInterval(0.5),
+            source: .postActionSnapshot,
+            mediaType: "image/png",
+            width: 16,
+            height: 12,
+            captureWidthPx: 16,
+            captureHeightPx: 12,
+            coordinateSpaceWidthPx: 32,
+            coordinateSpaceHeightPx: 24,
+            rawByteCount: 4,
+            base64ByteCount: 8,
+            imageData: Data([0x89, 0x50, 0x4E, 0x47])
+        )
+
+        _ = try taskService.saveAgentRunLog(taskId: task.id, run: run)
+        _ = try taskService.saveAgentRunScreenshots(taskId: task.id, run: run, screenshots: [screenshot])
+
+        let store = MainShellStateStore(
+            taskService: taskService,
+            apiKeyStore: MockAPIKeyStore(),
+            captureService: MockRecordingCaptureService(),
+            overlayService: MockRecordingOverlayService()
+        )
+
+        store.reloadTasks()
+        store.openTask(task.id)
+
+        #expect(store.runHistory == [run])
+        #expect(store.runScreenshotLogByRunID[run.id] == [screenshot])
     }
 
     @Test

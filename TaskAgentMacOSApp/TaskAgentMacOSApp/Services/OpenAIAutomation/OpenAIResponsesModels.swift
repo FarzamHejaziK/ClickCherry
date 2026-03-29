@@ -19,6 +19,7 @@ struct OpenAIResponseOutputItem: Decodable {
     var name: String?
     var arguments: OpenAIJSONValue?
     var content: [OpenAIResponseMessageContent]?
+    var summary: [OpenAIResponseMessageContent]?
     var text: String?
 
     enum CodingKeys: String, CodingKey {
@@ -28,6 +29,7 @@ struct OpenAIResponseOutputItem: Decodable {
         case name
         case arguments
         case content
+        case summary
         case text
     }
 }
@@ -52,6 +54,17 @@ struct OpenAIToolLoopCompletionPayload: Decodable {
     var summary: String?
     var error: String?
     var questions: [String]?
+    var debugVisualObservation: String?
+    var debugMouseLocation: String?
+
+    enum CodingKeys: String, CodingKey {
+        case status
+        case summary
+        case error
+        case questions
+        case debugVisualObservation = "debug_visual_observation"
+        case debugMouseLocation = "debug_mouse_location"
+    }
 }
 
 enum OpenAIJSONValue: Codable {

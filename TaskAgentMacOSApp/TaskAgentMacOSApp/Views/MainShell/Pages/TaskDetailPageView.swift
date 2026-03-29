@@ -469,7 +469,7 @@ private struct RunLogListView: View {
 
 private struct RunScreenshotStripView: View {
     let entries: [LLMScreenshotLogEntry]
-    @State private var selectedEntry: LLMScreenshotLogEntry?
+    @State private var previewOpenErrorMessage: String?
 
     private static let timeFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -480,11 +480,11 @@ private struct RunScreenshotStripView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Screenshots (temporary)")
+                Text("Screenshots")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
 
-                Text("Click a screenshot to inspect it.")
+                Text("Exact images sent to the LLM for this run.")
                     .font(.caption2)
                     .foregroundStyle(.secondary.opacity(0.9))
             }
@@ -493,95 +493,101 @@ private struct RunScreenshotStripView: View {
                 HStack(spacing: 10) {
                     ForEach(entries) { entry in
                         Button {
-                            selectedEntry = entry
+                            openInPreview(entry)
                         } label: {
-                            VStack(alignment: .leading, spacing: 6) {
-                                if let image = NSImage(data: entry.imageData) {
-                                    Image(nsImage: image)
-                                        .resizable()
-                                        .scaledToFill()
-                                        .frame(width: 180, height: 112)
-                                        .clipped()
-                                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                                } else {
-                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                        .fill(Color.black.opacity(0.15))
-                                        .frame(width: 180, height: 112)
-                                }
-
-                                Text("\(entry.source.rawValue) • \(Self.timeFormatter.string(from: entry.timestamp))")
-                                    .font(.caption2.monospacedDigit())
-                                    .foregroundStyle(.secondary)
-                            }
+                            screenshotThumbnail(for: entry)
                         }
                         .buttonStyle(.plain)
+                        .contentShape(Rectangle())
+                        .help("Open this screenshot in Preview")
                     }
                 }
             }
         }
-        .sheet(item: $selectedEntry) { entry in
-            RunScreenshotInspectorSheet(entry: entry)
+        .alert("Unable to Open Screenshot", isPresented: Binding(
+            get: { previewOpenErrorMessage != nil },
+            set: { if !$0 { previewOpenErrorMessage = nil } }
+        )) {
+            Button("OK") {
+                previewOpenErrorMessage = nil
+            }
+        } message: {
+            Text(previewOpenErrorMessage ?? "The screenshot could not be opened in Preview.")
         }
     }
-}
 
-private struct RunScreenshotInspectorSheet: View {
-    let entry: LLMScreenshotLogEntry
-    @Environment(\.dismiss) private var dismiss
+    private func openInPreview(_ entry: LLMScreenshotLogEntry) {
+        let fileManager = FileManager.default
+        let tempDirectory = fileManager.temporaryDirectory.appendingPathComponent("ClickCherryPreview", isDirectory: true)
 
-    private static let timestampFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .medium
-        return formatter
-    }()
+        do {
+            try fileManager.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Run Screenshot")
-                        .font(.headline)
+            let fileURL = tempDirectory.appendingPathComponent(previewFileName(for: entry), isDirectory: false)
+            try entry.imageData.write(to: fileURL, options: [.atomic])
 
-                    Text("\(entry.source.rawValue) • \(Self.timestampFormatter.string(from: entry.timestamp))")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    Text("\(entry.width)x\(entry.height) shown • capture \(entry.captureWidthPx)x\(entry.captureHeightPx)")
-                        .font(.caption2.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer(minLength: 0)
-
-                Button("Done") {
-                    dismiss()
-                }
+            if let previewURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.Preview") {
+                let configuration = NSWorkspace.OpenConfiguration()
+                NSWorkspace.shared.open([fileURL], withApplicationAt: previewURL, configuration: configuration)
+            } else {
+                NSWorkspace.shared.open(fileURL)
             }
-
-            Group {
-                if let image = NSImage(data: entry.imageData) {
-                    ScrollView([.horizontal, .vertical]) {
-                        Image(nsImage: image)
-                            .interpolation(.high)
-                            .antialiased(true)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    }
-                    .background(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(Color.black.opacity(0.08))
-                    )
-                } else {
-                    ContentUnavailableView(
-                        "Screenshot Unavailable",
-                        systemImage: "photo",
-                        description: Text("The screenshot data for this run log entry could not be decoded.")
-                    )
-                }
-            }
-            .frame(minWidth: 880, minHeight: 560)
+        } catch {
+            previewOpenErrorMessage = error.localizedDescription
         }
-        .padding(18)
+    }
+
+    private func previewFileName(for entry: LLMScreenshotLogEntry) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let timestamp = formatter.string(from: entry.timestamp).replacingOccurrences(of: ":", with: "-")
+        let ext = fileExtension(for: entry.mediaType)
+        return "\(entry.source.rawValue)-\(timestamp)-\(entry.id.uuidString.lowercased()).\(ext)"
+    }
+
+    @ViewBuilder
+    private func screenshotThumbnail(for entry: LLMScreenshotLogEntry) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if let image = NSImage(data: entry.imageData) {
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 180, height: 112)
+                    .clipped()
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            } else {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Color.black.opacity(0.15))
+                    .frame(width: 180, height: 112)
+            }
+
+            Text("\(entry.source.rawValue) • \(Self.timeFormatter.string(from: entry.timestamp))")
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .frame(width: 180, alignment: .leading)
+        .padding(6)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Color.white.opacity(0.03))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.06), lineWidth: 1)
+        )
+        .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+
+    private func fileExtension(for mediaType: String) -> String {
+        switch mediaType.lowercased() {
+        case "image/jpeg", "image/jpg":
+            return "jpg"
+        case "image/webp":
+            return "webp"
+        default:
+            return "png"
+        }
     }
 }
 

@@ -30,20 +30,11 @@ struct TaskExtractionServiceTests {
         try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
         defer { try? fm.removeItem(at: tempRoot) }
 
-        let promptDir = tempRoot.appendingPathComponent("task_extraction", isDirectory: true)
-        try fm.createDirectory(at: promptDir, withIntermediateDirectories: true)
-        try """
-        version: v2
-        llm: gemini-3-pro
-        """.write(
-            to: promptDir.appendingPathComponent("config.yaml", isDirectory: false),
-            atomically: true,
-            encoding: .utf8
-        )
-        try "Prompt body".write(
-            to: promptDir.appendingPathComponent("prompt.md", isDirectory: false),
-            atomically: true,
-            encoding: .utf8
+        let promptConfig = try TestPromptFixtureSupport.writePromptFixture(
+            named: "task_extraction",
+            into: tempRoot,
+            promptBody: "Prompt body",
+            fileManager: fm
         )
 
         let recordingURL = tempRoot.appendingPathComponent("sample.mp4", isDirectory: false)
@@ -68,15 +59,15 @@ struct TaskExtractionServiceTests {
         let result = try await service.extractHeartbeatMarkdown(from: recordingURL)
 
         #expect(result.taskDetected)
-        #expect(result.promptVersion == "v2")
-        #expect(result.llm == "gemini-3-pro")
+        #expect(result.promptVersion == promptConfig.version)
+        #expect(result.llm == promptConfig.llm)
         #expect(result.heartbeatMarkdown.contains("# Task"))
         #expect(result.heartbeatMarkdown.contains("## Questions"))
         #expect(!result.heartbeatMarkdown.contains("TaskDetected:"))
         #expect(!result.heartbeatMarkdown.contains("Status:"))
         #expect(!result.heartbeatMarkdown.contains("NoTaskReason:"))
         #expect(llm.lastPrompt == "Prompt body")
-        #expect(llm.lastModel == "gemini-3-pro")
+        #expect(llm.lastModel == promptConfig.llm)
     }
 
     @Test
@@ -86,20 +77,11 @@ struct TaskExtractionServiceTests {
         try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
         defer { try? fm.removeItem(at: tempRoot) }
 
-        let promptDir = tempRoot.appendingPathComponent("task_extraction", isDirectory: true)
-        try fm.createDirectory(at: promptDir, withIntermediateDirectories: true)
-        try """
-        version: v2
-        llm: gemini-3-pro
-        """.write(
-            to: promptDir.appendingPathComponent("config.yaml", isDirectory: false),
-            atomically: true,
-            encoding: .utf8
-        )
-        try "Prompt body".write(
-            to: promptDir.appendingPathComponent("prompt.md", isDirectory: false),
-            atomically: true,
-            encoding: .utf8
+        try TestPromptFixtureSupport.writePromptFixture(
+            named: "task_extraction",
+            into: tempRoot,
+            promptBody: "Prompt body",
+            fileManager: fm
         )
 
         let recordingURL = tempRoot.appendingPathComponent("sample.mp4", isDirectory: false)
@@ -136,20 +118,11 @@ struct TaskExtractionServiceTests {
         try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
         defer { try? fm.removeItem(at: tempRoot) }
 
-        let promptDir = tempRoot.appendingPathComponent("task_extraction", isDirectory: true)
-        try fm.createDirectory(at: promptDir, withIntermediateDirectories: true)
-        try """
-        version: v2
-        llm: gemini-3-pro
-        """.write(
-            to: promptDir.appendingPathComponent("config.yaml", isDirectory: false),
-            atomically: true,
-            encoding: .utf8
-        )
-        try "Prompt body".write(
-            to: promptDir.appendingPathComponent("prompt.md", isDirectory: false),
-            atomically: true,
-            encoding: .utf8
+        try TestPromptFixtureSupport.writePromptFixture(
+            named: "task_extraction",
+            into: tempRoot,
+            promptBody: "Prompt body",
+            fileManager: fm
         )
 
         let recordingURL = tempRoot.appendingPathComponent("sample.mp4", isDirectory: false)

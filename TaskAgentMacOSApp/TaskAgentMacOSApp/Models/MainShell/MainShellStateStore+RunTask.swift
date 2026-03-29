@@ -213,10 +213,14 @@ extension MainShellStateStore {
         if let finished = finishActiveRun(outcome: result.outcome) {
             do {
                 _ = try taskService.saveAgentRunLog(taskId: taskId, run: finished)
+                let screenshots = runScreenshotLogByRunID[finished.id] ?? []
+                _ = try taskService.saveAgentRunScreenshots(taskId: taskId, run: finished, screenshots: screenshots)
+                let exchanges = runLLMExchangeLogByRunID[finished.id] ?? []
+                _ = try taskService.saveAgentRunLLMExchanges(taskId: taskId, run: finished, exchanges: exchanges)
             } catch {
                 // Keep the run visible in-memory even if persistence fails.
                 if errorMessage == nil {
-                    errorMessage = "Task run finished but failed to persist run log."
+                    errorMessage = "Task run finished but failed to persist run artifacts."
                 }
             }
         }
@@ -250,6 +254,7 @@ extension MainShellStateStore {
         let run = AgentRunRecord(startedAt: Date(), displayIndex: displayIndex)
         runHistory.insert(run, at: 0)
         runScreenshotLogByRunID[run.id] = []
+        runLLMExchangeLogByRunID[run.id] = []
         activeRunID = run.id
     }
 
@@ -333,6 +338,16 @@ extension MainShellStateStore {
             entries.removeFirst(entries.count - 40)
         }
         runScreenshotLogByRunID[activeRunID] = entries
+    }
+
+    func appendLLMExchangeLogToActiveRun(_ entry: LLMExchangeLogEntry) {
+        guard let activeRunID else { return }
+        var entries = runLLMExchangeLogByRunID[activeRunID] ?? []
+        entries.append(entry)
+        if entries.count > 40 {
+            entries.removeFirst(entries.count - 40)
+        }
+        runLLMExchangeLogByRunID[activeRunID] = entries
     }
 
     @MainActor

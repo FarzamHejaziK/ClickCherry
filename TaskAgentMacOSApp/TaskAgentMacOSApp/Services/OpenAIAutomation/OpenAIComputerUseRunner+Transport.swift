@@ -6,6 +6,8 @@ extension OpenAIComputerUseRunner {
         input: [[String: Any]],
         tools: [[String: Any]],
         previousResponseId: String?,
+        reasoningEffort: String?,
+        reasoningSummary: String?,
         apiKey: String
     ) async throws -> OpenAIResponsesResponse {
         var requestBody: [String: Any] = [
@@ -17,6 +19,13 @@ extension OpenAIComputerUseRunner {
         ]
         if let previousResponseId, !previousResponseId.isEmpty {
             requestBody["previous_response_id"] = previousResponseId
+        }
+        if let reasoningEffort, !reasoningEffort.isEmpty {
+            var reasoning: [String: Any] = ["effort": reasoningEffort]
+            if let reasoningSummary, !reasoningSummary.isEmpty {
+                reasoning["summary"] = reasoningSummary
+            }
+            requestBody["reasoning"] = reasoning
         }
 
         let encodedRequest: Data
@@ -74,6 +83,17 @@ extension OpenAIComputerUseRunner {
         guard (200..<300).contains(response.statusCode) else {
             let parsedError = try? jsonDecoder.decode(OpenAIErrorEnvelope.self, from: data)
             let message = serverMessage(from: data, statusCode: response.statusCode)
+            recordExchange(
+                startedAt: attemptStartedAt,
+                finishedAt: Date(),
+                attempt: attempt,
+                url: urlString,
+                httpStatus: response.statusCode,
+                requestId: requestID,
+                outcome: .failure,
+                requestBodyData: encodedRequest,
+                responseBodyData: data
+            )
             recordCall(
                 startedAt: attemptStartedAt,
                 finishedAt: Date(),
@@ -97,6 +117,17 @@ extension OpenAIComputerUseRunner {
         }
 
         guard let payload = try? jsonDecoder.decode(OpenAIResponsesResponse.self, from: data) else {
+            recordExchange(
+                startedAt: attemptStartedAt,
+                finishedAt: Date(),
+                attempt: attempt,
+                url: urlString,
+                httpStatus: response.statusCode,
+                requestId: requestID,
+                outcome: .failure,
+                requestBodyData: encodedRequest,
+                responseBodyData: data
+            )
             recordCall(
                 startedAt: attemptStartedAt,
                 finishedAt: Date(),
@@ -115,9 +146,31 @@ extension OpenAIComputerUseRunner {
         let hasOutputItems = !(payload.output ?? []).isEmpty
         let hasOutputText = !(payload.outputText?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
         guard hasOutputItems || hasOutputText else {
+            recordExchange(
+                startedAt: attemptStartedAt,
+                finishedAt: Date(),
+                attempt: attempt,
+                url: urlString,
+                httpStatus: response.statusCode,
+                requestId: requestID,
+                outcome: .failure,
+                requestBodyData: encodedRequest,
+                responseBodyData: data
+            )
             throw OpenAIExecutionPlannerError.invalidToolLoopResponse
         }
 
+        recordExchange(
+            startedAt: attemptStartedAt,
+            finishedAt: Date(),
+            attempt: attempt,
+            url: urlString,
+            httpStatus: response.statusCode,
+            requestId: requestID,
+            outcome: .success,
+            requestBodyData: encodedRequest,
+            responseBodyData: data
+        )
         recordCall(
             startedAt: attemptStartedAt,
             finishedAt: Date(),
@@ -273,6 +326,34 @@ extension OpenAIComputerUseRunner {
         )
     }
 
+    func recordExchange(
+        startedAt: Date,
+        finishedAt: Date,
+        attempt: Int,
+        url: String,
+        httpStatus: Int?,
+        requestId: String?,
+        outcome: LLMCallOutcome,
+        requestBodyData: Data,
+        responseBodyData: Data?
+    ) {
+        exchangeLogSink?(
+            LLMExchangeLogEntry(
+                startedAt: startedAt,
+                finishedAt: finishedAt,
+                provider: .openAI,
+                operation: .execution,
+                attempt: attempt,
+                url: url,
+                httpStatus: httpStatus,
+                requestId: requestId,
+                outcome: outcome,
+                requestBodyData: requestBodyData,
+                responseBodyData: responseBodyData
+            )
+        )
+    }
+
     func headerValue(_ response: HTTPURLResponse, name: String) -> String? {
         for (keyAny, valueAny) in response.allHeaderFields {
             guard let key = keyAny as? String else { continue }
@@ -340,11 +421,11 @@ extension OpenAIComputerUseRunner {
         }
     }
 
-    func renderPrompt(_ template: String, taskMarkdown: String, screenWidth: Int, screenHeight: Int) -> String {
+    func renderPrompt(_ template: String, taskMarkdown: String, screenshot: OpenAICapturedScreenshot) -> String {
         template
             .replacingOccurrences(of: "{{OS_VERSION}}", with: ProcessInfo.processInfo.operatingSystemVersionString)
-            .replacingOccurrences(of: "{{SCREEN_WIDTH}}", with: String(screenWidth))
-            .replacingOccurrences(of: "{{SCREEN_HEIGHT}}", with: String(screenHeight))
+            .replacingOccurrences(of: "{{SCREEN_WIDTH}}", with: String(screenshot.width))
+            .replacingOccurrences(of: "{{SCREEN_HEIGHT}}", with: String(screenshot.height))
             .replacingOccurrences(of: "{{TASK_MARKDOWN}}", with: taskMarkdown)
     }
 

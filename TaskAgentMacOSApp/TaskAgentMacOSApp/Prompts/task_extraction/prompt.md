@@ -23,6 +23,10 @@ Output requirements:
   - `# Task`
   - `## Questions`
 - Keep output specific and operational.
+- If you mention any visual UI element, describe what it looks like in natural language.
+  - Include visible cues such as label text, icon, color, relative position, shape, or nearby context.
+  - Avoid vague references like `the button`, `the menu`, or `the field` without a visible description.
+  - Good example: `Click the blue "Publish" button in the upper-right toolbar.`
 
 Use this exact structure:
 

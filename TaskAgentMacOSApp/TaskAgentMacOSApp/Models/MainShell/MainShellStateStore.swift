@@ -51,6 +51,7 @@ final class MainShellStateStore {
     let prepareDesktopForRun: @MainActor () -> Int
     let revealAppAfterRunCancellation: @MainActor () -> Void
     let llmCallRecorder: LLMCallRecorder
+    let llmExchangeRecorder: LLMExchangeRecorder
     let llmScreenshotRecorder: LLMScreenshotRecorder
     let executionTraceRecorder: ExecutionTraceRecorder
     let userDefaults: UserDefaults
@@ -100,9 +101,11 @@ final class MainShellStateStore {
     var runTaskPreflightDialogState: RunTaskPreflightDialogState?
     var finishedRecordingReview: FinishedRecordingReview?
     var llmCallLog: [LLMCallLogEntry]
+    var llmExchangeLog: [LLMExchangeLogEntry]
     var executionTrace: [ExecutionTraceEntry]
     var runHistory: [AgentRunRecord]
     var runScreenshotLogByRunID: [UUID: [LLMScreenshotLogEntry]]
+    var runLLMExchangeLogByRunID: [UUID: [LLMExchangeLogEntry]]
     var isCapturingDiagnosticScreenshot: Bool
     var diagnosticScreenshotStatusMessage: String?
     var diagnosticTraceStatusMessage: String?
@@ -132,6 +135,7 @@ final class MainShellStateStore {
     ) {
         self.userDefaults = userDefaults
         let callRecorder = LLMCallRecorder(maxEntries: 200)
+        let exchangeRecorder = LLMExchangeRecorder(maxEntries: 120)
         let screenshotRecorder = LLMScreenshotRecorder(maxEntries: 120)
         let traceRecorder = ExecutionTraceRecorder(maxEntries: 400)
         let runDisplayIndexBox = LockedBox<Int>(1)
@@ -147,6 +151,9 @@ final class MainShellStateStore {
             apiKeyStore: apiKeyStore,
             callLogSink: { entry in
                 callRecorder.record(entry)
+            },
+            exchangeLogSink: { entry in
+                exchangeRecorder.record(entry)
             },
             screenshotLogSink: { entry in
                 screenshotRecorder.record(entry)
@@ -174,6 +181,7 @@ final class MainShellStateStore {
         self.prepareDesktopForRun = prepareDesktopForRun
         self.revealAppAfterRunCancellation = revealAppAfterRunCancellation
         self.llmCallRecorder = callRecorder
+        self.llmExchangeRecorder = exchangeRecorder
         self.llmScreenshotRecorder = screenshotRecorder
         self.executionTraceRecorder = traceRecorder
         self.runTaskHandle = nil
@@ -214,9 +222,11 @@ final class MainShellStateStore {
         self.runTaskPreflightDialogState = nil
         self.finishedRecordingReview = nil
         self.llmCallLog = []
+        self.llmExchangeLog = []
         self.executionTrace = []
         self.runHistory = []
         self.runScreenshotLogByRunID = [:]
+        self.runLLMExchangeLogByRunID = [:]
         self.isCapturingDiagnosticScreenshot = false
         self.diagnosticScreenshotStatusMessage = nil
         self.diagnosticTraceStatusMessage = nil
@@ -232,6 +242,13 @@ final class MainShellStateStore {
             DispatchQueue.main.async {
                 self?.llmCallLog = callRecorder.snapshot()
                 self?.appendLLMCallEventToActiveRun(entry)
+            }
+        }
+
+        exchangeRecorder.onRecord = { [weak self] entry in
+            DispatchQueue.main.async {
+                self?.llmExchangeLog = exchangeRecorder.snapshot()
+                self?.appendLLMExchangeLogToActiveRun(entry)
             }
         }
 
@@ -347,6 +364,42 @@ final class LLMScreenshotRecorder {
     }
 
     func snapshot() -> [LLMScreenshotLogEntry] {
+        lock.lock()
+        let copy = entries
+        lock.unlock()
+        return copy
+    }
+
+    func clear() {
+        lock.lock()
+        entries.removeAll()
+        lock.unlock()
+    }
+}
+
+final class LLMExchangeRecorder {
+    private let lock = NSLock()
+    private var entries: [LLMExchangeLogEntry] = []
+    private let maxEntries: Int
+
+    var onRecord: ((LLMExchangeLogEntry) -> Void)?
+
+    init(maxEntries: Int) {
+        self.maxEntries = max(1, maxEntries)
+    }
+
+    func record(_ entry: LLMExchangeLogEntry) {
+        lock.lock()
+        entries.append(entry)
+        if entries.count > maxEntries {
+            entries.removeFirst(entries.count - maxEntries)
+        }
+        lock.unlock()
+
+        onRecord?(entry)
+    }
+
+    func snapshot() -> [LLMExchangeLogEntry] {
         lock.lock()
         let copy = entries
         lock.unlock()

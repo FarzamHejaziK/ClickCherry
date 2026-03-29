@@ -59,13 +59,7 @@ extension OpenAIComputerUseRunner {
         do {
             switch action {
             case "screenshot":
-                return ToolExecutionResult(
-                    callID: functionCall.callID,
-                    output: makeToolOutput(ok: true, message: "Captured screenshot."),
-                    isError: false,
-                    stepDescription: "Capture screenshot",
-                    generatedQuestions: []
-                )
+                return try executeScreenshotAction(callID: functionCall.callID, input: object)
             case "cursor_position", "get_cursor_position", "mouse_position":
                 guard let cursor = cursorPositionProvider() else {
                     return ToolExecutionResult(
@@ -721,7 +715,21 @@ extension OpenAIComputerUseRunner {
                     "amount": ["type": "number"],
                     "pixels": ["type": "number"],
                     "seconds": ["type": "number"],
-                    "duration": ["type": "number"]
+                    "duration": ["type": "number"],
+                    "width": ["type": "integer"],
+                    "height": ["type": "integer"],
+                    "w": ["type": "integer"],
+                    "h": ["type": "integer"],
+                    "mode": [
+                        "type": "string",
+                        "enum": ["full", "crop", "current"]
+                    ],
+                    "overlay": [
+                        "type": "string",
+                        "enum": ["none", "grid"]
+                    ],
+                    "scale": ["type": "number"],
+                    "grid_spacing": ["type": "integer"]
                 ],
                 "required": ["action"],
                 "additionalProperties": true

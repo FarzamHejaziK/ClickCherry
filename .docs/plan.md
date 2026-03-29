@@ -183,6 +183,47 @@ description: Step-by-step implementation plan with code scope, automated tests, 
   - Completed on 2026-03-26 with user-reported success after following the OpenAI runner smoke checklist.
 - Confirm there is no visible regression in run startup, HUD behavior, screenshot-driven interaction, or error presentation.
 
+### Execution vision-grounding increment (implemented: 2026-03-27)
+
+#### Code
+- Add `DesktopScreenshotTransformService.swift` for screenshot cropping, scaling, PNG re-encoding, and grid-overlay rendering.
+- Add `OpenAIComputerUseRunner+VisionState.swift` to keep active screenshot/view metadata and coordinate remapping separate from selected-display anchoring state.
+- Add `OpenAIComputerUseRunner+ScreenshotActions.swift` to implement real screenshot tool behavior for `full`, `crop`, and `current` modes.
+- Extend `desktop_action` screenshot parameters with crop/zoom/overlay fields and return screenshot metadata in tool outputs.
+- Make crop/current screenshots update the active vision state so subsequent click/move coordinates resolve against the latest returned image.
+- Preserve OpenAI control-loop screenshots as PNG and send image inputs with `detail: "original"`.
+- Update the OpenAI execution prompt to teach `full -> crop -> fine overlay -> act` and “one dependent visual action per turn”.
+- Add runner-side guardrails that defer later same-turn visual `desktop_action` calls with a `wait_for_visual_feedback` tool response.
+- After non-screenshot desktop actions, reset the next-turn visual context back to a fresh full-display screenshot.
+
+#### Automated tests
+- Added `TaskAgentMacOSAppTests/DesktopScreenshotTransformServiceTests.swift`.
+- Added `TaskAgentMacOSAppTests/OpenAIComputerUseRunnerVisionTests.swift`.
+- Verified:
+  - screenshot request parsing
+  - `full`, `crop`, and `current` screenshot modes
+  - crop and nested-crop coordinate remapping
+  - `detail: "original"` image payloads
+  - full-display reset after non-screenshot actions
+  - same-turn dependent visual action deferral
+- Validation commands completed successfully on 2026-03-27:
+  - focused OpenAI runner suite
+  - focused vision suites
+  - full `TaskAgentMacOSAppTests` target
+  - full app build
+
+#### Manual test
+- Interactive validation checklist for this increment:
+  - full screenshot -> crop -> fine grid -> click a small target
+  - crop-inside-crop targeting on a tiny UI element
+  - confirm click coordinates from a crop land on the correct real screen point
+  - validate grid readability on both light and dark backgrounds
+  - confirm multi-display runs still target the selected display
+  - confirm the runner returns to a fresh full-display context after click/type/open actions
+- Validation note:
+  - automated coverage is complete as of 2026-03-27.
+  - interactive desktop validation is still pending in local runtime and remains the immediate next step.
+
 ## Step 5: Scheduling (cron-style while app is open)
 
 ### Code

@@ -1,8 +1,6 @@
 import AppKit
 import ApplicationServices
 import Foundation
-import ImageIO
-import UniformTypeIdentifiers
 
 extension OpenAIComputerUseRunner {
     func mapToToolCoordinates(x: Int, y: Int) -> (x: Int, y: Int) {
@@ -46,11 +44,11 @@ extension OpenAIComputerUseRunner {
     }
 
     func targetDisplayCenterPoint() -> (x: Int, y: Int)? {
-        guard coordinateSpaceWidthPx > 0, coordinateSpaceHeightPx > 0 else {
+        guard selectedDisplayCoordinateSpaceWidthPx > 0, selectedDisplayCoordinateSpaceHeightPx > 0 else {
             return nil
         }
-        let centerX = coordinateSpaceOriginX + (coordinateSpaceWidthPx / 2)
-        let centerY = coordinateSpaceOriginY + (coordinateSpaceHeightPx / 2)
+        let centerX = selectedDisplayCoordinateSpaceOriginX + (selectedDisplayCoordinateSpaceWidthPx / 2)
+        let centerY = selectedDisplayCoordinateSpaceOriginY + (selectedDisplayCoordinateSpaceHeightPx / 2)
         return (centerX, centerY)
     }
 
@@ -75,8 +73,14 @@ extension OpenAIComputerUseRunner {
         }
     }
 
-    func userTextAndImageInput(text: String, screenshot: OpenAICapturedScreenshot) -> [String: Any] {
-        [
+    func userTextAndImageInput(
+        text: String,
+        screenshot: OpenAICapturedScreenshot,
+        source: LLMScreenshotSource
+    ) -> [String: Any] {
+        recordScreenshotSentToLLM(screenshot, source: source)
+
+        return [
             "role": "user",
             "content": [
                 [
@@ -85,35 +89,82 @@ extension OpenAIComputerUseRunner {
                 ],
                 [
                     "type": "input_image",
-                    "image_url": imageDataURL(for: screenshot)
+                    "image_url": imageDataURL(for: screenshot),
+                    "detail": "original"
                 ]
             ]
         ]
+    }
+
+    func recordScreenshotSentToLLM(
+        _ screenshot: OpenAICapturedScreenshot,
+        source: LLMScreenshotSource
+    ) {
+        guard screenshotLogSink != nil, let encodedData = Data(base64Encoded: screenshot.base64Data) else {
+            return
+        }
+
+        screenshotLogSink?(LLMScreenshotLogEntry(
+            source: source,
+            mediaType: screenshot.mediaType,
+            width: screenshot.width,
+            height: screenshot.height,
+            captureWidthPx: screenshot.captureWidthPx,
+            captureHeightPx: screenshot.captureHeightPx,
+            coordinateSpaceWidthPx: screenshot.coordinateSpaceWidthPx,
+            coordinateSpaceHeightPx: screenshot.coordinateSpaceHeightPx,
+            rawByteCount: screenshot.byteCount,
+            base64ByteCount: screenshot.base64Data.utf8.count,
+            imageData: encodedData
+        ))
     }
 
     func imageDataURL(for screenshot: OpenAICapturedScreenshot) -> String {
         "data:\(screenshot.mediaType);base64,\(screenshot.base64Data)"
     }
 
-    func captureScreenshotForLLM(source: LLMScreenshotSource) throws -> OpenAICapturedScreenshot {
-        let screenshot = try screenshotProvider()
-        // Never retain screenshots in memory logs unless an explicit sink is provided.
-        if screenshotLogSink != nil, let encodedData = Data(base64Encoded: screenshot.base64Data) {
-            screenshotLogSink?(LLMScreenshotLogEntry(
-                source: source,
-                mediaType: screenshot.mediaType,
-                width: screenshot.width,
-                height: screenshot.height,
-                captureWidthPx: screenshot.captureWidthPx,
-                captureHeightPx: screenshot.captureHeightPx,
-                coordinateSpaceWidthPx: screenshot.coordinateSpaceWidthPx,
-                coordinateSpaceHeightPx: screenshot.coordinateSpaceHeightPx,
-                rawByteCount: screenshot.byteCount,
-                base64ByteCount: screenshot.base64Data.utf8.count,
-                imageData: encodedData
-            ))
+    func currentCursorImagePoint(in screenshot: OpenAICapturedScreenshot) -> (x: Int, y: Int)? {
+        guard let cursor = cursorPositionProvider() else { return nil }
+
+        let scaleX = screenshot.width > 0 ? Double(screenshot.coordinateSpaceWidthPx) / Double(screenshot.width) : 1.0
+        let scaleY = screenshot.height > 0 ? Double(screenshot.coordinateSpaceHeightPx) / Double(screenshot.height) : 1.0
+        let localX = cursor.x - screenshot.coordinateSpaceOriginX
+        let localY = cursor.y - screenshot.coordinateSpaceOriginY
+        let imageX = Int((Double(localX) / (scaleX == 0 ? 1.0 : scaleX)).rounded())
+        let imageY = Int((Double(localY) / (scaleY == 0 ? 1.0 : scaleY)).rounded())
+
+        guard screenshot.width > 0, screenshot.height > 0 else {
+            return (imageX, imageY)
         }
-        return screenshot
+
+        return (
+            max(0, min(screenshot.width - 1, imageX)),
+            max(0, min(screenshot.height - 1, imageY))
+        )
+    }
+
+    func visualCoordinateContextValues(for screenshot: OpenAICapturedScreenshot) -> [String] {
+        var lines = [
+            "IMAGE_COORDINATE_SYSTEM: origin=(0,0) is top-left of the screenshot, x increases rightward, y increases downward.",
+            "TOP_LEFT: (0, 0)",
+            "TOP_RIGHT: (\(max(0, screenshot.width - 1)), 0)",
+            "BOTTOM_LEFT: (0, \(max(0, screenshot.height - 1)))",
+            "BOTTOM_RIGHT: (\(max(0, screenshot.width - 1)), \(max(0, screenshot.height - 1)))"
+        ]
+        if let cursor = currentCursorImagePoint(in: screenshot) {
+            lines.insert("CURRENT_CURSOR: (\(cursor.x), \(cursor.y))", at: 0)
+        }
+        return lines
+    }
+
+    func appendVisualCoordinateContext(to text: String, screenshot: OpenAICapturedScreenshot) -> String {
+        let context = visualCoordinateContextValues(for: screenshot).joined(separator: "\n")
+        return "\(text)\n\n\(context)"
+    }
+
+    func captureScreenshotForLLM(source: LLMScreenshotSource) throws -> OpenAICapturedScreenshot {
+        _ = source
+        return try screenshotProvider()
     }
 
     nonisolated static func currentCursorPosition() -> (x: Int, y: Int)? {
@@ -148,7 +199,6 @@ extension OpenAIComputerUseRunner {
             throw OpenAIExecutionPlannerError.screenshotCaptureFailed
         }
 
-        let optimizedImage = optimizeScreenshotPayload(capture.pngData)
         return OpenAICapturedScreenshot(
             width: capture.width,
             height: capture.height,
@@ -158,9 +208,9 @@ extension OpenAIComputerUseRunner {
             coordinateSpaceHeightPx: coordSpaceH,
             coordinateSpaceOriginX: originX,
             coordinateSpaceOriginY: originY,
-            mediaType: optimizedImage.mediaType,
-            base64Data: optimizedImage.data.base64EncodedString(),
-            byteCount: optimizedImage.data.count
+            mediaType: "image/png",
+            base64Data: capture.pngData.base64EncodedString(),
+            byteCount: capture.pngData.count
         )
     }
 
@@ -186,7 +236,6 @@ extension OpenAIComputerUseRunner {
             throw OpenAIExecutionPlannerError.screenshotCaptureFailed
         }
 
-        let optimizedImage = optimizeScreenshotPayload(capture.pngData)
         return OpenAICapturedScreenshot(
             width: capture.width,
             height: capture.height,
@@ -196,44 +245,9 @@ extension OpenAIComputerUseRunner {
             coordinateSpaceHeightPx: coordSpaceH,
             coordinateSpaceOriginX: originX,
             coordinateSpaceOriginY: originY,
-            mediaType: optimizedImage.mediaType,
-            base64Data: optimizedImage.data.base64EncodedString(),
-            byteCount: optimizedImage.data.count
+            mediaType: "image/png",
+            base64Data: capture.pngData.base64EncodedString(),
+            byteCount: capture.pngData.count
         )
-    }
-
-    nonisolated static func optimizeScreenshotPayload(_ pngData: Data) -> (data: Data, mediaType: String) {
-        guard
-            let imageSource = CGImageSourceCreateWithData(pngData as CFData, nil),
-            let cgImage = CGImageSourceCreateImageAtIndex(imageSource, 0, nil)
-        else {
-            return (pngData, "image/png")
-        }
-
-        let output = NSMutableData()
-        let webpTypeIdentifier = UTType(filenameExtension: "webp")?.identifier ?? "public.webp"
-        guard let destination = CGImageDestinationCreateWithData(
-            output,
-            webpTypeIdentifier as CFString,
-            1,
-            nil
-        ) else {
-            return (pngData, "image/png")
-        }
-
-        let properties: [CFString: Any] = [
-            kCGImageDestinationLossyCompressionQuality: 0.84
-        ]
-        CGImageDestinationAddImage(destination, cgImage, properties as CFDictionary)
-        guard CGImageDestinationFinalize(destination) else {
-            return (pngData, "image/png")
-        }
-
-        let webpData = output as Data
-        // Keep PNG when WebP is unexpectedly larger.
-        guard webpData.count < pngData.count else {
-            return (pngData, "image/png")
-        }
-        return (webpData, "image/webp")
     }
 }

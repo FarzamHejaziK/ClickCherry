@@ -4,22 +4,28 @@ description: Short, continuously updated plan of the immediate next implementati
 
 # Next Steps
 
-1. Step: Split `PermissionService.swift` into clearer per-permission concerns with no behavior change.
-2. Why now: the OpenAI execution-runner split is now code-complete, tested, and manually smoke-validated, so the next highest maintainability hotspot in the active path is `PermissionService.swift`.
+1. Step: Validate the new vision-first grounding path on live desktop tasks and, if needed, follow it with stateful pointer execution improvements.
+2. Why now: screenshot crop/zoom, grid overlay, active image-to-screen mapping, and same-turn visual guardrails are now code-complete and automated-test complete, so the remaining risk is real desktop pointer reliability rather than missing infrastructure.
 3. Code tasks:
-  - Extract screen recording permission checks and routing into a dedicated concern.
-  - Extract microphone permission status, request flow, and settings handoff into a dedicated concern.
-  - Extract accessibility and input-monitoring remediation helpers into clearer local seams.
-  - Preserve all user-facing labels, status bucketing, deep links, and caching behavior exactly.
+  - Run live small-target tasks and collect any remaining misses or drift cases.
+  - If misses remain, implement the next executor follow-up:
+    - stepped mouse movement
+    - hover dwell
+    - click timing
+    - post-move verification before retry
+  - Tune grid contrast/spacing only if runtime validation shows the current overlay is hard to read.
 4. Automated tests:
-  - Keep `xcodebuild test -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/PermissionServiceTests test` green after each extraction slice.
+  - Keep `xcodebuild test -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests test` green.
+  - Keep `xcodebuild test -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/DesktopScreenshotTransformServiceTests -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerVisionTests test` green.
   - Run `xcodebuild test -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests test` after the final split.
   - Run `xcodebuild build -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" build` before closing the task.
 5. Manual tests:
-  - Exercise each permission row from onboarding/settings and confirm the primary action and status text remain unchanged.
-  - Validate the microphone not-determined flow still requests native access before falling back to Settings.
-  - Validate screen recording, accessibility, and input-monitoring flows still route to the same System Settings destinations.
+  - Run a small-target task that uses full screenshot -> crop -> fine grid -> click and confirm the click lands correctly.
+  - Run a crop-inside-crop targeting flow and confirm the final click still lands on the intended real screen point.
+  - Validate overlay readability on both light and dark backgrounds.
+  - Validate the same flow on a non-primary display.
+  - Confirm a click/type/open action resets the next model turn back to a fresh full-display screenshot.
 6. Exit criteria:
-  - `PermissionService.swift` is broken into smaller concern-based units or same-type extensions with no intended behavior change.
-  - Permission-focused tests, broader tests, and app build remain green.
-  - Manual permission remediation flows behave exactly as before.
+  - Live desktop validation shows the vision-first grounding flow materially improves localization for small targets.
+  - Any follow-up pointer-execution changes land with focused tests, full tests, and a clean build.
+  - Multi-display and overlay-readability checks remain green in manual validation.

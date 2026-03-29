@@ -117,7 +117,12 @@ extension MainShellStateStore {
 
         do {
             runHistory = try taskService.listAgentRunLogs(taskId: selectedTaskID)
-            runScreenshotLogByRunID = [:]
+            runScreenshotLogByRunID = Dictionary(
+                uniqueKeysWithValues: runHistory.map { run in
+                    let screenshots = (try? taskService.listAgentRunScreenshots(taskId: selectedTaskID, run: run)) ?? []
+                    return (run.id, screenshots)
+                }
+            )
         } catch {
             runHistory = []
             runScreenshotLogByRunID = [:]

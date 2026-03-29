@@ -267,6 +267,99 @@ struct TaskServiceTests {
     }
 
     @Test
+    func saveAndListAgentRunScreenshotsRoundTripsExactImageBytes() throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let task = try taskService.createTask(title: "Run screenshot task")
+
+        let started = Date(timeIntervalSince1970: 1_700_000_100)
+        let run = AgentRunRecord(
+            id: UUID(uuidString: "12345678-90ab-cdef-1234-567890abcdef")!,
+            startedAt: started,
+            finishedAt: started.addingTimeInterval(2),
+            outcome: .success,
+            displayIndex: 1
+        )
+        let screenshot = LLMScreenshotLogEntry(
+            id: UUID(uuidString: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")!,
+            timestamp: started.addingTimeInterval(1),
+            source: .actionScreenshot,
+            mediaType: "image/png",
+            width: 10,
+            height: 8,
+            captureWidthPx: 10,
+            captureHeightPx: 8,
+            coordinateSpaceWidthPx: 20,
+            coordinateSpaceHeightPx: 16,
+            rawByteCount: 4,
+            base64ByteCount: 8,
+            imageData: Data([0x89, 0x50, 0x4E, 0x47])
+        )
+
+        let directoryURL = try taskService.saveAgentRunScreenshots(taskId: task.id, run: run, screenshots: [screenshot])
+        #expect(fm.fileExists(atPath: directoryURL.path))
+        #expect(fm.fileExists(atPath: directoryURL.appendingPathComponent("manifest.json").path))
+
+        let listed = try taskService.listAgentRunScreenshots(taskId: task.id, run: run)
+        #expect(listed == [screenshot])
+    }
+
+    @Test
+    func saveAndListAgentRunLLMExchangesRoundTripsExactBodies() throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let task = try taskService.createTask(title: "Run exchange task")
+
+        let started = Date(timeIntervalSince1970: 1_700_000_200)
+        let run = AgentRunRecord(
+            id: UUID(uuidString: "87654321-90ab-cdef-1234-567890abcdef")!,
+            startedAt: started,
+            finishedAt: started.addingTimeInterval(2),
+            outcome: .success,
+            displayIndex: 1
+        )
+        let exchange = LLMExchangeLogEntry(
+            id: UUID(uuidString: "bbbbbbbb-cccc-dddd-eeee-ffffffffffff")!,
+            startedAt: started,
+            finishedAt: started.addingTimeInterval(1),
+            provider: .openAI,
+            operation: .execution,
+            attempt: 1,
+            url: "https://api.openai.com/v1/responses",
+            httpStatus: 200,
+            requestId: "req_123",
+            outcome: .success,
+            requestBodyData: Data("{\"model\":\"gpt-5.3-codex\"}".utf8),
+            responseBodyData: Data("{\"id\":\"resp_123\"}".utf8)
+        )
+
+        let directoryURL = try taskService.saveAgentRunLLMExchanges(taskId: task.id, run: run, exchanges: [exchange])
+        #expect(fm.fileExists(atPath: directoryURL.path))
+        #expect(fm.fileExists(atPath: directoryURL.appendingPathComponent("manifest.json").path))
+        #expect(fm.fileExists(atPath: directoryURL.appendingPathComponent("001-request.json").path))
+        #expect(fm.fileExists(atPath: directoryURL.appendingPathComponent("001-response.json").path))
+
+        let listed = try taskService.listAgentRunLLMExchanges(taskId: task.id, run: run)
+        #expect(listed == [exchange])
+    }
+
+    @Test
     func deleteTaskRemovesWorkspace() throws {
         let fm = FileManager.default
         let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)

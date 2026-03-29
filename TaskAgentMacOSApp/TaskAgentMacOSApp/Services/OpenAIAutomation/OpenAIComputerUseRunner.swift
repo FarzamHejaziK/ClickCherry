@@ -71,6 +71,7 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
         var isError: Bool
         var stepDescription: String?
         var generatedQuestions: [String]
+        var followupVision: OpenAIFollowupVisionStrategy? = nil
     }
 
     struct CompletionResult {
@@ -78,6 +79,7 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
         var summary: String?
         var questions: [String]
         var errorMessage: String?
+        var rawCompletionText: String?
     }
 
     struct TerminalExecToolResultPayload: Encodable {
@@ -180,6 +182,7 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
     let cursorPositionProvider: () -> (x: Int, y: Int)?
     let screenshotLogSink: ((LLMScreenshotLogEntry) -> Void)?
     let callLogSink: ((LLMCallLogEntry) -> Void)?
+    let exchangeLogSink: ((LLMExchangeLogEntry) -> Void)?
     let traceSink: ((ExecutionTraceEntry) -> Void)?
 
     let jsonDecoder = JSONDecoder()
@@ -193,12 +196,18 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
     var coordinateSpaceHeightPx: Int = 0
     var coordinateSpaceOriginX: Int = 0
     var coordinateSpaceOriginY: Int = 0
+    var selectedDisplayCoordinateSpaceWidthPx: Int = 0
+    var selectedDisplayCoordinateSpaceHeightPx: Int = 0
+    var selectedDisplayCoordinateSpaceOriginX: Int = 0
+    var selectedDisplayCoordinateSpaceOriginY: Int = 0
+    var activeVisionState: OpenAIVisionViewState?
 
     init(
         apiKeyStore: any APIKeyStore,
         promptCatalog: PromptCatalogService = PromptCatalogService(),
         promptName: String = "execution_agent_openai",
         callLogSink: ((LLMCallLogEntry) -> Void)? = nil,
+        exchangeLogSink: ((LLMExchangeLogEntry) -> Void)? = nil,
         screenshotLogSink: ((LLMScreenshotLogEntry) -> Void)? = nil,
         traceSink: ((ExecutionTraceEntry) -> Void)? = nil,
         session: URLSession = .shared,
@@ -215,6 +224,7 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
         self.promptCatalog = promptCatalog
         self.promptName = promptName
         self.callLogSink = callLogSink
+        self.exchangeLogSink = exchangeLogSink
         self.screenshotLogSink = screenshotLogSink
         self.traceSink = traceSink
         let configurationTemplate = Self.copySessionConfiguration(from: session.configuration)
@@ -237,7 +247,11 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
 
         let initialScreenshot: OpenAICapturedScreenshot
         do {
-            initialScreenshot = try captureScreenshotForLLM(source: .initialPromptImage)
+            initialScreenshot = try captureAndApplyFullDisplayScreenshotForLLM(
+                source: .initialPromptImage,
+                overlay: .none,
+                gridSpacing: nil
+            )
         } catch {
             throw OpenAIExecutionPlannerError.screenshotCaptureFailed
         }
@@ -248,6 +262,10 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
         coordinateSpaceHeightPx = initialScreenshot.coordinateSpaceHeightPx
         coordinateSpaceOriginX = initialScreenshot.coordinateSpaceOriginX
         coordinateSpaceOriginY = initialScreenshot.coordinateSpaceOriginY
+        selectedDisplayCoordinateSpaceWidthPx = initialScreenshot.coordinateSpaceWidthPx
+        selectedDisplayCoordinateSpaceHeightPx = initialScreenshot.coordinateSpaceHeightPx
+        selectedDisplayCoordinateSpaceOriginX = initialScreenshot.coordinateSpaceOriginX
+        selectedDisplayCoordinateSpaceOriginY = initialScreenshot.coordinateSpaceOriginY
 
         if initialScreenshot.width > 0, initialScreenshot.height > 0 {
             coordinateScaleX = Double(initialScreenshot.coordinateSpaceWidthPx) / Double(initialScreenshot.width)
@@ -260,14 +278,23 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
         // Prime focus on the selected display so subsequent app launches and input stay screen-aligned.
         anchorInteractionTarget(executor: executor, reason: "run_start", performClick: true)
 
-        recordTrace(kind: .info, "Execution started (model=\(promptTemplate.config.llm), tools=desktop_action,terminal_exec).")
-
-        let renderedPrompt = renderPrompt(
-            promptTemplate.prompt,
-            taskMarkdown: taskMarkdown,
-            screenWidth: initialScreenshot.width,
-            screenHeight: initialScreenshot.height
+        recordTrace(
+            kind: .info,
+            "Prompt selected: name=\(promptTemplate.name) version=\(promptTemplate.config.version) model=\(promptTemplate.config.llm)."
         )
+        if let sourceURL = promptTemplate.sourceURL {
+            recordTrace(kind: .info, "Prompt file: \(sourceURL.path)")
+        }
+        if let reasoningEffort = promptTemplate.config.reasoningEffort {
+            recordTrace(kind: .info, "Reasoning settings: effort=\(reasoningEffort) summary=\(promptTemplate.config.reasoningSummary ?? "none").")
+        }
+        recordTrace(
+            kind: .info,
+            "Execution started (model=\(promptTemplate.config.llm), tools=desktop_action,terminal_exec)."
+        )
+
+        let renderedPrompt = renderPrompt(promptTemplate.prompt, taskMarkdown: taskMarkdown, screenshot: initialScreenshot)
+        let initialPromptText = appendVisualCoordinateContext(to: renderedPrompt, screenshot: initialScreenshot)
 
         let tools = [
             desktopActionToolDefinition(),
@@ -276,8 +303,9 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
 
         let initialInput = [
             userTextAndImageInput(
-                text: renderedPrompt,
-                screenshot: initialScreenshot
+                text: initialPromptText,
+                screenshot: initialScreenshot,
+                source: .initialPromptImage
             )
         ]
 
@@ -286,6 +314,8 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
             input: initialInput,
             tools: tools,
             previousResponseId: nil,
+            reasoningEffort: promptTemplate.config.reasoningEffort,
+            reasoningSummary: promptTemplate.config.reasoningSummary,
             apiKey: apiKey
         )
 
@@ -305,16 +335,20 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
                         kind: .completion,
                         "Completion: status=\(completion.outcome) questions=\(completion.questions.count) summary=\(completion.summary == nil ? "none" : "present")"
                     )
+                    if let rawCompletionText = completion.rawCompletionText {
+                        recordExactTrace(kind: .completion, "Completion payload: \(rawCompletionText)")
+                    }
                     return AutomationRunResult(
                         outcome: completion.outcome,
                         executedSteps: executedSteps,
                         generatedQuestions: dedupe(generatedQuestions + completion.questions),
                         errorMessage: completion.errorMessage,
-                        llmSummary: completion.summary
+                        llmSummary: composeLLMSummary(from: completion)
                     )
                 }
 
                 var followupInput: [[String: Any]] = []
+                var pendingFollowupVision: OpenAIFollowupVisionStrategy?
                 for functionCall in functionCalls {
                     try Task.checkCancellation()
                     recordTrace(kind: .toolUse, summarizeFunctionCall(functionCall))
@@ -328,16 +362,64 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
                     }
 
                     generatedQuestions.append(contentsOf: execution.generatedQuestions)
+                    pendingFollowupVision = execution.followupVision ?? pendingFollowupVision
                     followupInput.append(
                         functionCallOutputInput(callID: execution.callID, output: execution.output)
                     )
                 }
 
-                let latestScreenshot = try captureScreenshotForLLM(source: .postActionSnapshot)
+                let latestScreenshot: OpenAICapturedScreenshot
+                if let followupVision = pendingFollowupVision {
+                    switch followupVision {
+                    case .provided(let screenshot, _):
+                        latestScreenshot = screenshot
+                    case .currentView(let description):
+                        latestScreenshot = try renderCurrentVisionViewForLLM(
+                            source: .postActionSnapshot,
+                            modeOverride: nil,
+                            overlay: nil,
+                            gridSpacing: nil,
+                            zoomScale: nil
+                        )
+                        recordTrace(kind: .info, description)
+                    case .fullDisplay(let description):
+                        latestScreenshot = try captureAndApplyFullDisplayScreenshotForLLM(
+                            source: .postActionSnapshot,
+                            overlay: .none,
+                            gridSpacing: nil
+                        )
+                        recordTrace(kind: .info, description)
+                    }
+                } else {
+                    latestScreenshot = try captureAndApplyFullDisplayScreenshotForLLM(
+                        source: .postActionSnapshot,
+                        overlay: .none,
+                        gridSpacing: nil
+                    )
+                }
+                toolDisplayWidthPx = latestScreenshot.width
+                toolDisplayHeightPx = latestScreenshot.height
+                coordinateSpaceWidthPx = latestScreenshot.coordinateSpaceWidthPx
+                coordinateSpaceHeightPx = latestScreenshot.coordinateSpaceHeightPx
+                coordinateSpaceOriginX = latestScreenshot.coordinateSpaceOriginX
+                coordinateSpaceOriginY = latestScreenshot.coordinateSpaceOriginY
+
+                if latestScreenshot.width > 0, latestScreenshot.height > 0 {
+                    coordinateScaleX = Double(latestScreenshot.coordinateSpaceWidthPx) / Double(latestScreenshot.width)
+                    coordinateScaleY = Double(latestScreenshot.coordinateSpaceHeightPx) / Double(latestScreenshot.height)
+                } else {
+                    coordinateScaleX = 1.0
+                    coordinateScaleY = 1.0
+                }
+
                 followupInput.append(
                     userTextAndImageInput(
-                        text: "Latest desktop screenshot after tool execution.",
-                        screenshot: latestScreenshot
+                        text: appendVisualCoordinateContext(
+                            to: "Latest desktop screenshot after tool execution.",
+                            screenshot: latestScreenshot
+                        ),
+                        screenshot: latestScreenshot,
+                        source: .postActionSnapshot
                     )
                 )
 
@@ -346,6 +428,8 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
                     input: followupInput,
                     tools: tools,
                     previousResponseId: response.id,
+                    reasoningEffort: promptTemplate.config.reasoningEffort,
+                    reasoningSummary: promptTemplate.config.reasoningSummary,
                     apiKey: apiKey
                 )
             }

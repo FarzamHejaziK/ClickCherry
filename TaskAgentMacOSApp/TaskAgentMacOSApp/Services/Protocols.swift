@@ -65,22 +65,22 @@ struct ProviderSetupState: Equatable {
     }
 }
 
-enum LLMProvider: String, Equatable, Sendable {
+enum LLMProvider: String, Equatable, Sendable, Codable {
     case openAI
     case gemini
 }
 
-enum LLMOperation: String, Equatable, Sendable {
+enum LLMOperation: String, Equatable, Sendable, Codable {
     case taskExtraction
     case execution
 }
 
-enum LLMCallOutcome: String, Equatable, Sendable {
+enum LLMCallOutcome: String, Equatable, Sendable, Codable {
     case success
     case failure
 }
 
-enum LLMScreenshotSource: String, Equatable, Sendable {
+enum LLMScreenshotSource: String, Equatable, Sendable, Codable {
     case initialPromptImage = "initial_prompt_image"
     case actionScreenshot = "action_screenshot"
     case postActionSnapshot = "post_action_snapshot"
@@ -208,5 +208,48 @@ struct LLMCallLogEntry: Identifiable, Equatable, Sendable {
 
     var durationMs: Int {
         Int(finishedAt.timeIntervalSince(startedAt) * 1000.0)
+    }
+}
+
+struct LLMExchangeLogEntry: Identifiable, Equatable, Sendable {
+    var id: UUID
+    var startedAt: Date
+    var finishedAt: Date
+    var provider: LLMProvider
+    var operation: LLMOperation
+    var attempt: Int
+    var url: String
+    var httpStatus: Int?
+    var requestId: String?
+    var outcome: LLMCallOutcome
+    var requestBodyData: Data
+    var responseBodyData: Data?
+
+    init(
+        id: UUID = UUID(),
+        startedAt: Date,
+        finishedAt: Date,
+        provider: LLMProvider,
+        operation: LLMOperation,
+        attempt: Int,
+        url: String,
+        httpStatus: Int? = nil,
+        requestId: String? = nil,
+        outcome: LLMCallOutcome,
+        requestBodyData: Data,
+        responseBodyData: Data? = nil
+    ) {
+        self.id = id
+        self.startedAt = startedAt
+        self.finishedAt = finishedAt
+        self.provider = provider
+        self.operation = operation
+        self.attempt = attempt
+        self.url = url
+        self.httpStatus = httpStatus
+        self.requestId = requestId
+        self.outcome = outcome
+        self.requestBodyData = requestBodyData
+        self.responseBodyData = responseBodyData
     }
 }

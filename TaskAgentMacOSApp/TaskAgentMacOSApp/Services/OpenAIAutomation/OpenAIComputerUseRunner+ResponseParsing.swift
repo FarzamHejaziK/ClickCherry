@@ -52,7 +52,8 @@ extension OpenAIComputerUseRunner {
                 outcome: .needsClarification,
                 summary: nil,
                 questions: ["Execution ended without a final status. What should I do next?"],
-                errorMessage: "Execution ended without a final status."
+                errorMessage: "Execution ended without a final status.",
+                rawCompletionText: nil
             )
         }
 
@@ -61,9 +62,10 @@ extension OpenAIComputerUseRunner {
             let questions = payload.questions?.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty } ?? []
             return CompletionResult(
                 outcome: mapStatus(payload.status),
-                summary: payload.summary?.trimmingCharacters(in: .whitespacesAndNewlines),
+                summary: summarizeCompletionPayload(payload),
                 questions: questions,
-                errorMessage: payload.error?.trimmingCharacters(in: .whitespacesAndNewlines)
+                errorMessage: payload.error?.trimmingCharacters(in: .whitespacesAndNewlines),
+                rawCompletionText: trimmed
             )
         }
 
@@ -71,8 +73,31 @@ extension OpenAIComputerUseRunner {
             outcome: .needsClarification,
             summary: trimmed,
             questions: ["Execution result was not machine-readable. Please clarify what should happen next."],
-            errorMessage: "Final model response was not valid completion JSON."
+            errorMessage: "Final model response was not valid completion JSON.",
+            rawCompletionText: trimmed
         )
+    }
+
+    func composeLLMSummary(from completion: CompletionResult) -> String? {
+        guard let summary = completion.summary?.trimmingCharacters(in: .whitespacesAndNewlines), !summary.isEmpty else {
+            return nil
+        }
+        return summary
+    }
+
+    func summarizeCompletionPayload(_ payload: OpenAIToolLoopCompletionPayload) -> String? {
+        var parts: [String] = []
+        if let summary = payload.summary?.trimmingCharacters(in: .whitespacesAndNewlines), !summary.isEmpty {
+            parts.append(summary)
+        }
+        if let observation = payload.debugVisualObservation?.trimmingCharacters(in: .whitespacesAndNewlines), !observation.isEmpty {
+            parts.append("Debug visual observation: \(observation)")
+        }
+        if let mouse = payload.debugMouseLocation?.trimmingCharacters(in: .whitespacesAndNewlines), !mouse.isEmpty {
+            parts.append("Debug mouse location: \(mouse)")
+        }
+        guard !parts.isEmpty else { return nil }
+        return parts.joined(separator: "\n")
     }
 
     func extractJSONPayloadData(from content: String) -> Data? {
@@ -208,7 +233,14 @@ extension OpenAIComputerUseRunner {
         case "cursor_position", "get_cursor_position", "mouse_position":
             return "\(functionCall.name).cursor_position"
         case "screenshot":
-            return "\(functionCall.name).screenshot"
+            let mode = object["mode"]?.stringValue ?? "full"
+            let overlay = object["overlay"]?.stringValue ?? "none"
+            if mode.lowercased() == "crop", let x = object["x"]?.intValue, let y = object["y"]?.intValue {
+                let width = object["width"]?.intValue ?? object["w"]?.intValue ?? -1
+                let height = object["height"]?.intValue ?? object["h"]?.intValue ?? -1
+                return "\(functionCall.name).screenshot(mode=\(mode),overlay=\(overlay),x=\(x),y=\(y),w=\(width),h=\(height))"
+            }
+            return "\(functionCall.name).screenshot(mode=\(mode),overlay=\(overlay))"
         default:
             return "\(functionCall.name).\(action)"
         }
@@ -216,6 +248,12 @@ extension OpenAIComputerUseRunner {
 
     func recordTrace(kind: ExecutionTraceKind, _ message: String) {
         traceSink?(ExecutionTraceEntry(kind: kind, message: truncate(message, limit: 900)))
+    }
+
+    func recordExactTrace(kind: ExecutionTraceKind, _ message: String) {
+        let cleaned = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty else { return }
+        traceSink?(ExecutionTraceEntry(kind: kind, message: cleaned))
     }
 
     func truncate(_ message: String, limit: Int) -> String {

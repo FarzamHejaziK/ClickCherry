@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Testing
 @testable import TaskAgentMacOSApp
@@ -145,6 +146,7 @@ struct OpenAIComputerUseRunnerTests {
     func runToolLoopExecutesToolUseAndReturnsSuccess() async throws {
         let (promptCatalog, tempRoot) = try makePromptCatalog()
         defer { try? FileManager.default.removeItem(at: tempRoot) }
+        let expectedModel = try promptCatalog.loadPrompt(named: "execution_agent_openai").config.llm
 
         OpenAIQueueURLProtocol.reset()
         defer { OpenAIQueueURLProtocol.reset() }
@@ -162,7 +164,7 @@ struct OpenAIComputerUseRunnerTests {
                 throw NSError(domain: "OpenAIComputerUseRunnerTests", code: 0)
             }
 
-            #expect(model == "gpt-5.2-codex")
+            #expect(model == expectedModel)
             #expect(tools.compactMap { $0["name"] as? String }.contains("desktop_action"))
             #expect(tools.compactMap { $0["name"] as? String }.contains("terminal_exec"))
             #expect(content.contains(where: { ($0["type"] as? String) == "input_image" }))
@@ -305,7 +307,7 @@ struct OpenAIComputerUseRunnerTests {
             promptCatalog: promptCatalog,
             session: makeSession(),
             screenshotProvider: {
-                let data = Data("jpg".utf8)
+                let data = try Self.makeValidPNGData(width: 8, height: 8)
                 return OpenAICapturedScreenshot(
                     width: 1280,
                     height: 720,
@@ -315,7 +317,7 @@ struct OpenAIComputerUseRunnerTests {
                     coordinateSpaceHeightPx: 1440,
                     coordinateSpaceOriginX: 0,
                     coordinateSpaceOriginY: 0,
-                    mediaType: "image/jpeg",
+                    mediaType: "image/png",
                     base64Data: data.base64EncodedString(),
                     byteCount: data.count
                 )
@@ -325,6 +327,94 @@ struct OpenAIComputerUseRunnerTests {
 
         _ = try await runner.runToolLoop(taskMarkdown: "# Task\nClick target", executor: executor)
         #expect(executor.clicks.last == OpenAIXY(x: 200, y: 400))
+    }
+
+    @Test
+    func runToolLoopExecutesMouseMoveExecution() async throws {
+        let (promptCatalog, tempRoot) = try makePromptCatalog()
+        defer { try? FileManager.default.removeItem(at: tempRoot) }
+
+        OpenAIQueueURLProtocol.reset()
+        defer { OpenAIQueueURLProtocol.reset() }
+
+        OpenAIQueueURLProtocol.enqueue { request in
+            let responseBody = """
+            {
+              "id": "resp_1",
+              "output": [
+                {
+                  "type": "function_call",
+                  "id": "fc_1",
+                  "call_id": "call_1",
+                  "name": "desktop_action",
+                  "arguments": "{\\"action\\":\\"mouse_move\\",\\"x\\":900,\\"y\\":700}"
+                }
+              ]
+            }
+            """
+            return (Self.response(url: request.url!, code: 200), Data(responseBody.utf8))
+        }
+
+        OpenAIQueueURLProtocol.enqueue { request in
+            guard
+                let bodyData = Self.requestBodyData(from: request),
+                let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any],
+                let input = json["input"] as? [[String: Any]],
+                let functionOutput = input.first(where: { ($0["type"] as? String) == "function_call_output" }),
+                let output = functionOutput["output"] as? String
+            else {
+                throw NSError(domain: "OpenAIComputerUseRunnerTests", code: 90)
+            }
+
+            #expect(output.contains("\"ok\":true"))
+
+            let responseBody = """
+            {
+              "id": "resp_2",
+              "output": [
+                {
+                  "type": "message",
+                  "content": [
+                    {
+                      "type": "output_text",
+                      "text": "{\\"status\\":\\"SUCCESS\\",\\"summary\\":\\"ok\\",\\"error\\":null,\\"questions\\":[]}"
+                    }
+                  ]
+                }
+              ]
+            }
+            """
+            return (Self.response(url: request.url!, code: 200), Data(responseBody.utf8))
+        }
+
+        let runner = OpenAIComputerUseRunner(
+            apiKeyStore: OpenAIStubAPIKeyStore(values: [.openAI: "openai-test-key"]),
+            promptCatalog: promptCatalog,
+            session: makeSession(),
+            screenshotProvider: {
+                let data = Data("png".utf8)
+                return OpenAICapturedScreenshot(
+                    width: 1280,
+                    height: 800,
+                    captureWidthPx: 1280,
+                    captureHeightPx: 800,
+                    coordinateSpaceWidthPx: 1280,
+                    coordinateSpaceHeightPx: 800,
+                    coordinateSpaceOriginX: 0,
+                    coordinateSpaceOriginY: 0,
+                    mediaType: "image/png",
+                    base64Data: data.base64EncodedString(),
+                    byteCount: data.count
+                )
+            }
+        )
+        let executor = OpenAIMockDesktopExecutor()
+
+        let result = try await runner.runToolLoop(taskMarkdown: "# Task\nMove the mouse", executor: executor)
+
+        #expect(result.outcome == .success)
+        #expect(result.executedSteps.contains("Move mouse to (900, 700)"))
+        #expect(executor.moves == [OpenAIXY(x: 640, y: 400), OpenAIXY(x: 900, y: 700)])
     }
 
     @Test
@@ -992,22 +1082,52 @@ struct OpenAIComputerUseRunnerTests {
     private func makePromptCatalog() throws -> (PromptCatalogService, URL) {
         let fm = FileManager.default
         let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
-        let promptDir = tempRoot.appendingPathComponent("execution_agent_openai", isDirectory: true)
-        try fm.createDirectory(at: promptDir, withIntermediateDirectories: true)
-        try """
-        PROMPT_HEADER
-        OS: {{OS_VERSION}}
-        SCREEN_WIDTH: {{SCREEN_WIDTH}}
-        SCREEN_HEIGHT: {{SCREEN_HEIGHT}}
-        TASK_MARKDOWN:
-        {{TASK_MARKDOWN}}
-        PROMPT_FOOTER
-        """.write(to: promptDir.appendingPathComponent("prompt.md"), atomically: true, encoding: .utf8)
-        try """
-        version: v1
-        llm: gpt-5.2-codex
-        """.write(to: promptDir.appendingPathComponent("config.yaml"), atomically: true, encoding: .utf8)
+        try TestPromptFixtureSupport.writePromptFixture(
+            named: "execution_agent_openai",
+            into: tempRoot,
+            promptBody: """
+            PROMPT_HEADER
+            OS: {{OS_VERSION}}
+            SCREEN_WIDTH: {{SCREEN_WIDTH}}
+            SCREEN_HEIGHT: {{SCREEN_HEIGHT}}
+            TASK_MARKDOWN:
+            {{TASK_MARKDOWN}}
+            PROMPT_FOOTER
+            """,
+            fileManager: fm
+        )
 
         return (PromptCatalogService(promptsRootURL: tempRoot, fileManager: fm), tempRoot)
+    }
+
+    private static func makeValidPNGData(width: Int, height: Int) throws -> Data {
+        guard
+            let bitmapRep = NSBitmapImageRep(
+                bitmapDataPlanes: nil,
+                pixelsWide: width,
+                pixelsHigh: height,
+                bitsPerSample: 8,
+                samplesPerPixel: 4,
+                hasAlpha: true,
+                isPlanar: false,
+                colorSpaceName: .deviceRGB,
+                bytesPerRow: 0,
+                bitsPerPixel: 0
+            ),
+            let context = NSGraphicsContext(bitmapImageRep: bitmapRep)
+        else {
+            throw NSError(domain: "OpenAIComputerUseRunnerTests", code: 201)
+        }
+
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = context
+        NSColor(calibratedWhite: 0.92, alpha: 1.0).setFill()
+        NSBezierPath(rect: NSRect(x: 0, y: 0, width: width, height: height)).fill()
+        NSGraphicsContext.restoreGraphicsState()
+
+        guard let pngData = bitmapRep.representation(using: .png, properties: [:]) else {
+            throw NSError(domain: "OpenAIComputerUseRunnerTests", code: 202)
+        }
+        return pngData
     }
 }

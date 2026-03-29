@@ -319,6 +319,28 @@ struct TaskService {
         return try agentRunLogService.persist(run: run, runsDir: runsDir)
     }
 
+    @discardableResult
+    func saveAgentRunScreenshots(taskId: String, run: AgentRunRecord, screenshots: [LLMScreenshotLogEntry]) throws -> URL {
+        let workspace = workspaceURL(for: taskId)
+        guard fileManager.fileExists(atPath: workspace.path) else {
+            throw TaskServiceError.taskNotFound
+        }
+
+        let runsDir = workspace.appendingPathComponent("runs", isDirectory: true)
+        return try agentRunLogService.persistScreenshots(run: run, screenshots: screenshots, runsDir: runsDir)
+    }
+
+    @discardableResult
+    func saveAgentRunLLMExchanges(taskId: String, run: AgentRunRecord, exchanges: [LLMExchangeLogEntry]) throws -> URL {
+        let workspace = workspaceURL(for: taskId)
+        guard fileManager.fileExists(atPath: workspace.path) else {
+            throw TaskServiceError.taskNotFound
+        }
+
+        let runsDir = workspace.appendingPathComponent("runs", isDirectory: true)
+        return try agentRunLogService.persistLLMExchanges(run: run, exchanges: exchanges, runsDir: runsDir)
+    }
+
     func listAgentRunLogs(taskId: String) throws -> [AgentRunRecord] {
         let workspace = workspaceURL(for: taskId)
         guard fileManager.fileExists(atPath: workspace.path) else {
@@ -327,6 +349,26 @@ struct TaskService {
 
         let runsDir = workspace.appendingPathComponent("runs", isDirectory: true)
         return try agentRunLogService.listRuns(runsDir: runsDir)
+    }
+
+    func listAgentRunScreenshots(taskId: String, run: AgentRunRecord) throws -> [LLMScreenshotLogEntry] {
+        let workspace = workspaceURL(for: taskId)
+        guard fileManager.fileExists(atPath: workspace.path) else {
+            throw TaskServiceError.taskNotFound
+        }
+
+        let runsDir = workspace.appendingPathComponent("runs", isDirectory: true)
+        return try agentRunLogService.listScreenshots(for: run, runsDir: runsDir)
+    }
+
+    func listAgentRunLLMExchanges(taskId: String, run: AgentRunRecord) throws -> [LLMExchangeLogEntry] {
+        let workspace = workspaceURL(for: taskId)
+        guard fileManager.fileExists(atPath: workspace.path) else {
+            throw TaskServiceError.taskNotFound
+        }
+
+        let runsDir = workspace.appendingPathComponent("runs", isDirectory: true)
+        return try agentRunLogService.listLLMExchanges(for: run, runsDir: runsDir)
     }
 
     private func readTaskTitle(from heartbeatFile: URL) throws -> String {
@@ -400,6 +442,49 @@ private struct AgentRunLogFileV1: Codable {
     var run: AgentRunRecord
 }
 
+private struct AgentRunScreenshotManifestV1: Codable {
+    var version: Int
+    var entries: [AgentRunScreenshotManifestEntryV1]
+}
+
+private struct AgentRunScreenshotManifestEntryV1: Codable {
+    var id: UUID
+    var timestamp: Date
+    var source: LLMScreenshotSource
+    var mediaType: String
+    var width: Int
+    var height: Int
+    var captureWidthPx: Int
+    var captureHeightPx: Int
+    var coordinateSpaceWidthPx: Int
+    var coordinateSpaceHeightPx: Int
+    var rawByteCount: Int
+    var base64ByteCount: Int
+    var fileName: String
+}
+
+private struct AgentRunLLMExchangeManifestV1: Codable {
+    var version: Int
+    var entries: [AgentRunLLMExchangeManifestEntryV1]
+}
+
+private struct AgentRunLLMExchangeManifestEntryV1: Codable {
+    var id: UUID
+    var startedAt: Date
+    var finishedAt: Date
+    var provider: LLMProvider
+    var operation: LLMOperation
+    var attempt: Int
+    var url: String
+    var httpStatus: Int?
+    var requestId: String?
+    var outcome: LLMCallOutcome
+    var requestByteCount: Int
+    var responseByteCount: Int?
+    var requestFileName: String
+    var responseFileName: String?
+}
+
 private struct AgentRunLogService {
     private let fileManager: FileManager
 
@@ -413,22 +498,116 @@ private struct AgentRunLogService {
             try fileManager.createDirectory(at: runsDir, withIntermediateDirectories: true)
         }
 
-        let timestamp = Self.isoTimestamp(for: run.startedAt).replacingOccurrences(of: ":", with: "-")
-        let suffix = run.id.uuidString.prefix(8).lowercased()
-        let fileURL = runsDir.appendingPathComponent("agent-run-\(timestamp)-\(suffix).json", isDirectory: false)
+        let fileURL = runsDir.appendingPathComponent(Self.artifactBaseName(for: run) + ".json", isDirectory: false)
 
         let payload = AgentRunLogFileV1(version: 1, run: run)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        encoder.dateEncodingStrategy = .custom { date, encoder in
-            var container = encoder.singleValueContainer()
-            try container.encode(Self.isoTimestamp(for: date))
-        }
+        encoder.dateEncodingStrategy = Self.dateEncodingStrategy
 
         do {
             let data = try encoder.encode(payload)
             try data.write(to: fileURL, options: [.atomic])
             return fileURL
+        } catch {
+            throw TaskServiceError.runPersistenceFailed
+        }
+    }
+
+    @discardableResult
+    func persistScreenshots(run: AgentRunRecord, screenshots: [LLMScreenshotLogEntry], runsDir: URL) throws -> URL {
+        let directoryURL = screenshotsDirectoryURL(for: run, runsDir: runsDir)
+        if fileManager.fileExists(atPath: directoryURL.path) {
+            try? fileManager.removeItem(at: directoryURL)
+        }
+        try fileManager.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+
+        let manifestEntries: [AgentRunScreenshotManifestEntryV1] = try screenshots.enumerated().map { index, entry in
+            let fileExtension = Self.fileExtension(for: entry.mediaType)
+            let fileName = String(format: "%03d-%@.%@", index + 1, entry.source.rawValue, fileExtension)
+            let fileURL = directoryURL.appendingPathComponent(fileName, isDirectory: false)
+            try entry.imageData.write(to: fileURL, options: [.atomic])
+            return AgentRunScreenshotManifestEntryV1(
+                id: entry.id,
+                timestamp: entry.timestamp,
+                source: entry.source,
+                mediaType: entry.mediaType,
+                width: entry.width,
+                height: entry.height,
+                captureWidthPx: entry.captureWidthPx,
+                captureHeightPx: entry.captureHeightPx,
+                coordinateSpaceWidthPx: entry.coordinateSpaceWidthPx,
+                coordinateSpaceHeightPx: entry.coordinateSpaceHeightPx,
+                rawByteCount: entry.rawByteCount,
+                base64ByteCount: entry.base64ByteCount,
+                fileName: fileName
+            )
+        }
+
+        let manifest = AgentRunScreenshotManifestV1(version: 1, entries: manifestEntries)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.dateEncodingStrategy = Self.dateEncodingStrategy
+        let manifestURL = directoryURL.appendingPathComponent("manifest.json", isDirectory: false)
+
+        do {
+            let data = try encoder.encode(manifest)
+            try data.write(to: manifestURL, options: [.atomic])
+            return directoryURL
+        } catch {
+            throw TaskServiceError.runPersistenceFailed
+        }
+    }
+
+    @discardableResult
+    func persistLLMExchanges(run: AgentRunRecord, exchanges: [LLMExchangeLogEntry], runsDir: URL) throws -> URL {
+        let directoryURL = llmExchangesDirectoryURL(for: run, runsDir: runsDir)
+        if fileManager.fileExists(atPath: directoryURL.path) {
+            try? fileManager.removeItem(at: directoryURL)
+        }
+        try fileManager.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+
+        let manifestEntries: [AgentRunLLMExchangeManifestEntryV1] = try exchanges.enumerated().map { index, entry in
+            let requestFileName = String(format: "%03d-request.json", index + 1)
+            let requestFileURL = directoryURL.appendingPathComponent(requestFileName, isDirectory: false)
+            try entry.requestBodyData.write(to: requestFileURL, options: [.atomic])
+
+            var responseFileName: String?
+            if let responseBodyData = entry.responseBodyData {
+                let fileName = String(format: "%03d-response.json", index + 1)
+                let responseFileURL = directoryURL.appendingPathComponent(fileName, isDirectory: false)
+                try responseBodyData.write(to: responseFileURL, options: [.atomic])
+                responseFileName = fileName
+            }
+
+            return AgentRunLLMExchangeManifestEntryV1(
+                id: entry.id,
+                startedAt: entry.startedAt,
+                finishedAt: entry.finishedAt,
+                provider: entry.provider,
+                operation: entry.operation,
+                attempt: entry.attempt,
+                url: entry.url,
+                httpStatus: entry.httpStatus,
+                requestId: entry.requestId,
+                outcome: entry.outcome,
+                requestByteCount: entry.requestBodyData.count,
+                responseByteCount: entry.responseBodyData?.count,
+                requestFileName: requestFileName,
+                responseFileName: responseFileName
+            )
+        }
+
+        let manifest = AgentRunLLMExchangeManifestV1(version: 1, entries: manifestEntries)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.dateEncodingStrategy = Self.dateEncodingStrategy
+        let manifestURL = directoryURL.appendingPathComponent("manifest.json", isDirectory: false)
+
+        do {
+            let data = try encoder.encode(manifest)
+            try data.write(to: manifestURL, options: [.atomic])
+            return directoryURL
         } catch {
             throw TaskServiceError.runPersistenceFailed
         }
@@ -447,15 +626,7 @@ private struct AgentRunLogService {
 
         let candidates = urls.filter { $0.lastPathComponent.hasPrefix("agent-run-") && $0.pathExtension.lowercased() == "json" }
 
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .custom { decoder in
-            let container = try decoder.singleValueContainer()
-            let str = try container.decode(String.self)
-            if let date = Self.parseISO(str) {
-                return date
-            }
-            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Invalid ISO8601 date: \(str)")
-        }
+        let decoder = Self.makeJSONDecoder()
 
         var runs: [AgentRunRecord] = []
         for url in candidates {
@@ -469,10 +640,143 @@ private struct AgentRunLogService {
         return runs.sorted(by: { $0.startedAt > $1.startedAt })
     }
 
+    func listScreenshots(for run: AgentRunRecord, runsDir: URL) throws -> [LLMScreenshotLogEntry] {
+        let directoryURL = screenshotsDirectoryURL(for: run, runsDir: runsDir)
+        guard fileManager.fileExists(atPath: directoryURL.path) else {
+            return []
+        }
+
+        let manifestURL = directoryURL.appendingPathComponent("manifest.json", isDirectory: false)
+        guard let manifestData = try? Data(contentsOf: manifestURL) else {
+            return []
+        }
+
+        let decoder = Self.makeJSONDecoder()
+        guard let manifest = try? decoder.decode(AgentRunScreenshotManifestV1.self, from: manifestData) else {
+            return []
+        }
+
+        return manifest.entries.compactMap { entry in
+            let fileURL = directoryURL.appendingPathComponent(entry.fileName, isDirectory: false)
+            guard let imageData = try? Data(contentsOf: fileURL) else {
+                return nil
+            }
+            return LLMScreenshotLogEntry(
+                id: entry.id,
+                timestamp: entry.timestamp,
+                source: entry.source,
+                mediaType: entry.mediaType,
+                width: entry.width,
+                height: entry.height,
+                captureWidthPx: entry.captureWidthPx,
+                captureHeightPx: entry.captureHeightPx,
+                coordinateSpaceWidthPx: entry.coordinateSpaceWidthPx,
+                coordinateSpaceHeightPx: entry.coordinateSpaceHeightPx,
+                rawByteCount: entry.rawByteCount,
+                base64ByteCount: entry.base64ByteCount,
+                imageData: imageData
+            )
+        }
+    }
+
+    func listLLMExchanges(for run: AgentRunRecord, runsDir: URL) throws -> [LLMExchangeLogEntry] {
+        let directoryURL = llmExchangesDirectoryURL(for: run, runsDir: runsDir)
+        guard fileManager.fileExists(atPath: directoryURL.path) else {
+            return []
+        }
+
+        let manifestURL = directoryURL.appendingPathComponent("manifest.json", isDirectory: false)
+        guard let manifestData = try? Data(contentsOf: manifestURL) else {
+            return []
+        }
+
+        let decoder = Self.makeJSONDecoder()
+        guard let manifest = try? decoder.decode(AgentRunLLMExchangeManifestV1.self, from: manifestData) else {
+            return []
+        }
+
+        return manifest.entries.compactMap { entry in
+            let requestFileURL = directoryURL.appendingPathComponent(entry.requestFileName, isDirectory: false)
+            guard let requestBodyData = try? Data(contentsOf: requestFileURL) else {
+                return nil
+            }
+
+            let responseBodyData: Data?
+            if let responseFileName = entry.responseFileName {
+                let responseFileURL = directoryURL.appendingPathComponent(responseFileName, isDirectory: false)
+                responseBodyData = try? Data(contentsOf: responseFileURL)
+            } else {
+                responseBodyData = nil
+            }
+
+            return LLMExchangeLogEntry(
+                id: entry.id,
+                startedAt: entry.startedAt,
+                finishedAt: entry.finishedAt,
+                provider: entry.provider,
+                operation: entry.operation,
+                attempt: entry.attempt,
+                url: entry.url,
+                httpStatus: entry.httpStatus,
+                requestId: entry.requestId,
+                outcome: entry.outcome,
+                requestBodyData: requestBodyData,
+                responseBodyData: responseBodyData
+            )
+        }
+    }
+
     private static func isoTimestamp(for date: Date) -> String {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return formatter.string(from: date)
+    }
+
+    private static var dateEncodingStrategy: JSONEncoder.DateEncodingStrategy {
+        .custom { date, encoder in
+            var container = encoder.singleValueContainer()
+            try container.encode(Self.isoTimestamp(for: date))
+        }
+    }
+
+    private static func makeJSONDecoder() -> JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let str = try container.decode(String.self)
+            if let date = Self.parseISO(str) {
+                return date
+            }
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Invalid ISO8601 date: \(str)")
+        }
+        return decoder
+    }
+
+    private static func artifactBaseName(for run: AgentRunRecord) -> String {
+        let timestamp = Self.isoTimestamp(for: run.startedAt).replacingOccurrences(of: ":", with: "-")
+        let suffix = run.id.uuidString.prefix(8).lowercased()
+        return "agent-run-\(timestamp)-\(suffix)"
+    }
+
+    private func screenshotsDirectoryURL(for run: AgentRunRecord, runsDir: URL) -> URL {
+        runsDir.appendingPathComponent(Self.artifactBaseName(for: run) + "-screenshots", isDirectory: true)
+    }
+
+    private func llmExchangesDirectoryURL(for run: AgentRunRecord, runsDir: URL) -> URL {
+        runsDir.appendingPathComponent(Self.artifactBaseName(for: run) + "-llm-exchanges", isDirectory: true)
+    }
+
+    private static func fileExtension(for mediaType: String) -> String {
+        switch mediaType.lowercased() {
+        case "image/png":
+            return "png"
+        case "image/jpeg", "image/jpg":
+            return "jpg"
+        case "image/webp":
+            return "webp"
+        default:
+            return "bin"
+        }
     }
 
     private static func parseISO(_ value: String) -> Date? {

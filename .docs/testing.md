@@ -133,6 +133,58 @@ xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/
    - Start a run and cancel with `Esc`; confirm the overlay hides and the run ends cleanly.
    - Open diagnostics/run history and confirm trace/log ordering and user-facing error text remain unchanged.
 
+## Vision-first grounding smoke test
+
+Status:
+- Automated verification completed successfully on 2026-03-27.
+- Interactive desktop validation is still pending in local runtime.
+
+1. Run the focused grounding suites:
+
+```bash
+xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj \
+  -scheme TaskAgentMacOSApp \
+  -destination "platform=macOS" \
+  -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests \
+  test
+```
+
+```bash
+xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj \
+  -scheme TaskAgentMacOSApp \
+  -destination "platform=macOS" \
+  -only-testing:TaskAgentMacOSAppTests/DesktopScreenshotTransformServiceTests \
+  -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerVisionTests \
+  test
+```
+
+2. Run the broader unit-test target:
+
+```bash
+xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj \
+  -scheme TaskAgentMacOSApp \
+  -destination "platform=macOS" \
+  -only-testing:TaskAgentMacOSAppTests \
+  test
+```
+
+3. Run a clean app build:
+
+```bash
+xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj \
+  -scheme TaskAgentMacOSApp \
+  -destination "platform=macOS" \
+  build
+```
+
+4. Perform this interactive grounding checklist in the app:
+   - Run a task that requires a small precise click and confirm the model uses screenshot -> crop -> click sequencing rather than blind full-screen clicks.
+   - Exercise a crop-inside-crop flow on a tiny target and confirm the final click lands correctly.
+   - Use a light-background screen and a dark-background screen to confirm the grid overlay remains readable.
+   - Run on a non-primary display and confirm crop coordinates still land on the selected display.
+   - After a click/type/open action, confirm the next model turn sees a fresh full-display screenshot instead of staying trapped in the prior crop.
+   - Attempt a response that would chain screenshot + click in one turn and confirm the later visual step is deferred until the next screenshot.
+
 ## Public DMG permission verification
 
 Use this when the bug might depend on release signing, notarization, or hardened runtime.

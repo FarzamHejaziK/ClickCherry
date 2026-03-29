@@ -218,6 +218,30 @@ This means: if the agent still has unresolved questions, should execution stop o
 
 - The execution-agent prompt includes the host OS version string inline via a placeholder (`{{OS_VERSION}}`) that is rendered at run start.
 - Rationale: Some system UI and shortcut behaviors vary by macOS version; including it helps the model choose robust actions.
+
+## Vision-first grounding for OpenAI execution (locked: 2026-03-27)
+
+- The OpenAI execution runner now treats UI targeting as a multi-turn vision problem before any pointer action is taken.
+- `desktop_action` screenshot support is extended with:
+  - `mode: full | crop | current`
+  - crop rectangle fields (`x`, `y`, `width`, `height`, plus alias keys)
+  - `scale` for zoomed crops
+  - `overlay: none | grid`
+  - `grid_spacing`
+- Crop coordinates are always interpreted in the coordinate system of the most recently returned screenshot image, not raw global screen coordinates.
+- The runner owns an active vision state containing:
+  - current image dimensions
+  - represented real screen-space origin and size
+  - current screenshot mode
+  - overlay mode
+  - zoom scale
+- After a crop or current-view screenshot, later `mouse_move` / `left_click` / `right_click` / `double_click` coordinates map through the active vision state back to the represented real screen region automatically.
+- Selected-display anchoring state stays separate from the active crop state so focus-priming actions still target the full selected display rather than the latest crop center.
+- Control-loop screenshots are now preserved as PNG and sent to OpenAI with `detail: "original"`.
+- The first overlay style is a high-contrast grid with edge labels only; Set-of-Mark style annotations and stateful pointer motion remain follow-up work.
+- Dependent visual desktop actions are limited to one per model turn:
+  - once a visual `desktop_action` executes, later same-turn visual actions are deferred with a structured `wait_for_visual_feedback` tool result.
+  - intended model workflow is `full -> rough locate -> crop/zoom -> optional grid -> precise action -> verify on next turn`.
 - Implementation:
   - prompt contains: `OS: {{OS_VERSION}}`
   - render value source: `ProcessInfo.processInfo.operatingSystemVersionString`
