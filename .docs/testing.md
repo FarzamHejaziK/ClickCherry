@@ -133,6 +133,37 @@ xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/
    - Start a run and cancel with `Esc`; confirm the overlay hides and the run ends cleanly.
    - Open diagnostics/run history and confirm trace/log ordering and user-facing error text remain unchanged.
 
+## Execution prompt replay and visual-grounding diagnosis
+
+Use this when execution behavior looks suspicious and you need to validate exactly what the model received.
+
+1. Find the latest run folder under:
+   - `/Users/ferzamh/Library/Application Support/TaskAgentMacOS/workspace-<task-id>/runs/`
+
+2. Inspect persisted artifacts:
+   - `agent-run-...json` (run trace/events)
+   - `agent-run-...-screenshots/` (exact images sent to the model)
+   - `agent-run-...-llm-exchanges/` (exact outbound request and inbound response JSON)
+
+3. Validate prompt/runtime selection from run logs:
+   - confirm prompt name/version/model lines are present
+   - confirm the selected prompt matches `Prompts/execution_agent_openai/config.yaml`
+
+4. Recreate turn-1 behavior outside the app:
+   - replay `001-request.json` against the API to test prompt changes against identical input.
+   - compare replay response to in-app `001-response.json`.
+
+5. Evaluate with this ordering:
+   - screenshot evidence correctness first (what is visibly true),
+   - then tool action quality (best next action),
+   - then completion validity (was success proven).
+
+6. Manual verification checklist for each diagnostic run:
+   - open `001-initial_prompt_image.png` and confirm cursor marker matches cursor location.
+   - if a crop is requested, confirm crop image actually contains intended region (for Dock tasks, Dock must be visible).
+   - compare final claimed target to visible tooltip/visual evidence in the last screenshot.
+   - treat any `SUCCESS` without visible evidence as non-verified.
+
 ## Vision-first grounding smoke test
 
 Status:

@@ -7,6 +7,24 @@ description: Running implementation log of completed work, test evidence, blocke
 > Previous archived entries are in `/Users/ferzamh/code-git-local/ClickCherry/.docs/legacy_worklog.md`.
 
 ## Entry
+- Date: 2026-03-29
+- Step: Consolidate execution-agent learnings and reset docs to `v2` baseline direction
+- Changes made:
+  - Updated design/testing/issue/queue documentation to reflect validated learnings from the visual-grounding debugging cycle.
+  - Recorded that prompt baseline is now `execution_agent_openai` `v2`, with experimental prompt variants `v3`–`v7` removed.
+  - Added explicit replay-debug workflow guidance using persisted run screenshots and persisted `-llm-exchanges` request/response payloads.
+  - Added a new open issue documenting remaining Dock icon misidentification risk after correct crop capture.
+  - Updated next-step priorities to focus on runner-side success guardrails and `OpenAIComputerUseRunnerTests` suite stabilization.
+- Automated tests run:
+  - N/A (docs-only).
+- Manual tests run:
+  - N/A (docs-only).
+- Result:
+  - `.docs` now reflects current execution reality and preserves the key diagnostics/playbook learned from the investigation.
+- Issues/blockers:
+  - None.
+
+## Entry
 - Date: 2026-03-27
 - Step: Implement vision-first grounding for the OpenAI execution runner
 - Changes made:
@@ -282,48 +300,3 @@ description: Running implementation log of completed work, test evidence, blocke
 - Issues/blockers:
   - None.
 
-## Entry
-- Date: 2026-02-26
-- Step: Refine New Task copy and upload icon styling
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/NewTaskPageView.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
-  - UI behavior changes:
-    - changed non-capturing title from `Start recording` to `Recordings`.
-    - changed start action labels to `Recordings`.
-    - changed upload icon from `square.and.arrow.up` to plain `folder`.
-    - removed upload action circular material/outline chrome.
-    - removed upload icon accent/red tint and used primary foreground color.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-newtask-layout-2 -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO test` (pass; 34 tests).
-- Manual tests run:
-  - Launched `/tmp/taskagent-dd-newtask-layout-2/Build/Products/Debug/ClickCherry.app`, confirmed startup via `pgrep`, then terminated launched app process.
-- Result:
-  - Complete for requested copy/icon refinements; pending user visual confirmation.
-- Issues/blockers:
-  - None.
-
-## Entry
-- Date: 2026-02-26
-- Step: Improve New Task action layout for recording vs upload
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/NewTaskPageView.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
-  - UI behavior changes:
-    - replaced the small text-only `Upload recording` action with a large icon action matching `Start recording`.
-    - added centered `or` separators between action choices.
-    - added responsive action layout fallback (`ViewThatFits`) to keep alignments stable in narrower windows.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-newtask-layout -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO test` (pass; 34 tests).
-- Manual tests run:
-  - Launched `/tmp/taskagent-dd-newtask-layout/Build/Products/Debug/ClickCherry.app`, confirmed startup via `pgrep`, then terminated the launched debug app.
-- Result:
-  - Complete for requested New Task action-layout polish; pending user visual approval.
-- Issues/blockers:
-  - None.

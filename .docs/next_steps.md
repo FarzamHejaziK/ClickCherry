@@ -4,28 +4,24 @@ description: Short, continuously updated plan of the immediate next implementati
 
 # Next Steps
 
-1. Step: Validate the new vision-first grounding path on live desktop tasks and, if needed, follow it with stateful pointer execution improvements.
-2. Why now: screenshot crop/zoom, grid overlay, active image-to-screen mapping, and same-turn visual guardrails are now code-complete and automated-test complete, so the remaining risk is real desktop pointer reliability rather than missing infrastructure.
+1. Step: Stabilize execution behavior on prompt baseline `v2` and close the Dock-hover misidentification issue.
+2. Why now: Replay diagnostics proved image transport is correct and prompt drift introduced regressions; the highest-value work is now runner guardrails plus targeted validation on the working baseline.
 3. Code tasks:
-  - Run live small-target tasks and collect any remaining misses or drift cases.
-  - If misses remain, implement the next executor follow-up:
-    - stepped mouse movement
-    - hover dwell
-    - click timing
-    - post-move verification before retry
-  - Tune grid contrast/spacing only if runtime validation shows the current overlay is hard to read.
+  - Keep `execution_agent_openai/config.yaml` pinned to `version: v2`.
+  - Add runner-side success validation guardrails for hover/target-identification tasks so `SUCCESS` requires direct screenshot evidence.
+  - Keep screenshot and `-llm-exchanges` persistence as mandatory diagnostics for execution runs.
+  - Investigate and stabilize `OpenAIComputerUseRunnerTests` whole-suite failures (shared state/interference).
 4. Automated tests:
-  - Keep `xcodebuild test -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests test` green.
-  - Keep `xcodebuild test -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/DesktopScreenshotTransformServiceTests -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerVisionTests test` green.
-  - Run `xcodebuild test -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests test` after the final split.
-  - Run `xcodebuild build -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" build` before closing the task.
+  - Run `xcodebuild test -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/PromptCatalogServiceTests test`.
+  - Run `xcodebuild test -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests test`.
+  - Run `xcodebuild test -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/DesktopScreenshotTransformServiceTests -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerVisionTests test`.
+  - Run `xcodebuild build -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" build`.
 5. Manual tests:
-  - Run a small-target task that uses full screenshot -> crop -> fine grid -> click and confirm the click lands correctly.
-  - Run a crop-inside-crop targeting flow and confirm the final click still lands on the intended real screen point.
-  - Validate overlay readability on both light and dark backgrounds.
-  - Validate the same flow on a non-primary display.
-  - Confirm a click/type/open action resets the next model turn back to a fresh full-display screenshot.
+  - Re-run `Hover over Google Chrome in Dock` multiple times and verify final tooltip matches `Google Chrome` on success runs.
+  - Open persisted run screenshots and confirm cursor marker alignment in initial and follow-up images.
+  - Inspect `-llm-exchanges` for each run and confirm selected prompt/version/model logs match expected baseline.
+  - Confirm screenshot thumbnails open in Preview for all images in a run log.
 6. Exit criteria:
-  - Live desktop validation shows the vision-first grounding flow materially improves localization for small targets.
-  - Any follow-up pointer-execution changes land with focused tests, full tests, and a clean build.
-  - Multi-display and overlay-readability checks remain green in manual validation.
+  - Dock-hover task succeeds consistently on `v2` without false-success claims.
+  - Whole `OpenAIComputerUseRunnerTests` suite is stable when run together.
+  - Replay workflow remains usable for prompt/runtime diagnosis.

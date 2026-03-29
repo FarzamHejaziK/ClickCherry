@@ -4,6 +4,35 @@ description: Active unresolved issues with concrete repro details, mitigation, a
 
 # Open Issues
 
+## Issue OI-2026-03-29-018
+- Issue ID: OI-2026-03-29-018
+- Title: Execution agent can still misidentify Dock icon identity after correct crop capture
+- Status: Open
+- Severity: High
+- First Seen: 2026-03-29
+- Scope:
+  - Affects OpenAI execution runs targeting specific Dock icons by hover/click.
+  - Most visible after a correct Dock crop where the model still selects incorrect icon coordinates or claims success without matching tooltip evidence.
+- Repro Steps:
+  1. Run task `Hover over Google Chrome in Dock`.
+  2. Confirm turn 1 requests Dock crop and crop image correctly shows Dock icons.
+  3. Inspect later turn action and final success claim.
+- Observed:
+  - Model can request a correct crop, then still choose incorrect icon coordinates.
+  - Model can claim hover success when tooltip evidence indicates a different app icon.
+  - Persisted `-llm-exchanges` and screenshots confirm the issue is not caused by missing image payload transport.
+- Expected:
+  - After Dock crop, icon identification should remain evidence-grounded and aligned to tooltip/visual cues.
+  - Success should only be reported when the latest screenshot confirms the requested hover target.
+- Current Mitigation:
+  - Execution prompt reset to `v2` baseline and experimental prompt variants `v3`–`v7` removed.
+  - Persisted screenshot and `-llm-exchanges` replay workflow retained for deterministic diagnosis.
+- Next Action:
+  - Add focused runner-level completion guardrail for hover tasks: reject success when latest screenshot lacks direct target confirmation.
+  - Add targeted regression tests that compare claimed target vs visible tooltip text in replay fixtures.
+  - Re-run live Dock hover validation and confirm consistency over repeated runs.
+- Owner: Codex + user validation in local runtime
+
 ## Issue OI-2026-03-27-017
 - Issue ID: OI-2026-03-27-017
 - Title: Screenshot-driven pointer targeting still needs live runtime validation after the vision-grounding upgrade

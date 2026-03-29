@@ -258,6 +258,20 @@ This means: if the agent still has unresolved questions, should execution stop o
   - prefer shortcut/keyword-driven actions (keyboard shortcuts + typing) over mouse movement/clicks when possible
 - Baseline safety policy for `terminal_exec`:
   - unrestricted executable set (no allowlist).
+
+## Execution prompt baseline and scope reset (locked: 2026-03-29)
+
+- Active execution prompt baseline is `execution_agent_openai` version `v2`.
+- Experimental execution prompt variants `v3` through `v7` are removed from the active prompt catalog.
+- Rationale:
+  - Live and replayed runs showed `v2` produced more reliable iterative cursor correction behavior for Dock hover tasks than later experimental prompt expansions.
+  - Prompt over-constraint and verbose visible-reasoning instructions increased false confidence and completion hallucinations.
+- Scope decision:
+  - Keep observability improvements (persisted screenshots and persisted per-turn LLM request/response exchanges).
+  - Keep top-level prompt version selection via `Prompts/execution_agent_openai/config.yaml`.
+  - Keep prompt/version/model logging in run traces.
+  - Keep screenshot click-to-open in Preview for manual diagnosis.
+  - Do not require verbose visible reasoning text in the execution prompt baseline.
   - executable resolution:
     - absolute path when provided
     - otherwise resolve by searching `PATH`.
