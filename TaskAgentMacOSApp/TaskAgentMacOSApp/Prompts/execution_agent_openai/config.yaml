@@ -1,4 +1,4 @@
-version: v2
+version: v3
 llm: gpt-5.4
 reasoning_effort: medium
 reasoning_summary: auto
