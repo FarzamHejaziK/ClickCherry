@@ -60,7 +60,9 @@ extension MainShellStateStore {
         }
 
         let didStartMonitor = userInterruptionMonitor.start { [weak self] in
-            self?.handleUserInterruptionDuringRun()
+            Task { @MainActor [weak self] in
+                self?.handleUserInterruptionDuringRun()
+            }
         }
         if !didStartMonitor {
             executionTraceRecorder.record(
@@ -234,14 +236,8 @@ extension MainShellStateStore {
         }
     }
 
+    @MainActor
     private func handleUserInterruptionDuringRun() {
-        guard Thread.isMainThread else {
-            DispatchQueue.main.async { [weak self] in
-                self?.handleUserInterruptionDuringRun()
-            }
-            return
-        }
-
         guard isRunningTask else {
             return
         }
