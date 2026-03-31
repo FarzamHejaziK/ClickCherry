@@ -192,7 +192,7 @@ This means: if the agent still has unresolved questions, should execution stop o
 - Task execution agent provider for Step 4 is OpenAI tool-loop execution via the Responses API:
   - runner: `OpenAIComputerUseRunner`
   - engine: `OpenAIAutomationEngine`
-  - model baseline (prompt config): `gpt-5.2-codex`
+  - model baseline (prompt config): prompt-catalog driven; current configured model is `gpt-5.4`
 - Execution loop is tool-driven:
   1. app captures current desktop screenshot/state
   2. model returns tool actions (`desktop_action` / `terminal_exec`)
@@ -226,7 +226,9 @@ This means: if the agent still has unresolved questions, should execution stop o
 - `desktop_action.screenshot` crop arguments also consume those same selected-display coordinates directly.
 - `mode: "crop"` and `scale` change what the model sees, but they do not change what coordinates mean.
 - Screenshot corner labels, grid labels, and tool metadata must show the selected-display coordinates represented by the image, not rendered image pixel coordinates.
-- `CURRENT_CURSOR` must be reported in selected-display coordinates. If the cursor is outside the current crop, the runner must report that explicitly instead of clamping the value to the crop edge.
+- `CURRENT_CURSOR` must be reported in selected-display coordinates and treated as authoritative for the screenshot it accompanies.
+- Screenshot tool outputs must echo the same cursor state in structured fields (`current_cursor_x`, `current_cursor_y`, visibility/status) so logs and replay diagnostics match the screenshot-side text context.
+- If the cursor is outside the current crop, the runner must report that explicitly instead of clamping the value to the crop edge.
 
 ## Execution screenshot overlay rendering contract (locked: 2026-03-31)
 
@@ -243,14 +245,14 @@ This means: if the agent still has unresolved questions, should execution stop o
   - `scale` for zoomed crops
   - `overlay: none | grid`
   - `grid_spacing`
-- Crop coordinates are always interpreted in the coordinate system of the most recently returned screenshot image, not raw global screen coordinates.
+- Crop coordinates are always interpreted in the selected display coordinate system, matching pointer actions and screenshot corner labels.
 - The runner owns an active vision state containing:
   - current image dimensions
   - represented real screen-space origin and size
   - current screenshot mode
   - overlay mode
   - zoom scale
-- After a crop or current-view screenshot, later `mouse_move` / `left_click` / `right_click` / `double_click` coordinates map through the active vision state back to the represented real screen region automatically.
+- After a crop or current-view screenshot, later `mouse_move` / `left_click` / `right_click` / `double_click` coordinates still use the same selected display coordinate system directly; crop/zoom changes the visible region, not the meaning of coordinates.
 - Selected-display anchoring state stays separate from the active crop state so focus-priming actions still target the full selected display rather than the latest crop center.
 - Control-loop screenshots are now preserved as PNG and sent to OpenAI with `detail: "original"`.
 - The first overlay style is a high-contrast grid with edge labels only; Set-of-Mark style annotations and stateful pointer motion remain follow-up work.
@@ -276,8 +278,8 @@ This means: if the agent still has unresolved questions, should execution stop o
 
 ## Execution prompt baseline and scope reset (locked: 2026-03-29)
 
-- Active execution prompt baseline is `execution_agent_openai` version `v2`.
-- Experimental execution prompt variants `v3` through `v7` are removed from the active prompt catalog.
+- Active execution prompt baseline is `execution_agent_openai` version `v3`, selected from `Prompts/execution_agent_openai/config.yaml`.
+- Prompt evolution is config-driven; the active catalog should reflect only the prompt versions intentionally kept in the repository.
 - Rationale:
   - Live and replayed runs showed `v2` produced more reliable iterative cursor correction behavior for Dock hover tasks than later experimental prompt expansions.
   - Prompt over-constraint and verbose visible-reasoning instructions increased false confidence and completion hallucinations.
@@ -286,6 +288,7 @@ This means: if the agent still has unresolved questions, should execution stop o
   - Keep top-level prompt version selection via `Prompts/execution_agent_openai/config.yaml`.
   - Keep prompt/version/model logging in run traces.
   - Keep screenshot click-to-open in Preview for manual diagnosis.
+  - Keep screenshot-side cursor grounding explicit via `CURRENT_CURSOR` plus matching structured screenshot tool metadata.
   - Do not require verbose visible reasoning text in the execution prompt baseline.
   - executable resolution:
     - absolute path when provided
@@ -300,7 +303,7 @@ This means: if the agent still has unresolved questions, should execution stop o
 ## OpenAI custom desktop tool loop (locked: 2026-02-11)
 
 - Execution tool loop uses OpenAI Responses API:
-  - model baseline: `gpt-5.2-codex`
+  - model baseline: prompt-catalog driven; current configured model is `gpt-5.4`
   - runtime tools:
     - `desktop_action`: custom function tool for on-screen desktop actions (JSON schema action envelope)
     - `terminal_exec`: custom function tool for deterministic terminal command execution (stdout/stderr/exit_code JSON result)

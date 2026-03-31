@@ -159,7 +159,8 @@ struct OpenAIComputerUseRunnerTests {
                 let tools = json["tools"] as? [[String: Any]],
                 let input = json["input"] as? [[String: Any]],
                 let firstTurn = input.first,
-                let content = firstTurn["content"] as? [[String: Any]]
+                let content = firstTurn["content"] as? [[String: Any]],
+                let promptText = content.first(where: { ($0["type"] as? String) == "input_text" })?["text"] as? String
             else {
                 throw NSError(domain: "OpenAIComputerUseRunnerTests", code: 0)
             }
@@ -168,6 +169,8 @@ struct OpenAIComputerUseRunnerTests {
             #expect(tools.compactMap { $0["name"] as? String }.contains("desktop_action"))
             #expect(tools.compactMap { $0["name"] as? String }.contains("terminal_exec"))
             #expect(content.contains(where: { ($0["type"] as? String) == "input_image" }))
+            #expect(promptText.contains("CURRENT_CURSOR: (300, 200)"))
+            #expect(promptText.contains("COORDINATE_SYSTEM: All screenshot and action coordinates use the selected display coordinate system"))
 
             let responseBody = """
             {
@@ -241,7 +244,8 @@ struct OpenAIComputerUseRunnerTests {
                     base64Data: data.base64EncodedString(),
                     byteCount: data.count
                 )
-            }
+            },
+            cursorPositionProvider: { (300, 200) }
         )
         let executor = OpenAIMockDesktopExecutor()
 

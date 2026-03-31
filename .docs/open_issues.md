@@ -35,7 +35,7 @@ description: Active unresolved issues with concrete repro details, mitigation, a
 
 ## Issue OI-2026-03-27-017
 - Issue ID: OI-2026-03-27-017
-- Title: Screenshot-driven pointer targeting is mitigated, with cursor-state delivery still open as the next simplification
+- Title: Screenshot-driven pointer targeting is mitigated; remaining risk is model-side target judgment rather than missing cursor state
 - Status: Mitigated
 - Severity: High
 - First Seen: 2026-03-27
@@ -60,6 +60,7 @@ description: Active unresolved issues with concrete repro details, mitigation, a
 - Current Mitigation:
   - Screenshot crops, grid labels, pointer actions, and prompt corner coordinates now share the same selected-display/global coordinate contract.
   - Cursor overlay and grid overlay rendering now use the same visual coordinate space as the screenshot content, fixing the prior vertical mirroring bug.
+  - The execution prompt now treats `CURRENT_CURSOR` as authoritative for each screenshot, and screenshot tool responses echo matching structured cursor metadata.
   - Added deterministic overlay visual-validation scripts:
     - `/Users/ferzamh/code-git-local/ClickCherry/scripts/generate_overlay_visual_checks.swift`
     - `/Users/ferzamh/code-git-local/ClickCherry/scripts/run_overlay_visual_checks.sh`
@@ -68,8 +69,8 @@ description: Active unresolved issues with concrete repro details, mitigation, a
     - `TaskAgentMacOSAppTests/OpenAIComputerUseRunnerVisionTests`
   - Completed live runtime validation on 2026-03-31 using persisted execution artifacts, including a run where the agent used a grid overlay before the final mouse move.
 - Next Action:
-  - Decide whether `CURRENT_CURSOR` should remain only in screenshot-side context or also be surfaced more explicitly in the model turn state.
   - Keep validating small-target and Dock-hover tasks while the remaining icon-identification issue in `OI-2026-03-29-018` is addressed separately.
+  - If pointer misses recur, treat them as model-decision or completion-validation problems first, not as missing cursor-position transport.
 - Owner: Codex + user validation in local runtime
 
 ## Issue OI-2026-03-25-016

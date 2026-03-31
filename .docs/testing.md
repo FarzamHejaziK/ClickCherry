@@ -160,7 +160,9 @@ Use this when execution behavior looks suspicious and you need to validate exact
 
 6. Manual verification checklist for each diagnostic run:
    - open `001-initial_prompt_image.png` and confirm cursor marker matches cursor location.
+   - confirm the screenshot-side `CURRENT_CURSOR` text matches the visible cursor location and selected-display coordinate system.
    - if a crop is requested, confirm crop image actually contains intended region (for Dock tasks, Dock must be visible).
+   - if a screenshot tool response is persisted in the matching `-llm-exchanges` payload, confirm `current_cursor_x`, `current_cursor_y`, and `current_cursor_status` match the screenshot-side text context.
    - compare final claimed target to visible tooltip/visual evidence in the last screenshot.
    - treat any `SUCCESS` without visible evidence as non-verified.
 
@@ -240,6 +242,7 @@ Status:
 4. Validate one fresh real run using persisted artifacts:
    - inspect the latest `agent-run-...-screenshots/` directory under `/Users/ferzamh/Library/Application Support/TaskAgentMacOS/workspace-<task-id>/runs/`
    - confirm the grid screenshot labels match the visible crop bounds reported in the matching `-llm-exchanges/*-request.json`
+   - confirm `CURRENT_CURSOR` in the request text matches the persisted screenshot tool metadata for the same turn
    - confirm the final full-display screenshot shows the cursor ring at the actual cursor location
    - treat any mismatch between persisted screenshot overlays and visible cursor position as a regression
 

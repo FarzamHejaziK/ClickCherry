@@ -2,6 +2,12 @@ import AppKit
 import ApplicationServices
 import Foundation
 
+struct OpenAICursorContext: Equatable {
+    var x: Int
+    var y: Int
+    var isVisibleInImage: Bool
+}
+
 extension OpenAIComputerUseRunner {
     func selectedDisplayLocalPoint(fromScreenX x: Int, y: Int) -> (x: Int, y: Int) {
         (
@@ -180,6 +186,18 @@ extension OpenAIComputerUseRunner {
         return (imageX, imageY)
     }
 
+    func currentCursorContext(for screenshot: OpenAICapturedScreenshot) -> OpenAICursorContext? {
+        guard let cursor = cursorPositionProvider() else { return nil }
+
+        let localCursor = selectedDisplayLocalPoint(fromScreenX: cursor.x, y: cursor.y)
+        let localRect = selectedDisplayLocalRect(for: screenshot)
+        return OpenAICursorContext(
+            x: localCursor.x,
+            y: localCursor.y,
+            isVisibleInImage: localRect.contains(CGPoint(x: localCursor.x, y: localCursor.y))
+        )
+    }
+
     func visualCoordinateContextValues(for screenshot: OpenAICapturedScreenshot) -> [String] {
         let localRect = selectedDisplayLocalRect(for: screenshot)
         let originX = Int(localRect.origin.x.rounded())
@@ -194,13 +212,11 @@ extension OpenAIComputerUseRunner {
             "BOTTOM_LEFT: (\(originX), \(maxY))",
             "BOTTOM_RIGHT: (\(maxX), \(maxY))"
         ]
-        if let cursor = cursorPositionProvider() {
-            let localCursor = selectedDisplayLocalPoint(fromScreenX: cursor.x, y: cursor.y)
-            let containsCursor = localRect.contains(CGPoint(x: localCursor.x, y: localCursor.y))
-            if containsCursor {
-                lines.insert("CURRENT_CURSOR: (\(localCursor.x), \(localCursor.y))", at: 0)
+        if let cursor = currentCursorContext(for: screenshot) {
+            if cursor.isVisibleInImage {
+                lines.insert("CURRENT_CURSOR: (\(cursor.x), \(cursor.y))", at: 0)
             } else {
-                lines.insert("CURRENT_CURSOR: outside current image; actual=(\(localCursor.x), \(localCursor.y))", at: 0)
+                lines.insert("CURRENT_CURSOR: outside current image; actual=(\(cursor.x), \(cursor.y))", at: 0)
             }
         }
         return lines

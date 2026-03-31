@@ -8,6 +8,40 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-03-31
+- Step: Make cursor state explicit in the execution prompt and screenshot tool metadata
+- Changes made:
+  - Updated the execution prompt in:
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/execution_agent_openai/v3/prompt.md`
+  - Updated cursor-context handling in:
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomation/OpenAIComputerUseRunner+Capture.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomation/OpenAIComputerUseRunner+ScreenshotActions.swift`
+  - Added and updated tests in:
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSAppTests/OpenAIComputerUseRunnerVisionTests.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests.swift`
+  - Behavior changes:
+    - the prompt now tells the model to treat `CURRENT_CURSOR` as the authoritative cursor location for each screenshot
+    - screenshot tool outputs now echo matching cursor metadata (`current_cursor_x`, `current_cursor_y`, visibility/status)
+    - screenshot-side text and structured screenshot metadata now share one cursor contract for replay/debug analysis
+  - Updated docs:
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/design.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/testing.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/open_issues.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/worklog.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerVisionTests test` (pass).
+  - `xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests/runToolLoopExecutesToolUseAndReturnsSuccess test` (pass).
+  - `xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" build` (pass).
+- Manual tests run:
+  - Inspected the rendered execution prompt and confirmed the cursor-grounding section explicitly marks `CURRENT_CURSOR` as authoritative.
+  - Inspected the screenshot tool output shape and confirmed it now echoes the same cursor coordinates and visibility state used in screenshot-side text context.
+- Result:
+  - Cursor state is now explicit both in the model instructions and in the structured screenshot metadata, without changing the stable selected-display coordinate contract.
+- Issues/blockers:
+  - The broader `OpenAIComputerUseRunnerTests` whole-suite run still exposes the pre-existing harness/test-fixture issue and remains separate from this cursor-contract change.
+
+## Entry
+- Date: 2026-03-31
 - Step: Validate and lock the selected-display screenshot overlay contract after the live cursor/grid fixes
 - Changes made:
   - Updated overlay rendering so cursor rings and grid lines use the same visual coordinate space as screenshot content in:
@@ -286,28 +320,6 @@ description: Running implementation log of completed work, test evidence, blocke
     - `/tmp/taskagent-release-dd/Build/Products/Release/ClickCherry.app/Contents/Resources/Prompts/execution_agent_openai/config.yaml`
 - Result:
   - Release packaging issue resolved; DMG build now includes required extraction prompt assets.
-- Issues/blockers:
-  - None.
-
-## Entry
-- Date: 2026-02-26
-- Step: Correct release completeness issue and commit all pending source/docs changes
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
-  - Process/release updates:
-    - recorded `v0.1.34` release workflow build failure cause (partial release commit missing required companion source file).
-    - documented corrective release process decision: commit cross-file dependent changes atomically and validate from staged content before release tagging.
-    - updated immediate execution queue to commit all pending source/docs files together.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-commit-everything -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO test` (pass; 34 tests).
-- Manual tests run:
-  - Launched `/tmp/taskagent-dd-commit-everything/Build/Products/Debug/ClickCherry.app`, confirmed startup via `pgrep`, then terminated launched app process.
-- Result:
-  - Validation complete; all pending files ready for one atomic commit.
 - Issues/blockers:
   - None.
 

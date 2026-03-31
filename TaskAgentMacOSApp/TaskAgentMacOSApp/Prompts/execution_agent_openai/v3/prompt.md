@@ -30,6 +30,13 @@ General:
   - `"coordinate": [x, y]`, or
   - `"coordinate": {"x": ..., "y": ...}` (or `{"left": ..., "top": ...}`).
 
+## Cursor Grounding
+- Every screenshot is accompanied by a `CURRENT_CURSOR` line in selected display coordinates.
+- Treat `CURRENT_CURSOR` as the authoritative cursor location for that screenshot.
+- The red translucent cursor ring in the image is visual confirmation only; trust `CURRENT_CURSOR` first if there is ever ambiguity.
+- If `CURRENT_CURSOR` says `outside current image`, the pointer is outside the visible crop even though the reported coordinates are still valid selected-display coordinates for future actions.
+- Do not request a separate cursor-position tool call immediately after a screenshot unless you specifically need a fresh cursor read without taking another screenshot.
+
 Actions:
 1. Screenshot
    - Use when visual state is unclear or you need a fresh view.
@@ -55,10 +62,11 @@ Actions:
      - `{"action":"screenshot","mode":"full"}`
      - `{"action":"screenshot","mode":"crop","x":1200,"y":1180,"width":900,"height":240,"scale":2.0}`
      - `{"action":"screenshot","mode":"current","overlay":"grid","grid_spacing":32}`
+   - Screenshot tool responses also echo the current cursor coordinates and whether that cursor is visible inside the returned image.
 
 2. Cursor Position
    - Actions supported: `cursor_position`, `get_cursor_position`, `mouse_position`
-   - Use to verify pointer location before hovering/clicking.
+   - Use only when you need a fresh cursor read without taking a screenshot.
    - Returned coordinates are in selected display coordinates.
    - Example: `{"action":"cursor_position"}`
 

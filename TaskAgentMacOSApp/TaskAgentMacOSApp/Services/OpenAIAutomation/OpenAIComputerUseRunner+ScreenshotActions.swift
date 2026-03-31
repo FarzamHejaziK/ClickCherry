@@ -13,6 +13,34 @@ struct OpenAIScreenshotActionRequest: Equatable {
 }
 
 extension OpenAIComputerUseRunner {
+    func screenshotToolOutputData(
+        for screenshot: OpenAICapturedScreenshot,
+        mode: OpenAIScreenshotMode,
+        overlay: OpenAIScreenshotOverlay
+    ) -> [String: Any] {
+        let localRect = selectedDisplayLocalRect(for: screenshot)
+        var data: [String: Any] = [
+            "mode": mode.rawValue,
+            "overlay": overlay.rawValue,
+            "coordinate_system": "selected_display",
+            "image_width": screenshot.width,
+            "image_height": screenshot.height,
+            "coordinate_space_origin_x": Int(localRect.origin.x.rounded()),
+            "coordinate_space_origin_y": Int(localRect.origin.y.rounded()),
+            "coordinate_space_width_px": screenshot.coordinateSpaceWidthPx,
+            "coordinate_space_height_px": screenshot.coordinateSpaceHeightPx
+        ]
+
+        if let cursor = currentCursorContext(for: screenshot) {
+            data["current_cursor_x"] = cursor.x
+            data["current_cursor_y"] = cursor.y
+            data["current_cursor_visible_in_image"] = cursor.isVisibleInImage
+            data["current_cursor_status"] = cursor.isVisibleInImage ? "visible" : "outside_current_image"
+        }
+
+        return data
+    }
+
     func parseScreenshotActionRequest(from object: [String: OpenAIJSONValue]) -> OpenAIScreenshotActionRequest {
         let mode = OpenAIScreenshotMode(rawValue: object["mode"]?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? "") ?? .full
         let overlay = OpenAIScreenshotOverlay(rawValue: object["overlay"]?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? "") ?? .none
@@ -43,22 +71,12 @@ extension OpenAIComputerUseRunner {
                 overlay: overlay,
                 gridSpacing: gridSpacing
             )
-            let localRect = selectedDisplayLocalRect(for: screenshot)
             return ToolExecutionResult(
                 callID: callID,
                 output: makeToolOutput(
                     ok: true,
                     message: "Captured full screenshot.",
-                    data: [
-                        "mode": request.mode.rawValue,
-                        "overlay": overlay.rawValue,
-                        "image_width": screenshot.width,
-                        "image_height": screenshot.height,
-                        "coordinate_space_origin_x": Int(localRect.origin.x.rounded()),
-                        "coordinate_space_origin_y": Int(localRect.origin.y.rounded()),
-                        "coordinate_space_width_px": screenshot.coordinateSpaceWidthPx,
-                        "coordinate_space_height_px": screenshot.coordinateSpaceHeightPx
-                    ]
+                    data: screenshotToolOutputData(for: screenshot, mode: request.mode, overlay: overlay)
                 ),
                 isError: false,
                 stepDescription: "Capture full screenshot",
@@ -74,22 +92,12 @@ extension OpenAIComputerUseRunner {
                 gridSpacing: gridSpacing,
                 zoomScale: request.scale
             )
-            let localRect = selectedDisplayLocalRect(for: screenshot)
             return ToolExecutionResult(
                 callID: callID,
                 output: makeToolOutput(
                     ok: true,
                     message: "Captured current view screenshot.",
-                    data: [
-                        "mode": request.mode.rawValue,
-                        "overlay": overlay.rawValue,
-                        "image_width": screenshot.width,
-                        "image_height": screenshot.height,
-                        "coordinate_space_origin_x": Int(localRect.origin.x.rounded()),
-                        "coordinate_space_origin_y": Int(localRect.origin.y.rounded()),
-                        "coordinate_space_width_px": screenshot.coordinateSpaceWidthPx,
-                        "coordinate_space_height_px": screenshot.coordinateSpaceHeightPx
-                    ]
+                    data: screenshotToolOutputData(for: screenshot, mode: request.mode, overlay: overlay)
                 ),
                 isError: false,
                 stepDescription: "Capture current screenshot view",
@@ -156,16 +164,7 @@ extension OpenAIComputerUseRunner {
                 output: makeToolOutput(
                     ok: true,
                     message: "Captured cropped screenshot.",
-                    data: [
-                        "mode": request.mode.rawValue,
-                        "overlay": overlay.rawValue,
-                        "image_width": screenshot.width,
-                        "image_height": screenshot.height,
-                        "coordinate_space_origin_x": cropOriginX,
-                        "coordinate_space_origin_y": cropOriginY,
-                        "coordinate_space_width_px": screenshot.coordinateSpaceWidthPx,
-                        "coordinate_space_height_px": screenshot.coordinateSpaceHeightPx
-                    ]
+                    data: screenshotToolOutputData(for: screenshot, mode: request.mode, overlay: overlay)
                 ),
                 isError: false,
                 stepDescription: "Capture crop screenshot (\(cropOriginX), \(cropOriginY), \(cropWidth), \(cropHeight))",
