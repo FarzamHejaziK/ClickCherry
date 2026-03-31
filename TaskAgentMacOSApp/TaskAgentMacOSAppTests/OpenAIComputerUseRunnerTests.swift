@@ -230,20 +230,7 @@ struct OpenAIComputerUseRunnerTests {
             promptCatalog: promptCatalog,
             session: makeSession(),
             screenshotProvider: {
-                let data = Data("png".utf8)
-                return OpenAICapturedScreenshot(
-                    width: 1280,
-                    height: 800,
-                    captureWidthPx: 1280,
-                    captureHeightPx: 800,
-                    coordinateSpaceWidthPx: 1280,
-                    coordinateSpaceHeightPx: 800,
-                    coordinateSpaceOriginX: 0,
-                    coordinateSpaceOriginY: 0,
-                    mediaType: "image/png",
-                    base64Data: data.base64EncodedString(),
-                    byteCount: data.count
-                )
+                try Self.makeValidScreenshot()
             },
             cursorPositionProvider: { (300, 200) }
         )
@@ -396,20 +383,7 @@ struct OpenAIComputerUseRunnerTests {
             promptCatalog: promptCatalog,
             session: makeSession(),
             screenshotProvider: {
-                let data = Data("png".utf8)
-                return OpenAICapturedScreenshot(
-                    width: 1280,
-                    height: 800,
-                    captureWidthPx: 1280,
-                    captureHeightPx: 800,
-                    coordinateSpaceWidthPx: 1280,
-                    coordinateSpaceHeightPx: 800,
-                    coordinateSpaceOriginX: 0,
-                    coordinateSpaceOriginY: 0,
-                    mediaType: "image/png",
-                    base64Data: data.base64EncodedString(),
-                    byteCount: data.count
-                )
+                try Self.makeValidScreenshot()
             }
         )
         let executor = OpenAIMockDesktopExecutor()
@@ -487,20 +461,7 @@ struct OpenAIComputerUseRunnerTests {
             promptCatalog: promptCatalog,
             session: makeSession(),
             screenshotProvider: {
-                let data = Data("png".utf8)
-                return OpenAICapturedScreenshot(
-                    width: 1280,
-                    height: 800,
-                    captureWidthPx: 1280,
-                    captureHeightPx: 800,
-                    coordinateSpaceWidthPx: 1280,
-                    coordinateSpaceHeightPx: 800,
-                    coordinateSpaceOriginX: 0,
-                    coordinateSpaceOriginY: 0,
-                    mediaType: "image/png",
-                    base64Data: data.base64EncodedString(),
-                    byteCount: data.count
-                )
+                try Self.makeValidScreenshot()
             }
         )
 
@@ -573,20 +534,7 @@ struct OpenAIComputerUseRunnerTests {
             promptCatalog: promptCatalog,
             session: makeSession(),
             screenshotProvider: {
-                let data = Data("png".utf8)
-                return OpenAICapturedScreenshot(
-                    width: 1280,
-                    height: 800,
-                    captureWidthPx: 1280,
-                    captureHeightPx: 800,
-                    coordinateSpaceWidthPx: 1280,
-                    coordinateSpaceHeightPx: 800,
-                    coordinateSpaceOriginX: 0,
-                    coordinateSpaceOriginY: 0,
-                    mediaType: "image/png",
-                    base64Data: data.base64EncodedString(),
-                    byteCount: data.count
-                )
+                try Self.makeValidScreenshot()
             }
         )
 
@@ -659,20 +607,7 @@ struct OpenAIComputerUseRunnerTests {
             promptCatalog: promptCatalog,
             session: makeSession(),
             screenshotProvider: {
-                let data = Data("png".utf8)
-                return OpenAICapturedScreenshot(
-                    width: 1280,
-                    height: 800,
-                    captureWidthPx: 1280,
-                    captureHeightPx: 800,
-                    coordinateSpaceWidthPx: 1280,
-                    coordinateSpaceHeightPx: 800,
-                    coordinateSpaceOriginX: 0,
-                    coordinateSpaceOriginY: 0,
-                    mediaType: "image/png",
-                    base64Data: data.base64EncodedString(),
-                    byteCount: data.count
-                )
+                try Self.makeValidScreenshot()
             }
         )
 
@@ -746,20 +681,7 @@ struct OpenAIComputerUseRunnerTests {
             promptCatalog: promptCatalog,
             session: makeSession(),
             screenshotProvider: {
-                let data = Data("png".utf8)
-                return OpenAICapturedScreenshot(
-                    width: 1280,
-                    height: 800,
-                    captureWidthPx: 1280,
-                    captureHeightPx: 800,
-                    coordinateSpaceWidthPx: 1280,
-                    coordinateSpaceHeightPx: 800,
-                    coordinateSpaceOriginX: 0,
-                    coordinateSpaceOriginY: 0,
-                    mediaType: "image/png",
-                    base64Data: data.base64EncodedString(),
-                    byteCount: data.count
-                )
+                try Self.makeValidScreenshot()
             }
         )
         let executor = OpenAIMockDesktopExecutor()
@@ -833,20 +755,7 @@ struct OpenAIComputerUseRunnerTests {
             promptCatalog: promptCatalog,
             session: makeSession(),
             screenshotProvider: {
-                let data = Data("png".utf8)
-                return OpenAICapturedScreenshot(
-                    width: 1280,
-                    height: 800,
-                    captureWidthPx: 1280,
-                    captureHeightPx: 800,
-                    coordinateSpaceWidthPx: 1280,
-                    coordinateSpaceHeightPx: 800,
-                    coordinateSpaceOriginX: 0,
-                    coordinateSpaceOriginY: 0,
-                    mediaType: "image/png",
-                    base64Data: data.base64EncodedString(),
-                    byteCount: data.count
-                )
+                try Self.makeValidScreenshot()
             }
         )
         let executor = OpenAIMockDesktopExecutor()
@@ -924,20 +833,7 @@ struct OpenAIComputerUseRunnerTests {
             promptCatalog: promptCatalog,
             session: makeSession(),
             screenshotProvider: {
-                let data = Data("png".utf8)
-                return OpenAICapturedScreenshot(
-                    width: 1280,
-                    height: 800,
-                    captureWidthPx: 1280,
-                    captureHeightPx: 800,
-                    coordinateSpaceWidthPx: 1280,
-                    coordinateSpaceHeightPx: 800,
-                    coordinateSpaceOriginX: 0,
-                    coordinateSpaceOriginY: 0,
-                    mediaType: "image/png",
-                    base64Data: data.base64EncodedString(),
-                    byteCount: data.count
-                )
+                try Self.makeValidScreenshot()
             }
         )
 
@@ -966,20 +862,7 @@ struct OpenAIComputerUseRunnerTests {
             promptCatalog: promptCatalog,
             session: makeSession(),
             screenshotProvider: {
-                let data = Data("png".utf8)
-                return OpenAICapturedScreenshot(
-                    width: 1280,
-                    height: 800,
-                    captureWidthPx: 1280,
-                    captureHeightPx: 800,
-                    coordinateSpaceWidthPx: 1280,
-                    coordinateSpaceHeightPx: 800,
-                    coordinateSpaceOriginX: 0,
-                    coordinateSpaceOriginY: 0,
-                    mediaType: "image/png",
-                    base64Data: data.base64EncodedString(),
-                    byteCount: data.count
-                )
+                try Self.makeValidScreenshot()
             }
         )
 
@@ -1018,20 +901,7 @@ struct OpenAIComputerUseRunnerTests {
             promptCatalog: promptCatalog,
             session: makeSession(),
             screenshotProvider: {
-                let data = Data("png".utf8)
-                return OpenAICapturedScreenshot(
-                    width: 1280,
-                    height: 800,
-                    captureWidthPx: 1280,
-                    captureHeightPx: 800,
-                    coordinateSpaceWidthPx: 1280,
-                    coordinateSpaceHeightPx: 800,
-                    coordinateSpaceOriginX: 0,
-                    coordinateSpaceOriginY: 0,
-                    mediaType: "image/png",
-                    base64Data: data.base64EncodedString(),
-                    byteCount: data.count
-                )
+                try Self.makeValidScreenshot()
             }
         )
 
@@ -1133,5 +1003,31 @@ struct OpenAIComputerUseRunnerTests {
             throw NSError(domain: "OpenAIComputerUseRunnerTests", code: 202)
         }
         return pngData
+    }
+
+    private static func makeValidScreenshot(
+        width: Int = 1280,
+        height: Int = 800,
+        captureWidthPx: Int = 1280,
+        captureHeightPx: Int = 800,
+        coordinateSpaceWidthPx: Int = 1280,
+        coordinateSpaceHeightPx: Int = 800,
+        coordinateSpaceOriginX: Int = 0,
+        coordinateSpaceOriginY: Int = 0
+    ) throws -> OpenAICapturedScreenshot {
+        let data = try makeValidPNGData(width: max(1, min(width, 64)), height: max(1, min(height, 64)))
+        return OpenAICapturedScreenshot(
+            width: width,
+            height: height,
+            captureWidthPx: captureWidthPx,
+            captureHeightPx: captureHeightPx,
+            coordinateSpaceWidthPx: coordinateSpaceWidthPx,
+            coordinateSpaceHeightPx: coordinateSpaceHeightPx,
+            coordinateSpaceOriginX: coordinateSpaceOriginX,
+            coordinateSpaceOriginY: coordinateSpaceOriginY,
+            mediaType: "image/png",
+            base64Data: data.base64EncodedString(),
+            byteCount: data.count
+        )
     }
 }
