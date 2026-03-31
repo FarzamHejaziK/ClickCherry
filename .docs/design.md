@@ -219,6 +219,21 @@ This means: if the agent still has unresolved questions, should execution stop o
 - The execution-agent prompt includes the host OS version string inline via a placeholder (`{{OS_VERSION}}`) that is rendered at run start.
 - Rationale: Some system UI and shortcut behaviors vary by macOS version; including it helps the model choose robust actions.
 
+## Execution screenshot coordinate contract (locked: 2026-03-31)
+
+- All execution screenshot coordinates use the selected display coordinate system with origin at the selected display's top-left corner.
+- `desktop_action` pointer actions (`mouse_move`, `left_click`, `right_click`, `double_click`) consume those selected-display coordinates directly.
+- `desktop_action.screenshot` crop arguments also consume those same selected-display coordinates directly.
+- `mode: "crop"` and `scale` change what the model sees, but they do not change what coordinates mean.
+- Screenshot corner labels, grid labels, and tool metadata must show the selected-display coordinates represented by the image, not rendered image pixel coordinates.
+- `CURRENT_CURSOR` must be reported in selected-display coordinates. If the cursor is outside the current crop, the runner must report that explicitly instead of clamping the value to the crop edge.
+
+## Execution screenshot overlay rendering contract (locked: 2026-03-31)
+
+- Cursor overlays and grid overlays must be rendered in the same visual coordinate space as the screenshot content.
+- Overlay drawing must preserve top-left screenshot semantics even when the underlying AppKit drawing context uses a flipped Y axis.
+- Persisted run screenshots are a source-of-truth debugging artifact and must match the exact image sent to the execution model, including cursor and grid overlays when present.
+
 ## Vision-first grounding for OpenAI execution (locked: 2026-03-27)
 
 - The OpenAI execution runner now treats UI targeting as a multi-turn vision problem before any pointer action is taken.

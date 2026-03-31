@@ -35,7 +35,7 @@ description: Active unresolved issues with concrete repro details, mitigation, a
 
 ## Issue OI-2026-03-27-017
 - Issue ID: OI-2026-03-27-017
-- Title: Screenshot-driven pointer targeting still needs live runtime validation after the vision-grounding upgrade
+- Title: Screenshot-driven pointer targeting is mitigated, with cursor-state delivery still open as the next simplification
 - Status: Mitigated
 - Severity: High
 - First Seen: 2026-03-27
@@ -47,36 +47,29 @@ description: Active unresolved issues with concrete repro details, mitigation, a
   2. Observe how the model localizes the target from the screenshot and whether the final click lands correctly.
   3. Repeat on light and dark backgrounds and on a non-primary display.
 - Observed:
-  - Before the 2026-03-27 mitigation, the runner relied on a single full screenshot, lossy image handling, and direct full-screen coordinate guesses.
-  - The model had no crop/zoom tool path, no overlay support, and no runtime guardrail preventing dependent same-turn visual action chains such as screenshot -> click.
+  - Earlier runner iterations mixed coordinate systems between rendered crop pixels and actual execution coordinates, which made grid-assisted targeting ambiguous.
+  - A Y-axis mismatch in the overlay renderer could place the red cursor ring and grid lines in the wrong visual location even when execution coordinates were correct.
 - Expected:
   - The runner should let the model localize targets with a coarse-to-fine workflow:
     - full screenshot
     - crop/zoom
     - optional fine grid
     - precise click on a later turn
-  - Returned click coordinates should always map back to the correct real screen region represented by the latest screenshot.
+  - Screenshot labels, screenshot crop requests, and pointer actions should all use the same selected-display coordinate system.
+  - Persisted screenshots should match the exact overlaid image the model received.
 - Current Mitigation:
-  - Added `desktop_action` screenshot modes `full`, `crop`, and `current`.
-  - Added runner-owned active vision state for image-to-screen coordinate remapping.
-  - Added high-contrast grid overlay rendering with edge labels.
-  - Switched control-loop screenshots to PNG and send them with `detail: "original"`.
-  - Added guardrails that defer later same-turn dependent visual actions with `wait_for_visual_feedback`.
+  - Screenshot crops, grid labels, pointer actions, and prompt corner coordinates now share the same selected-display/global coordinate contract.
+  - Cursor overlay and grid overlay rendering now use the same visual coordinate space as the screenshot content, fixing the prior vertical mirroring bug.
+  - Added deterministic overlay visual-validation scripts:
+    - `/Users/ferzamh/code-git-local/ClickCherry/scripts/generate_overlay_visual_checks.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/scripts/run_overlay_visual_checks.sh`
   - Added automated coverage:
-    - `OpenAIComputerUseRunnerVisionTests`
-    - `DesktopScreenshotTransformServiceTests`
+    - `TaskAgentMacOSAppTests/DesktopScreenshotTransformServiceTests`
+    - `TaskAgentMacOSAppTests/OpenAIComputerUseRunnerVisionTests`
+  - Completed live runtime validation on 2026-03-31 using persisted execution artifacts, including a run where the agent used a grid overlay before the final mouse move.
 - Next Action:
-  - Perform user-side runtime validation on live desktop tasks:
-    - small precise targets
-    - nested crop flows
-    - light/dark overlay readability
-    - multi-display targeting
-    - full-view reset after non-screenshot actions
-  - If misses remain after that validation, implement the next follow-up:
-    - stepped mouse movement
-    - hover dwell
-    - click timing
-    - post-move verification
+  - Decide whether `CURRENT_CURSOR` should remain only in screenshot-side context or also be surfaced more explicitly in the model turn state.
+  - Keep validating small-target and Dock-hover tasks while the remaining icon-identification issue in `OI-2026-03-29-018` is addressed separately.
 - Owner: Codex + user validation in local runtime
 
 ## Issue OI-2026-03-25-016

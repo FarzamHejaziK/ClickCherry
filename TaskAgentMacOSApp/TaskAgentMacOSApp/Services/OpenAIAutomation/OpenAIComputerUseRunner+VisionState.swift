@@ -146,11 +146,20 @@ extension OpenAIComputerUseRunner {
         gridSpacing: Int?
     ) throws -> OpenAICapturedScreenshot {
         let overlay = activeVisionState?.overlay ?? .none
+        let localRect = selectedDisplayLocalRect(for: screenshot)
         let transform = try DesktopScreenshotTransformService.render(
             screenshot: screenshot,
             cropRect: nil,
             scale: 1.0,
-            gridOverlay: overlay == .grid ? DesktopScreenshotGridOverlayOptions(spacing: gridSpacing ?? defaultGridSpacing(for: activeVisionState?.mode ?? .full)) : nil,
+            gridOverlay: overlay == .grid
+                ? DesktopScreenshotGridOverlayOptions(
+                    spacing: gridSpacing ?? defaultGridSpacing(for: activeVisionState?.mode ?? .full),
+                    coordinateOriginX: Int(localRect.origin.x.rounded()),
+                    coordinateOriginY: Int(localRect.origin.y.rounded()),
+                    coordinateWidthPx: screenshot.coordinateSpaceWidthPx,
+                    coordinateHeightPx: screenshot.coordinateSpaceHeightPx
+                )
+                : nil,
             cursorOverlay: cursorOverlayOptions(for: screenshot)
         )
         return OpenAICapturedScreenshot(
@@ -210,18 +219,13 @@ extension OpenAIComputerUseRunner {
         }
 
         let fullScreenshot = try captureScreenshotForLLM(source: source)
-        let cropRect = CGRect(
+        let localRect = CGRect(
             x: currentState.coordinateSpaceOriginX - selectedDisplayCoordinateSpaceOriginX,
             y: currentState.coordinateSpaceOriginY - selectedDisplayCoordinateSpaceOriginY,
             width: currentState.coordinateSpaceWidthPx,
             height: currentState.coordinateSpaceHeightPx
         )
-        let imageCropRect = CGRect(
-            x: cropRect.origin.x,
-            y: cropRect.origin.y,
-            width: cropRect.width,
-            height: cropRect.height
-        )
+        let imageCropRect = mapSelectedDisplayRectToImageRect(localRect, in: fullScreenshot)
         let resolvedScale = zoomScale ?? currentState.zoomScale
         let resolvedOverlay = overlay ?? currentState.overlay
         let resolvedGridSpacing = gridSpacing ?? currentState.gridSpacing ?? defaultGridSpacing(for: resolvedMode)
@@ -229,7 +233,15 @@ extension OpenAIComputerUseRunner {
             screenshot: fullScreenshot,
             cropRect: imageCropRect,
             scale: resolvedScale,
-            gridOverlay: resolvedOverlay == .grid ? DesktopScreenshotGridOverlayOptions(spacing: resolvedGridSpacing) : nil,
+            gridOverlay: resolvedOverlay == .grid
+                ? DesktopScreenshotGridOverlayOptions(
+                    spacing: resolvedGridSpacing,
+                    coordinateOriginX: Int(localRect.origin.x.rounded()),
+                    coordinateOriginY: Int(localRect.origin.y.rounded()),
+                    coordinateWidthPx: currentState.coordinateSpaceWidthPx,
+                    coordinateHeightPx: currentState.coordinateSpaceHeightPx
+                )
+                : nil,
             cursorOverlay: cursorOverlayOptions(for: fullScreenshot)
         )
         let rendered = OpenAICapturedScreenshot(

@@ -43,6 +43,7 @@ extension OpenAIComputerUseRunner {
                 overlay: overlay,
                 gridSpacing: gridSpacing
             )
+            let localRect = selectedDisplayLocalRect(for: screenshot)
             return ToolExecutionResult(
                 callID: callID,
                 output: makeToolOutput(
@@ -53,8 +54,8 @@ extension OpenAIComputerUseRunner {
                         "overlay": overlay.rawValue,
                         "image_width": screenshot.width,
                         "image_height": screenshot.height,
-                        "coordinate_space_origin_x": screenshot.coordinateSpaceOriginX,
-                        "coordinate_space_origin_y": screenshot.coordinateSpaceOriginY,
+                        "coordinate_space_origin_x": Int(localRect.origin.x.rounded()),
+                        "coordinate_space_origin_y": Int(localRect.origin.y.rounded()),
                         "coordinate_space_width_px": screenshot.coordinateSpaceWidthPx,
                         "coordinate_space_height_px": screenshot.coordinateSpaceHeightPx
                     ]
@@ -73,6 +74,7 @@ extension OpenAIComputerUseRunner {
                 gridSpacing: gridSpacing,
                 zoomScale: request.scale
             )
+            let localRect = selectedDisplayLocalRect(for: screenshot)
             return ToolExecutionResult(
                 callID: callID,
                 output: makeToolOutput(
@@ -83,8 +85,8 @@ extension OpenAIComputerUseRunner {
                         "overlay": overlay.rawValue,
                         "image_width": screenshot.width,
                         "image_height": screenshot.height,
-                        "coordinate_space_origin_x": screenshot.coordinateSpaceOriginX,
-                        "coordinate_space_origin_y": screenshot.coordinateSpaceOriginY,
+                        "coordinate_space_origin_x": Int(localRect.origin.x.rounded()),
+                        "coordinate_space_origin_y": Int(localRect.origin.y.rounded()),
                         "coordinate_space_width_px": screenshot.coordinateSpaceWidthPx,
                         "coordinate_space_height_px": screenshot.coordinateSpaceHeightPx
                     ]
@@ -105,48 +107,38 @@ extension OpenAIComputerUseRunner {
                 return invalidInputResult(callID: callID, action: "screenshot")
             }
 
-            let baseScreenshot = try renderCurrentVisionViewForLLM(
-                source: .actionScreenshot,
-                modeOverride: .current,
-                overlay: .none,
-                gridSpacing: nil,
-                zoomScale: nil
-            )
-            let baseState = activeVisionState ?? OpenAIVisionViewState(
-                mode: .full,
-                overlay: .none,
-                zoomScale: 1.0,
-                gridSpacing: nil,
-                imageWidth: baseScreenshot.width,
-                imageHeight: baseScreenshot.height,
-                coordinateSpaceWidthPx: baseScreenshot.coordinateSpaceWidthPx,
-                coordinateSpaceHeightPx: baseScreenshot.coordinateSpaceHeightPx,
-                coordinateSpaceOriginX: baseScreenshot.coordinateSpaceOriginX,
-                coordinateSpaceOriginY: baseScreenshot.coordinateSpaceOriginY
-            )
             let cropRect = CGRect(x: cropOriginX, y: cropOriginY, width: cropWidth, height: cropHeight).integral
             guard !cropRect.isNull, cropRect.width >= 1, cropRect.height >= 1 else {
                 return invalidInputResult(callID: callID, action: "screenshot")
             }
 
+            let fullScreenshot = try captureScreenshotForLLM(source: .actionScreenshot)
+            let imageCropRect = mapSelectedDisplayRectToImageRect(cropRect, in: fullScreenshot)
             let resolvedScale = max(1.0, request.scale ?? 2.0)
             let transform = try DesktopScreenshotTransformService.render(
-                screenshot: baseScreenshot,
-                cropRect: cropRect,
+                screenshot: fullScreenshot,
+                cropRect: imageCropRect,
                 scale: resolvedScale,
-                gridOverlay: overlay == .grid ? DesktopScreenshotGridOverlayOptions(spacing: gridSpacing) : nil,
-                cursorOverlay: cursorOverlayOptions(for: baseScreenshot)
+                gridOverlay: overlay == .grid
+                    ? DesktopScreenshotGridOverlayOptions(
+                        spacing: gridSpacing,
+                        coordinateOriginX: cropOriginX,
+                        coordinateOriginY: cropOriginY,
+                        coordinateWidthPx: cropWidth,
+                        coordinateHeightPx: cropHeight
+                    )
+                    : nil,
+                cursorOverlay: cursorOverlayOptions(for: fullScreenshot)
             )
-            let screenRect = baseState.mapImageRectToScreenRect(cropRect)
             let screenshot = OpenAICapturedScreenshot(
                 width: transform.width,
                 height: transform.height,
                 captureWidthPx: transform.width,
                 captureHeightPx: transform.height,
-                coordinateSpaceWidthPx: Int(screenRect.width.rounded()),
-                coordinateSpaceHeightPx: Int(screenRect.height.rounded()),
-                coordinateSpaceOriginX: Int(screenRect.origin.x.rounded()),
-                coordinateSpaceOriginY: Int(screenRect.origin.y.rounded()),
+                coordinateSpaceWidthPx: cropWidth,
+                coordinateSpaceHeightPx: cropHeight,
+                coordinateSpaceOriginX: selectedDisplayCoordinateSpaceOriginX + cropOriginX,
+                coordinateSpaceOriginY: selectedDisplayCoordinateSpaceOriginY + cropOriginY,
                 mediaType: "image/png",
                 base64Data: transform.pngData.base64EncodedString(),
                 byteCount: transform.pngData.count
@@ -169,8 +161,8 @@ extension OpenAIComputerUseRunner {
                         "overlay": overlay.rawValue,
                         "image_width": screenshot.width,
                         "image_height": screenshot.height,
-                        "coordinate_space_origin_x": screenshot.coordinateSpaceOriginX,
-                        "coordinate_space_origin_y": screenshot.coordinateSpaceOriginY,
+                        "coordinate_space_origin_x": cropOriginX,
+                        "coordinate_space_origin_y": cropOriginY,
                         "coordinate_space_width_px": screenshot.coordinateSpaceWidthPx,
                         "coordinate_space_height_px": screenshot.coordinateSpaceHeightPx
                     ]

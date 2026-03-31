@@ -17,6 +17,10 @@ extension MainShellStateStore {
             return
         }
 
+        guard ensureRunnerWindowedModeBeforeRun() else {
+            return
+        }
+
         // Ensure the runner uses the selected display for screenshots/tool coordinates.
         refreshCaptureDisplays()
         guard let runDisplay = resolvedDisplayOption(selectedID: selectedRunDisplayID) else {
@@ -89,6 +93,10 @@ extension MainShellStateStore {
         }
 
         guard ensureRunTaskPreflightRequirements() else {
+            return
+        }
+
+        guard ensureRunnerWindowedModeBeforeRun() else {
             return
         }
 
@@ -397,5 +405,66 @@ extension MainShellStateStore {
 
         NSApplication.shared.activate(ignoringOtherApps: true)
         firstAppWindow?.makeKeyAndOrderFront(nil)
+    }
+
+    @MainActor
+    private func ensureRunnerWindowedModeBeforeRun() -> Bool {
+        guard let fullscreenWindow = Self.findFullscreenWindowForRunPreparation() else {
+            return true
+        }
+
+        executionTraceRecorder.record(
+            ExecutionTraceEntry(kind: .info, message: "App is fullscreen; exiting fullscreen before run start.")
+        )
+
+        let didExit = Self.exitFullscreenWindowForRunPreparation(fullscreenWindow)
+        if didExit {
+            executionTraceRecorder.record(
+                ExecutionTraceEntry(kind: .info, message: "Exited fullscreen mode; continuing run preparation.")
+            )
+            return true
+        }
+
+        executionTraceRecorder.record(
+            ExecutionTraceEntry(
+                kind: .error,
+                message: "Could not exit fullscreen mode before run start within timeout."
+            )
+        )
+        errorMessage = "Could not exit fullscreen mode before run start. Please leave fullscreen and try again."
+        runStatusMessage = nil
+        return false
+    }
+
+    @MainActor
+    private static func findFullscreenWindowForRunPreparation() -> NSWindow? {
+        NSApplication.shared.windows.first { window in
+            guard window.isVisible else { return false }
+            if let id = window.identifier?.rawValue, id.hasPrefix("cc.overlay.") {
+                return false
+            }
+            return window.styleMask.contains(.fullScreen)
+        }
+    }
+
+    @MainActor
+    private static func exitFullscreenWindowForRunPreparation(_ window: NSWindow, timeoutSeconds: TimeInterval = 2.5) -> Bool {
+        guard window.styleMask.contains(.fullScreen) else {
+            return true
+        }
+
+        NSApplication.shared.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
+        window.toggleFullScreen(nil)
+
+        let deadline = Date().addingTimeInterval(timeoutSeconds)
+        while Date() < deadline {
+            if !window.styleMask.contains(.fullScreen) {
+                return true
+            }
+            _ = RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.05))
+        }
+
+        return !window.styleMask.contains(.fullScreen)
     }
 }

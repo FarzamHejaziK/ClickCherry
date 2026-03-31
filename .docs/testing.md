@@ -216,6 +216,33 @@ xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/
    - After a click/type/open action, confirm the next model turn sees a fresh full-display screenshot instead of staying trapped in the prior crop.
    - Attempt a response that would chain screenshot + click in one turn and confirm the later visual step is deferred until the next screenshot.
 
+## Overlay visual validation harness
+
+Status:
+- Deterministic visual harness executed successfully on 2026-03-31.
+- Live runtime validation also succeeded on 2026-03-31 using a persisted execution run with grid and cursor overlays.
+
+1. Generate the deterministic overlay artifacts:
+
+```bash
+/Users/ferzamh/code-git-local/ClickCherry/scripts/run_overlay_visual_checks.sh
+```
+
+2. Inspect the generated files in:
+   - `/tmp/clickcherry-overlay-visual-checks/`
+
+3. Verify these cases visually:
+   - `02-full-cursor-overlay.png`: cursor ring is centered on the intended target and is not vertically mirrored.
+   - `03-full-grid-overlay.png`: grid labels increase left-to-right and top-to-bottom in selected-display coordinates.
+   - `04-crop-grid-overlay.png`: crop labels remain in selected-display/global coordinates rather than resetting to crop-local pixels.
+   - `05-crop-grid-and-cursor-overlay.png`: crop grid and cursor ring align to the same target.
+
+4. Validate one fresh real run using persisted artifacts:
+   - inspect the latest `agent-run-...-screenshots/` directory under `/Users/ferzamh/Library/Application Support/TaskAgentMacOS/workspace-<task-id>/runs/`
+   - confirm the grid screenshot labels match the visible crop bounds reported in the matching `-llm-exchanges/*-request.json`
+   - confirm the final full-display screenshot shows the cursor ring at the actual cursor location
+   - treat any mismatch between persisted screenshot overlays and visible cursor position as a regression
+
 ## Public DMG permission verification
 
 Use this when the bug might depend on release signing, notarization, or hardened runtime.

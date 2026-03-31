@@ -22,6 +22,9 @@ TASK_MARKDOWN:
 General:
 - Send one action per tool call unless actions are independent and safe to batch.
 - Always include `"action"`.
+- All coordinates for screenshots, cursor reads, mouse movement, clicks, and scroll targeting use the selected display coordinate system.
+- In that coordinate system, `(0,0)` is the top-left of the selected display, `x` increases rightward, and `y` increases downward.
+- Crops and zoom only change what you see; they do not change what coordinates mean.
 - For coordinate-based actions, provide either:
   - top-level `"x"` and `"y"`, or
   - `"coordinate": [x, y]`, or
@@ -34,8 +37,8 @@ Actions:
    - Advanced screenshot args supported by the tool schema:
      - `mode`: `"full" | "crop" | "current"`
        - `full`: capture a fresh full-display screenshot.
-       - `crop`: capture a sub-region of the current image coordinate system.
-       - `current`: re-render the current active view (useful for overlay or zoom adjustments without changing region).
+       - `crop`: capture a sub-region of the selected display coordinate system.
+       - `current`: re-render the current active view (useful for overlay or zoom adjustments without changing region or coordinate meaning).
      - `overlay`: `"none" | "grid"`
        - `none`: no overlay annotations.
        - `grid`: draw a grid overlay to support precise coordinate targeting.
@@ -46,7 +49,7 @@ Actions:
        - Grid line spacing in pixels when `overlay` is `grid`.
        - Smaller values give finer visual reference points.
      - crop size aliases: `width` / `height` (or `w` / `h`)
-       - Use with `mode: "crop"` plus top-left crop origin (`x`,`y`) to define crop rectangle.
+       - Use with `mode: "crop"` plus top-left crop origin (`x`,`y`) in selected display coordinates to define crop rectangle.
        - `w`/`h` are accepted aliases for `width`/`height`.
    - Advanced examples:
      - `{"action":"screenshot","mode":"full"}`
@@ -56,19 +59,24 @@ Actions:
 2. Cursor Position
    - Actions supported: `cursor_position`, `get_cursor_position`, `mouse_position`
    - Use to verify pointer location before hovering/clicking.
+   - Returned coordinates are in selected display coordinates.
    - Example: `{"action":"cursor_position"}`
 
 3. Mouse Move
    - Actions supported: `mouse_move`, `move_mouse`, `move`
+   - Coordinates are always selected display coordinates, even after crop/zoom screenshots.
    - Example: `{"action":"mouse_move","x":640,"y":420}`
 
 4. Left Click
+   - Coordinates are always selected display coordinates, even after crop/zoom screenshots.
    - Example: `{"action":"left_click","x":640,"y":420}`
 
 5. Right Click
+   - Coordinates are always selected display coordinates, even after crop/zoom screenshots.
    - Example: `{"action":"right_click","x":640,"y":420}`
 
 6. Double Click
+   - Coordinates are always selected display coordinates, even after crop/zoom screenshots.
    - Example: `{"action":"double_click","x":640,"y":420}`
 
 7. Type Text
@@ -96,7 +104,7 @@ Actions:
    - Provide either:
      - deltas: `delta_x` / `delta_y` (or `scroll_x` / `scroll_y`, or `dx` / `dy`), or
      - direction + amount: `direction` (`up|down|left|right`) + `amount` (or `scroll_amount` / `pixels`).
-   - Optional point (`x`/`y` or `coordinate`) can be provided to move pointer before scrolling.
+   - Optional point (`x`/`y` or `coordinate`) can be provided to move pointer before scrolling; that point is in selected display coordinates.
    - Examples:
      - `{"action":"scroll","delta_y":-600}`
      - `{"action":"scroll","direction":"down","amount":600}`

@@ -257,7 +257,7 @@ struct OpenAIComputerUseRunnerTests {
     }
 
     @Test
-    func runToolLoopScalesCoordinatesWhenScreenshotDownscaled() async throws {
+    func runToolLoopUsesSelectedDisplayCoordinatesWhenScreenshotDownscaled() async throws {
         let (promptCatalog, tempRoot) = try makePromptCatalog()
         defer { try? FileManager.default.removeItem(at: tempRoot) }
 
@@ -326,7 +326,7 @@ struct OpenAIComputerUseRunnerTests {
         let executor = OpenAIMockDesktopExecutor()
 
         _ = try await runner.runToolLoop(taskMarkdown: "# Task\nClick target", executor: executor)
-        #expect(executor.clicks.last == OpenAIXY(x: 200, y: 400))
+        #expect(executor.clicks.last == OpenAIXY(x: 100, y: 200))
     }
 
     @Test

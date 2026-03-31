@@ -10,6 +10,10 @@ enum DesktopScreenshotTransformError: Error, Equatable {
 
 struct DesktopScreenshotGridOverlayOptions: Equatable {
     var spacing: Int
+    var coordinateOriginX: Int
+    var coordinateOriginY: Int
+    var coordinateWidthPx: Int
+    var coordinateHeightPx: Int
 }
 
 struct DesktopScreenshotCursorOverlayOptions: Equatable {
@@ -92,7 +96,7 @@ struct DesktopScreenshotTransformService {
         if let gridOverlay {
             drawGridOverlay(
                 in: destinationRect,
-                spacing: max(minimumGridSpacing, Int((Double(gridOverlay.spacing) * resolvedScale).rounded()))
+                options: gridOverlay
             )
         }
 
@@ -120,7 +124,12 @@ struct DesktopScreenshotTransformService {
         )
     }
 
-    private static func drawGridOverlay(in rect: CGRect, spacing: Int) {
+    private static func drawGridOverlay(in rect: CGRect, options: DesktopScreenshotGridOverlayOptions) {
+        let spacing = max(minimumGridSpacing, options.spacing)
+        guard options.coordinateWidthPx > 0, options.coordinateHeightPx > 0 else {
+            return
+        }
+
         let underlayColor = NSColor(calibratedWhite: 0.0, alpha: 0.65)
         let overlayColor = NSColor(calibratedRed: 1.0, green: 0.25, blue: 0.25, alpha: 0.9)
         let labelBackground = NSColor(calibratedWhite: 0.0, alpha: 0.7)
@@ -132,45 +141,69 @@ struct DesktopScreenshotTransformService {
             .paragraphStyle: paragraphStyle
         ]
 
-        for x in stride(from: 0, through: Int(rect.width.rounded()), by: spacing) {
-            let pointX = CGFloat(x)
+        let pixelsPerCoordinateX = rect.width / CGFloat(options.coordinateWidthPx)
+        let pixelsPerCoordinateY = rect.height / CGFloat(options.coordinateHeightPx)
+        let minXCoord = options.coordinateOriginX
+        let maxXCoord = options.coordinateOriginX + max(0, options.coordinateWidthPx - 1)
+        let minYCoord = options.coordinateOriginY
+        let maxYCoord = options.coordinateOriginY + max(0, options.coordinateHeightPx - 1)
+
+        for xCoord in stride(from: firstVisibleGridCoordinate(atOrAfter: minXCoord, spacing: spacing), through: maxXCoord, by: spacing) {
+            let pointX = rect.minX + (CGFloat(xCoord - options.coordinateOriginX) * pixelsPerCoordinateX)
             drawLine(
                 from: CGPoint(x: pointX, y: rect.minY),
                 to: CGPoint(x: pointX, y: rect.maxY),
+                in: rect,
                 underlayColor: underlayColor,
                 overlayColor: overlayColor
             )
             drawLabel(
-                text: "\(x)",
+                text: "\(xCoord)",
                 origin: CGPoint(x: min(max(rect.minX + 4, pointX - 24), rect.maxX - 52), y: rect.minY + 6),
+                in: rect,
                 backgroundColor: labelBackground,
                 attributes: attributes
             )
         }
 
-        for y in stride(from: 0, through: Int(rect.height.rounded()), by: spacing) {
-            let pointY = CGFloat(y)
+        for yCoord in stride(from: firstVisibleGridCoordinate(atOrAfter: minYCoord, spacing: spacing), through: maxYCoord, by: spacing) {
+            let pointY = rect.minY + (CGFloat(yCoord - options.coordinateOriginY) * pixelsPerCoordinateY)
             drawLine(
                 from: CGPoint(x: rect.minX, y: pointY),
                 to: CGPoint(x: rect.maxX, y: pointY),
+                in: rect,
                 underlayColor: underlayColor,
                 overlayColor: overlayColor
             )
             drawLabel(
-                text: "\(y)",
+                text: "\(yCoord)",
                 origin: CGPoint(x: rect.minX + 6, y: min(max(rect.minY + 4, pointY - 10), rect.maxY - 22)),
+                in: rect,
                 backgroundColor: labelBackground,
                 attributes: attributes
             )
         }
     }
 
+    private static func firstVisibleGridCoordinate(atOrAfter value: Int, spacing: Int) -> Int {
+        guard spacing > 0 else { return value }
+        let remainder = value % spacing
+        if remainder == 0 {
+            return value
+        }
+        if remainder > 0 {
+            return value + (spacing - remainder)
+        }
+        return value - remainder
+    }
+
     private static func drawCursorOverlay(in rect: CGRect, center: CGPoint, radius: CGFloat) {
-        guard rect.contains(center) else { return }
+        let drawingCenter = convertTopLeftPointToDrawingSpace(center, in: rect)
+        guard rect.contains(drawingCenter) else { return }
 
         let outerRect = CGRect(
-            x: center.x - radius,
-            y: center.y - radius,
+            x: drawingCenter.x - radius,
+            y: drawingCenter.y - radius,
             width: radius * 2,
             height: radius * 2
         )
@@ -184,8 +217,8 @@ struct DesktopScreenshotTransformService {
 
         let dotRadius: CGFloat = max(3, radius * 0.18)
         let dotRect = CGRect(
-            x: center.x - dotRadius,
-            y: center.y - dotRadius,
+            x: drawingCenter.x - dotRadius,
+            y: drawingCenter.y - dotRadius,
             width: dotRadius * 2,
             height: dotRadius * 2
         )
@@ -193,20 +226,29 @@ struct DesktopScreenshotTransformService {
         NSBezierPath(ovalIn: dotRect).fill()
     }
 
-    private static func drawLine(from start: CGPoint, to end: CGPoint, underlayColor: NSColor, overlayColor: NSColor) {
+    private static func drawLine(
+        from start: CGPoint,
+        to end: CGPoint,
+        in rect: CGRect,
+        underlayColor: NSColor,
+        overlayColor: NSColor
+    ) {
+        let drawingStart = convertTopLeftPointToDrawingSpace(start, in: rect)
+        let drawingEnd = convertTopLeftPointToDrawingSpace(end, in: rect)
+
         let underlay = NSBezierPath()
         underlay.lineWidth = 3.0
         underlay.lineCapStyle = .round
-        underlay.move(to: start)
-        underlay.line(to: end)
+        underlay.move(to: drawingStart)
+        underlay.line(to: drawingEnd)
         underlayColor.setStroke()
         underlay.stroke()
 
         let overlay = NSBezierPath()
         overlay.lineWidth = 1.0
         overlay.lineCapStyle = .round
-        overlay.move(to: start)
-        overlay.line(to: end)
+        overlay.move(to: drawingStart)
+        overlay.line(to: drawingEnd)
         overlayColor.setStroke()
         overlay.stroke()
     }
@@ -214,19 +256,41 @@ struct DesktopScreenshotTransformService {
     private static func drawLabel(
         text: String,
         origin: CGPoint,
+        in rect: CGRect,
         backgroundColor: NSColor,
         attributes: [NSAttributedString.Key: Any]
     ) {
         let attributed = NSAttributedString(string: text, attributes: attributes)
         let size = attributed.size()
-        let rect = CGRect(
-            x: origin.x,
-            y: origin.y,
-            width: size.width + 12,
-            height: size.height + 6
+        let drawingRect = convertTopLeftRectToDrawingSpace(
+            CGRect(
+                x: origin.x,
+                y: origin.y,
+                width: size.width + 12,
+                height: size.height + 6
+            ),
+            in: rect
         )
         backgroundColor.setFill()
-        NSBezierPath(roundedRect: rect, xRadius: 6, yRadius: 6).fill()
-        attributed.draw(in: CGRect(x: rect.minX + 6, y: rect.minY + 3, width: size.width, height: size.height))
+        NSBezierPath(roundedRect: drawingRect, xRadius: 6, yRadius: 6).fill()
+        attributed.draw(in: CGRect(
+            x: drawingRect.minX + 6,
+            y: drawingRect.minY + 3,
+            width: size.width,
+            height: size.height
+        ))
+    }
+
+    static func convertTopLeftPointToDrawingSpace(_ point: CGPoint, in rect: CGRect) -> CGPoint {
+        CGPoint(x: point.x, y: rect.maxY - point.y)
+    }
+
+    static func convertTopLeftRectToDrawingSpace(_ topLeftRect: CGRect, in rect: CGRect) -> CGRect {
+        CGRect(
+            x: topLeftRect.origin.x,
+            y: rect.maxY - topLeftRect.maxY,
+            width: topLeftRect.width,
+            height: topLeftRect.height
+        )
     }
 }

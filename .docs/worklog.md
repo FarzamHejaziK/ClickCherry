@@ -7,6 +7,38 @@ description: Running implementation log of completed work, test evidence, blocke
 > Previous archived entries are in `/Users/ferzamh/code-git-local/ClickCherry/.docs/legacy_worklog.md`.
 
 ## Entry
+- Date: 2026-03-31
+- Step: Validate and lock the selected-display screenshot overlay contract after the live cursor/grid fixes
+- Changes made:
+  - Updated overlay rendering so cursor rings and grid lines use the same visual coordinate space as screenshot content in:
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/DesktopScreenshotTransformService.swift`
+  - Added deterministic overlay validation scripts:
+    - `/Users/ferzamh/code-git-local/ClickCherry/scripts/generate_overlay_visual_checks.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/scripts/run_overlay_visual_checks.sh`
+  - Confirmed the selected-display/global coordinate contract is now consistent across screenshot labels, crop requests, pointer actions, and persisted overlay images.
+  - Updated docs:
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/design.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/testing.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/open_issues.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/worklog.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/DesktopScreenshotTransformServiceTests test` (pass).
+  - `xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerVisionTests test` (pass).
+  - `xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" build` (pass).
+- Manual tests run:
+  - Ran `/Users/ferzamh/code-git-local/ClickCherry/scripts/run_overlay_visual_checks.sh` and visually inspected:
+    - `/tmp/clickcherry-overlay-visual-checks/02-full-cursor-overlay.png`
+    - `/tmp/clickcherry-overlay-visual-checks/03-full-grid-overlay.png`
+    - `/tmp/clickcherry-overlay-visual-checks/04-crop-grid-overlay.png`
+    - `/tmp/clickcherry-overlay-visual-checks/05-crop-grid-and-cursor-overlay.png`
+  - Inspected live run artifacts for `/Users/ferzamh/Library/Application Support/TaskAgentMacOS/workspace-71982e82-c391-471f-bdea-d607d49c231b/runs/agent-run-2026-03-31T15-48-20.791Z-ae265ffd.json`, including the grid screenshot and final full-display screenshot.
+- Result:
+  - Deterministic and live-run validation both showed that cursor overlays and grid overlays now align with the real screenshot content and selected-display coordinates.
+- Issues/blockers:
+  - Remaining follow-up is not the overlay renderer itself; it is deciding whether cursor state should be surfaced more explicitly to the model in each screenshot turn.
+
+## Entry
 - Date: 2026-03-29
 - Step: Consolidate execution-agent learnings and reset docs to `v2` baseline direction
 - Changes made:
@@ -276,27 +308,6 @@ description: Running implementation log of completed work, test evidence, blocke
   - Launched `/tmp/taskagent-dd-commit-everything/Build/Products/Debug/ClickCherry.app`, confirmed startup via `pgrep`, then terminated launched app process.
 - Result:
   - Validation complete; all pending files ready for one atomic commit.
-- Issues/blockers:
-  - None.
-
-## Entry
-- Date: 2026-02-26
-- Step: Increase upload folder icon size and restore recording action label
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/NewTaskPageView.swift`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
-  - UI behavior changes:
-    - changed recording action label to `Start recording` (both horizontal and compact layouts).
-    - increased upload folder icon size from `29` to `40`.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-newtask-layout-3 -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO test` (pass; 34 tests).
-- Manual tests run:
-  - Launched `/tmp/taskagent-dd-newtask-layout-3/Build/Products/Debug/ClickCherry.app`, confirmed startup via `pgrep`, then terminated launched app process.
-- Result:
-  - Complete for requested UI follow-up.
 - Issues/blockers:
   - None.
 

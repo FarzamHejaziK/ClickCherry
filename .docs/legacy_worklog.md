@@ -6014,3 +6014,24 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - Complete for requested New Task action-layout polish; pending user visual approval.
 - Issues/blockers:
   - None.
+
+## Entry
+- Date: 2026-02-26
+- Step: Increase upload folder icon size and restore recording action label
+- Changes made:
+  - Updated:
+    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/NewTaskPageView.swift`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/ui_ux_changes.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
+    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
+  - UI behavior changes:
+    - changed recording action label to `Start recording` (both horizontal and compact layouts).
+    - increased upload folder icon size from `29` to `40`.
+- Automated tests run:
+  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/taskagent-dd-newtask-layout-3 -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO test` (pass; 34 tests).
+- Manual tests run:
+  - Launched `/tmp/taskagent-dd-newtask-layout-3/Build/Products/Debug/ClickCherry.app`, confirmed startup via `pgrep`, then terminated launched app process.
+- Result:
+  - Complete for requested UI follow-up.
+- Issues/blockers:
+  - None.

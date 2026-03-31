@@ -3,44 +3,65 @@ import ApplicationServices
 import Foundation
 
 extension OpenAIComputerUseRunner {
+    func selectedDisplayLocalPoint(fromScreenX x: Int, y: Int) -> (x: Int, y: Int) {
+        (
+            x - selectedDisplayCoordinateSpaceOriginX,
+            y - selectedDisplayCoordinateSpaceOriginY
+        )
+    }
+
+    func selectedDisplayLocalRect(for screenshot: OpenAICapturedScreenshot) -> CGRect {
+        CGRect(
+            x: screenshot.coordinateSpaceOriginX - selectedDisplayCoordinateSpaceOriginX,
+            y: screenshot.coordinateSpaceOriginY - selectedDisplayCoordinateSpaceOriginY,
+            width: screenshot.coordinateSpaceWidthPx,
+            height: screenshot.coordinateSpaceHeightPx
+        )
+    }
+
+    func mapSelectedDisplayRectToImageRect(
+        _ rect: CGRect,
+        in screenshot: OpenAICapturedScreenshot
+    ) -> CGRect {
+        let scaleX = screenshot.coordinateSpaceWidthPx > 0
+            ? Double(screenshot.width) / Double(screenshot.coordinateSpaceWidthPx)
+            : 1.0
+        let scaleY = screenshot.coordinateSpaceHeightPx > 0
+            ? Double(screenshot.height) / Double(screenshot.coordinateSpaceHeightPx)
+            : 1.0
+
+        return CGRect(
+            x: rect.origin.x * scaleX,
+            y: rect.origin.y * scaleY,
+            width: rect.width * scaleX,
+            height: rect.height * scaleY
+        ).integral
+    }
+
     func mapToToolCoordinates(x: Int, y: Int) -> (x: Int, y: Int) {
-        // Incoming cursor coordinates are in global screen space; convert to local display space.
-        let localX = x - coordinateSpaceOriginX
-        let localY = y - coordinateSpaceOriginY
-
-        let invScaleX = coordinateScaleX == 0 ? 1.0 : coordinateScaleX
-        let invScaleY = coordinateScaleY == 0 ? 1.0 : coordinateScaleY
-        let scaledX = Int((Double(localX) / invScaleX).rounded())
-        let scaledY = Int((Double(localY) / invScaleY).rounded())
-
-        if toolDisplayWidthPx > 0, toolDisplayHeightPx > 0 {
-            return (
-                max(0, min(toolDisplayWidthPx - 1, scaledX)),
-                max(0, min(toolDisplayHeightPx - 1, scaledY))
-            )
-        }
-
-        return (scaledX, scaledY)
+        selectedDisplayLocalPoint(fromScreenX: x, y: y)
     }
 
     func mapToScreenCoordinates(x: Int, y: Int) -> (x: Int, y: Int) {
-        let scaledX = Int((Double(x) * coordinateScaleX).rounded())
-        let scaledY = Int((Double(y) * coordinateScaleY).rounded())
-
-        if coordinateSpaceWidthPx > 0, coordinateSpaceHeightPx > 0 {
-            let clampedX = max(0, min(coordinateSpaceWidthPx - 1, scaledX))
-            let clampedY = max(0, min(coordinateSpaceHeightPx - 1, scaledY))
-            if clampedX != scaledX || clampedY != scaledY {
+        if selectedDisplayCoordinateSpaceWidthPx > 0, selectedDisplayCoordinateSpaceHeightPx > 0 {
+            let clampedX = max(0, min(selectedDisplayCoordinateSpaceWidthPx - 1, x))
+            let clampedY = max(0, min(selectedDisplayCoordinateSpaceHeightPx - 1, y))
+            if clampedX != x || clampedY != y {
                 recordTrace(
                     kind: .info,
-                    "Clamped tool coordinates from (\(scaledX), \(scaledY)) to (\(clampedX), \(clampedY)) for coordSpace=\(coordinateSpaceWidthPx)x\(coordinateSpaceHeightPx)."
+                    "Clamped display coordinates from (\(x), \(y)) to (\(clampedX), \(clampedY)) for selectedDisplay=\(selectedDisplayCoordinateSpaceWidthPx)x\(selectedDisplayCoordinateSpaceHeightPx)."
                 )
             }
-            // Convert from local display space to global space so CGEvent injection targets the correct monitor.
-            return (clampedX + coordinateSpaceOriginX, clampedY + coordinateSpaceOriginY)
+            return (
+                clampedX + selectedDisplayCoordinateSpaceOriginX,
+                clampedY + selectedDisplayCoordinateSpaceOriginY
+            )
         }
 
-        return (scaledX + coordinateSpaceOriginX, scaledY + coordinateSpaceOriginY)
+        return (
+            x + selectedDisplayCoordinateSpaceOriginX,
+            y + selectedDisplayCoordinateSpaceOriginY
+        )
     }
 
     func targetDisplayCenterPoint() -> (x: Int, y: Int)? {
@@ -126,6 +147,16 @@ extension OpenAIComputerUseRunner {
     func currentCursorImagePoint(in screenshot: OpenAICapturedScreenshot) -> (x: Int, y: Int)? {
         guard let cursor = cursorPositionProvider() else { return nil }
 
+        let representedRect = CGRect(
+            x: screenshot.coordinateSpaceOriginX,
+            y: screenshot.coordinateSpaceOriginY,
+            width: screenshot.coordinateSpaceWidthPx,
+            height: screenshot.coordinateSpaceHeightPx
+        )
+        guard representedRect.contains(CGPoint(x: cursor.x, y: cursor.y)) else {
+            return nil
+        }
+
         let scaleX = screenshot.width > 0 ? Double(screenshot.coordinateSpaceWidthPx) / Double(screenshot.width) : 1.0
         let scaleY = screenshot.height > 0 ? Double(screenshot.coordinateSpaceHeightPx) / Double(screenshot.height) : 1.0
         let localX = cursor.x - screenshot.coordinateSpaceOriginX
@@ -137,22 +168,40 @@ extension OpenAIComputerUseRunner {
             return (imageX, imageY)
         }
 
-        return (
-            max(0, min(screenshot.width - 1, imageX)),
-            max(0, min(screenshot.height - 1, imageY))
-        )
+        guard
+            imageX >= 0,
+            imageY >= 0,
+            imageX < screenshot.width,
+            imageY < screenshot.height
+        else {
+            return nil
+        }
+
+        return (imageX, imageY)
     }
 
     func visualCoordinateContextValues(for screenshot: OpenAICapturedScreenshot) -> [String] {
+        let localRect = selectedDisplayLocalRect(for: screenshot)
+        let originX = Int(localRect.origin.x.rounded())
+        let originY = Int(localRect.origin.y.rounded())
+        let maxX = originX + max(0, screenshot.coordinateSpaceWidthPx - 1)
+        let maxY = originY + max(0, screenshot.coordinateSpaceHeightPx - 1)
+
         var lines = [
-            "IMAGE_COORDINATE_SYSTEM: origin=(0,0) is top-left of the screenshot, x increases rightward, y increases downward.",
-            "TOP_LEFT: (0, 0)",
-            "TOP_RIGHT: (\(max(0, screenshot.width - 1)), 0)",
-            "BOTTOM_LEFT: (0, \(max(0, screenshot.height - 1)))",
-            "BOTTOM_RIGHT: (\(max(0, screenshot.width - 1)), \(max(0, screenshot.height - 1)))"
+            "COORDINATE_SYSTEM: All screenshot and action coordinates use the selected display coordinate system; crops and zoom do not change coordinate meaning.",
+            "TOP_LEFT: (\(originX), \(originY))",
+            "TOP_RIGHT: (\(maxX), \(originY))",
+            "BOTTOM_LEFT: (\(originX), \(maxY))",
+            "BOTTOM_RIGHT: (\(maxX), \(maxY))"
         ]
-        if let cursor = currentCursorImagePoint(in: screenshot) {
-            lines.insert("CURRENT_CURSOR: (\(cursor.x), \(cursor.y))", at: 0)
+        if let cursor = cursorPositionProvider() {
+            let localCursor = selectedDisplayLocalPoint(fromScreenX: cursor.x, y: cursor.y)
+            let containsCursor = localRect.contains(CGPoint(x: localCursor.x, y: localCursor.y))
+            if containsCursor {
+                lines.insert("CURRENT_CURSOR: (\(localCursor.x), \(localCursor.y))", at: 0)
+            } else {
+                lines.insert("CURRENT_CURSOR: outside current image; actual=(\(localCursor.x), \(localCursor.y))", at: 0)
+            }
         }
         return lines
     }
