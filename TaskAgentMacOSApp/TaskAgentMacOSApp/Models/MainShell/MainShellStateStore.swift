@@ -65,6 +65,8 @@ final class MainShellStateStore {
     @ObservationIgnored var lastPresentedFinishedRecordingReview: FinishedRecordingReview?
     @ObservationIgnored var finishedRecordingDidCreateTask: Bool = false
     @ObservationIgnored var activeRunID: UUID?
+    @ObservationIgnored var activeRunOverlayPhase: AgentControlOverlayPhase = .running
+    @ObservationIgnored var activeRunOverlayStopReason: String?
     @ObservationIgnored var pinnedTaskIDs: Set<String> = []
 
     var tasks: [TaskRecord]
@@ -246,6 +248,8 @@ final class MainShellStateStore {
         self.lastDiagnosticScreenshotHeight = nil
         self.isShowingDeleteTaskAlert = false
         self.pendingDeleteTaskID = nil
+        self.activeRunOverlayPhase = .running
+        self.activeRunOverlayStopReason = nil
 
         self.pinnedTaskIDs = Self.loadPinnedTaskIDs(from: userDefaults)
 

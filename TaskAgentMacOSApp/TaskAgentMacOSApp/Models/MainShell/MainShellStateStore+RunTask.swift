@@ -53,6 +53,7 @@ extension MainShellStateStore {
 
         executionTraceRecorder.record(ExecutionTraceEntry(kind: .info, message: "Run requested for task \(selectedTaskID)."))
         agentControlOverlayService.showAgentInControl(displayID: runDisplayIndex)
+        refreshAgentControlOverlay()
         if agentCursorPresentationService.activateTakeoverCursor() {
             executionTraceRecorder.record(ExecutionTraceEntry(kind: .info, message: "Cursor presentation left unchanged during agent takeover."))
         } else {
@@ -139,12 +140,14 @@ extension MainShellStateStore {
         guard isRunningTask else {
             return
         }
-        agentControlOverlayService.hideAgentInControl()
         overlayService.hideBorder()
         userInterruptionMonitor.stop()
         if !agentCursorPresentationService.deactivateTakeoverCursor() {
             executionTraceRecorder.record(ExecutionTraceEntry(kind: .error, message: "Failed to deactivate takeover cursor presentation after cancellation request."))
         }
+        activeRunOverlayPhase = .stopping
+        activeRunOverlayStopReason = nil
+        refreshAgentControlOverlay()
         runStatusMessage = "Cancelling..."
         executionTraceRecorder.record(ExecutionTraceEntry(kind: .cancelled, message: "Cancel requested by user."))
         runTaskHandle?.cancel()
@@ -157,6 +160,8 @@ extension MainShellStateStore {
         }
 
         agentControlOverlayService.hideAgentInControl()
+        activeRunOverlayPhase = .running
+        activeRunOverlayStopReason = nil
         overlayService.hideBorder()
         userInterruptionMonitor.stop()
         if !agentCursorPresentationService.deactivateTakeoverCursor() {
@@ -242,12 +247,14 @@ extension MainShellStateStore {
             return
         }
 
-        agentControlOverlayService.hideAgentInControl()
         overlayService.hideBorder()
         userInterruptionMonitor.stop()
         if !agentCursorPresentationService.deactivateTakeoverCursor() {
             executionTraceRecorder.record(ExecutionTraceEntry(kind: .error, message: "Failed to deactivate takeover cursor presentation after Escape takeover."))
         }
+        activeRunOverlayPhase = .stopping
+        activeRunOverlayStopReason = "Escape pressed"
+        refreshAgentControlOverlay()
         revealAppAfterRunCancellation()
         runStatusMessage = "Cancelling (Escape pressed)..."
         executionTraceRecorder.record(ExecutionTraceEntry(kind: .cancelled, message: "Escape pressed; cancelling run."))
@@ -260,6 +267,36 @@ extension MainShellStateStore {
         runScreenshotLogByRunID[run.id] = []
         runLLMExchangeLogByRunID[run.id] = []
         activeRunID = run.id
+        activeRunOverlayPhase = .running
+        activeRunOverlayStopReason = nil
+    }
+
+    private func refreshAgentControlOverlay() {
+        guard let activeRunID,
+              let run = runHistory.first(where: { $0.id == activeRunID }) else {
+            return
+        }
+
+        let recentEvents = Array(run.events.suffix(6).reversed())
+        let recentScreenshots = Array((runScreenshotLogByRunID[activeRunID] ?? []).suffix(3).reversed())
+        let headline: String
+
+        switch activeRunOverlayPhase {
+        case .running:
+            headline = recentEvents.first?.message ?? "Agent is running"
+        case .stopping:
+            headline = "Stopping agent…"
+        }
+
+        agentControlOverlayService.updateAgentInControl(
+            snapshot: AgentControlOverlaySnapshot(
+                headline: headline,
+                stopReason: activeRunOverlayStopReason,
+                events: recentEvents,
+                screenshots: recentScreenshots
+            ),
+            phase: activeRunOverlayPhase
+        )
     }
 
     private func finishActiveRun(outcome: AutomationRunOutcome) -> AgentRunRecord? {
@@ -311,6 +348,7 @@ extension MainShellStateStore {
         runHistory[idx].events.append(
             AgentRunEvent(timestamp: entry.timestamp, kind: kind, message: entry.message)
         )
+        refreshAgentControlOverlay()
     }
 
     func appendLLMCallEventToActiveRun(_ entry: LLMCallLogEntry) {
@@ -332,6 +370,7 @@ extension MainShellStateStore {
         runHistory[idx].events.append(
             AgentRunEvent(timestamp: entry.finishedAt, kind: .llm, message: message)
         )
+        refreshAgentControlOverlay()
     }
 
     func appendScreenshotLogToActiveRun(_ entry: LLMScreenshotLogEntry) {
@@ -342,6 +381,7 @@ extension MainShellStateStore {
             entries.removeFirst(entries.count - 40)
         }
         runScreenshotLogByRunID[activeRunID] = entries
+        refreshAgentControlOverlay()
     }
 
     func appendLLMExchangeLogToActiveRun(_ entry: LLMExchangeLogEntry) {
