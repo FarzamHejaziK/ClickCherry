@@ -2,6 +2,7 @@
 
 - Reading docs: do not bulk-read `.docs/` by default. Read only the `.docs/*` files needed for the current request, at the time they become relevant. Avoid reading `.docs/legacy_worklog.md` unless historical context is required.
 - Testing strategy: at each incremental implementation step, verify with both automated code-based tests and manual tests before marking the step complete.
+- Large file awareness: if a change is likely to generate or expand a large code file, pause and think through how to break it into smaller, maintainable, semantically organized units. Propose that breakdown before defaulting to a monolithic implementation.
 - Follow the `.docs/` update contract below for file ownership and maintenance rules.
 - Never push changes (run `git push`) unless the user explicitly requests it in the current thread.
 
