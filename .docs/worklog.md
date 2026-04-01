@@ -7,6 +7,43 @@ description: Running implementation log of completed work, test evidence, blocke
 > Previous archived entries are in `/Users/ferzamh/code-git-local/ClickCherry/.docs/legacy_worklog.md`.
 
 ## Entry
+- Date: 2026-04-01
+- Step: Enable Responses WebSocket transport for the OpenAI execution runner with HTTP fallback
+- Changes made:
+  - Updated OpenAI execution transport and runner wiring in:
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomation/OpenAIComputerUseRunner.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomation/OpenAIComputerUseRunner+Transport.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomation/OpenAIResponsesModels.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/MainShellStateStore.swift`
+  - Added and updated focused transport tests in:
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests.swift`
+  - Behavior changes:
+    - added an internal transport abstraction with `http`, `webSocketPreferred`, and `webSocketOnly` modes
+    - defaulted the app path to `webSocketPreferred` via `UserDefaults`-backed runner configuration
+    - moved the existing HTTP `/v1/responses` flow into a dedicated HTTP transport session
+    - added a Responses WebSocket transport that reuses one socket across turns, sends `response.create`, and normalizes stream events back into `OpenAIResponsesResponse`
+    - added fallback from initial WebSocket connect failure and `previous_response_not_found` to HTTP
+    - added reconnect-once handling for `websocket_connection_limit_reached`
+    - preserved request/response exchange logging and added socket lifecycle trace coverage
+  - Updated docs:
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/design.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/plan.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/testing.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/LLM_calls_hardening.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/worklog.md`
+- Automated tests run:
+  - `xcodebuild test -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerVisionTests CODE_SIGNING_ALLOWED=NO` (pass; 21 tests).
+  - `xcodebuild build -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" CODE_SIGNING_ALLOWED=NO` (pass).
+- Manual tests run:
+  - Launched `/Users/ferzamh/Library/Developer/Xcode/DerivedData/TaskAgentMacOSApp-gskaqmcqndoejiefhqxytxdhbljh/Build/Products/Debug/ClickCherry Dev.app`, confirmed the debug app process started, then terminated it after startup verification.
+  - Live provider-backed HTTP vs WebSocket execution comparison was not run in this session.
+- Result:
+  - The active OpenAI execution runner now prefers Responses WebSocket transport while preserving HTTP as the recovery path, and focused automated coverage is green.
+- Issues/blockers:
+  - Live provider-backed validation is still needed to measure latency improvement and confirm real-world fallback behavior against the OpenAI service.
+
+## Entry
 - Date: 2026-03-31
 - Step: Make cursor state explicit in the execution prompt and screenshot tool metadata
 - Changes made:
@@ -322,4 +359,3 @@ description: Running implementation log of completed work, test evidence, blocke
   - Release packaging issue resolved; DMG build now includes required extraction prompt assets.
 - Issues/blockers:
   - None.
-

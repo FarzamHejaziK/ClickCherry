@@ -116,6 +116,16 @@ final class MainShellStateStore {
     var isShowingDeleteTaskAlert: Bool
     var pendingDeleteTaskID: String?
 
+    static let openAIResponsesTransportModeUserDefaultsKey = "openai.responses.transport.mode"
+
+    static func loadOpenAIResponsesTransportMode(from defaults: UserDefaults) -> OpenAIResponsesTransportMode {
+        guard let raw = defaults.string(forKey: openAIResponsesTransportModeUserDefaultsKey),
+              let mode = OpenAIResponsesTransportMode(rawValue: raw) else {
+            return .webSocketPreferred
+        }
+        return mode
+    }
+
     init(
         taskService: TaskService = TaskService(),
         taskExtractionService: TaskExtractionService? = nil,
@@ -161,6 +171,7 @@ final class MainShellStateStore {
             traceSink: { entry in
                 traceRecorder.record(entry)
             },
+            transportMode: Self.loadOpenAIResponsesTransportMode(from: userDefaults),
             screenshotProvider: {
                 let displayIndex = runDisplayIndexBox.value
                 let excludedWindowNumbers = [

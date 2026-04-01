@@ -1,6 +1,53 @@
 import Foundation
 
-struct OpenAIResponsesResponse: Decodable {
+enum OpenAIResponsesTransportMode: String, Codable {
+    case http
+    case webSocketPreferred = "websocket_preferred"
+    case webSocketOnly = "websocket_only"
+}
+
+struct OpenAIResponsesTransportRequest {
+    var model: String
+    var input: [[String: Any]]
+    var tools: [[String: Any]]
+    var previousResponseId: String?
+    var reasoningEffort: String?
+    var reasoningSummary: String?
+    var apiKey: String
+
+    func responseCreateBody() -> [String: Any] {
+        var requestBody: [String: Any] = [
+            "model": model,
+            "input": input,
+            "tools": tools,
+            "tool_choice": "auto",
+            "truncation": "auto"
+        ]
+        if let previousResponseId, !previousResponseId.isEmpty {
+            requestBody["previous_response_id"] = previousResponseId
+        }
+        if let reasoningEffort, !reasoningEffort.isEmpty {
+            var reasoning: [String: Any] = ["effort": reasoningEffort]
+            if let reasoningSummary, !reasoningSummary.isEmpty {
+                reasoning["summary"] = reasoningSummary
+            }
+            requestBody["reasoning"] = reasoning
+        }
+        return requestBody
+    }
+
+    func encodedResponseCreateBody() throws -> Data {
+        try JSONSerialization.data(withJSONObject: responseCreateBody())
+    }
+
+    func encodedWebSocketEvent() throws -> Data {
+        var body = responseCreateBody()
+        body["type"] = "response.create"
+        return try JSONSerialization.data(withJSONObject: body)
+    }
+}
+
+struct OpenAIResponsesResponse: Codable {
     var id: String?
     var output: [OpenAIResponseOutputItem]?
     var outputText: String?
@@ -12,7 +59,7 @@ struct OpenAIResponsesResponse: Decodable {
     }
 }
 
-struct OpenAIResponseOutputItem: Decodable {
+struct OpenAIResponseOutputItem: Codable {
     var type: String
     var id: String?
     var callID: String?
@@ -34,13 +81,13 @@ struct OpenAIResponseOutputItem: Decodable {
     }
 }
 
-struct OpenAIResponseMessageContent: Decodable {
+struct OpenAIResponseMessageContent: Codable {
     var type: String
     var text: String?
 }
 
-struct OpenAIErrorEnvelope: Decodable {
-    struct Payload: Decodable {
+struct OpenAIErrorEnvelope: Codable {
+    struct Payload: Codable {
         var message: String?
         var type: String?
         var code: String?
@@ -49,7 +96,7 @@ struct OpenAIErrorEnvelope: Decodable {
     var error: Payload?
 }
 
-struct OpenAIToolLoopCompletionPayload: Decodable {
+struct OpenAIToolLoopCompletionPayload: Codable {
     var status: String
     var summary: String?
     var error: String?
@@ -64,6 +111,34 @@ struct OpenAIToolLoopCompletionPayload: Decodable {
         case questions
         case debugVisualObservation = "debug_visual_observation"
         case debugMouseLocation = "debug_mouse_location"
+    }
+}
+
+struct OpenAIResponsesWebSocketEvent: Decodable {
+    var type: String
+    var status: Int?
+    var requestID: String?
+    var error: OpenAIErrorEnvelope.Payload?
+    var response: OpenAIResponsesResponse?
+    var item: OpenAIResponseOutputItem?
+    var outputIndex: Int?
+    var itemID: String?
+    var delta: String?
+    var arguments: String?
+    var text: String?
+
+    enum CodingKeys: String, CodingKey {
+        case type
+        case status
+        case requestID = "request_id"
+        case error
+        case response
+        case item
+        case outputIndex = "output_index"
+        case itemID = "item_id"
+        case delta
+        case arguments
+        case text
     }
 }
 

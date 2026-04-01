@@ -175,7 +175,9 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
     let apiKeyStore: any APIKeyStore
     let promptCatalog: PromptCatalogService
     let promptName: String
+    let transportMode: OpenAIResponsesTransportMode
     let sessionFactory: @Sendable () -> URLSession
+    let webSocketConnector: any OpenAIResponsesWebSocketConnecting
     let transportRetryPolicy: TransportRetryPolicy
     let sleepNanoseconds: @Sendable (UInt64) async -> Void
     let screenshotProvider: () throws -> OpenAICapturedScreenshot
@@ -211,6 +213,8 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
         screenshotLogSink: ((LLMScreenshotLogEntry) -> Void)? = nil,
         traceSink: ((ExecutionTraceEntry) -> Void)? = nil,
         session: URLSession = .shared,
+        transportMode: OpenAIResponsesTransportMode = .http,
+        webSocketConnector: (any OpenAIResponsesWebSocketConnecting)? = nil,
         transportRetryPolicy: TransportRetryPolicy = .default,
         sleepNanoseconds: @escaping @Sendable (UInt64) async -> Void = { nanos in
             try? await Task.sleep(nanoseconds: nanos)
@@ -227,10 +231,16 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
         self.exchangeLogSink = exchangeLogSink
         self.screenshotLogSink = screenshotLogSink
         self.traceSink = traceSink
+        self.transportMode = transportMode
         let configurationTemplate = Self.copySessionConfiguration(from: session.configuration)
         self.sessionFactory = {
             URLSession(configuration: Self.copySessionConfiguration(from: configurationTemplate))
         }
+        self.webSocketConnector = webSocketConnector ?? URLSessionOpenAIResponsesWebSocketConnector(
+            sessionFactory: {
+                URLSession(configuration: Self.copySessionConfiguration(from: configurationTemplate))
+            }
+        )
         self.transportRetryPolicy = transportRetryPolicy
         self.sleepNanoseconds = sleepNanoseconds
         self.screenshotProvider = {
@@ -244,6 +254,8 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
     func runToolLoop(taskMarkdown: String, executor: any DesktopActionExecutor) async throws -> AutomationRunResult {
         let promptTemplate = try loadPromptTemplate()
         let apiKey = try resolveAPIKey()
+        let transportSession = makeResponsesTransportSession()
+        defer { transportSession.finish() }
 
         let initialScreenshot: OpenAICapturedScreenshot
         do {
@@ -309,14 +321,16 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
             )
         ]
 
-        var response = try await sendResponsesRequest(
-            model: promptTemplate.config.llm,
-            input: initialInput,
-            tools: tools,
-            previousResponseId: nil,
-            reasoningEffort: promptTemplate.config.reasoningEffort,
-            reasoningSummary: promptTemplate.config.reasoningSummary,
-            apiKey: apiKey
+        var response = try await transportSession.send(
+            OpenAIResponsesTransportRequest(
+                model: promptTemplate.config.llm,
+                input: initialInput,
+                tools: tools,
+                previousResponseId: nil,
+                reasoningEffort: promptTemplate.config.reasoningEffort,
+                reasoningSummary: promptTemplate.config.reasoningSummary,
+                apiKey: apiKey
+            )
         )
 
         var executedSteps: [String] = []
@@ -423,14 +437,16 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
                     )
                 )
 
-                response = try await sendResponsesRequest(
-                    model: promptTemplate.config.llm,
-                    input: followupInput,
-                    tools: tools,
-                    previousResponseId: response.id,
-                    reasoningEffort: promptTemplate.config.reasoningEffort,
-                    reasoningSummary: promptTemplate.config.reasoningSummary,
-                    apiKey: apiKey
+                response = try await transportSession.send(
+                    OpenAIResponsesTransportRequest(
+                        model: promptTemplate.config.llm,
+                        input: followupInput,
+                        tools: tools,
+                        previousResponseId: response.id,
+                        reasoningEffort: promptTemplate.config.reasoningEffort,
+                        reasoningSummary: promptTemplate.config.reasoningSummary,
+                        apiKey: apiKey
+                    )
                 )
             }
         } catch is CancellationError {

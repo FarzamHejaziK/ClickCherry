@@ -72,6 +72,74 @@ private final class OpenAIQueueURLProtocol: URLProtocol {
     override func stopLoading() {}
 }
 
+private final class OpenAITestWebSocket: OpenAIResponsesWebSocket {
+    var sendError: Error?
+    var incomingMessages: [Result<String, Error>]
+    private(set) var sentTexts: [String] = []
+    private(set) var closeReasons: [String] = []
+
+    init(
+        incomingMessages: [Result<String, Error>] = [],
+        sendError: Error? = nil
+    ) {
+        self.incomingMessages = incomingMessages
+        self.sendError = sendError
+    }
+
+    func send(text: String) async throws {
+        if let sendError {
+            self.sendError = nil
+            throw sendError
+        }
+        sentTexts.append(text)
+    }
+
+    func receive() async throws -> String {
+        guard !incomingMessages.isEmpty else {
+            throw URLError(.badServerResponse)
+        }
+        let next = incomingMessages.removeFirst()
+        switch next {
+        case .success(let text):
+            return text
+        case .failure(let error):
+            throw error
+        }
+    }
+
+    func close(code: URLSessionWebSocketTask.CloseCode, reason: Data?) {
+        let text = reason.flatMap { String(data: $0, encoding: .utf8) } ?? "\(code.rawValue)"
+        closeReasons.append(text)
+    }
+}
+
+private final class OpenAITestWebSocketConnector: OpenAIResponsesWebSocketConnecting {
+    var connectResults: [Result<OpenAITestWebSocket, Error>]
+    private(set) var connectCount = 0
+    private(set) var capturedURLs: [URL] = []
+    private(set) var capturedAPIKeys: [String] = []
+
+    init(connectResults: [Result<OpenAITestWebSocket, Error>]) {
+        self.connectResults = connectResults
+    }
+
+    func connect(url: URL, apiKey: String) async throws -> any OpenAIResponsesWebSocket {
+        connectCount += 1
+        capturedURLs.append(url)
+        capturedAPIKeys.append(apiKey)
+        guard !connectResults.isEmpty else {
+            throw URLError(.cannotConnectToHost)
+        }
+        let next = connectResults.removeFirst()
+        switch next {
+        case .success(let socket):
+            return socket
+        case .failure(let error):
+            throw error
+        }
+    }
+}
+
 private struct OpenAIXY: Equatable {
     var x: Int
     var y: Int
@@ -248,6 +316,93 @@ struct OpenAIComputerUseRunnerTests {
     }
 
     @Test
+    func runToolLoopUsesWebSocketTransportAndSendsIncrementalInputs() async throws {
+        let (promptCatalog, tempRoot) = try makePromptCatalog()
+        defer { try? FileManager.default.removeItem(at: tempRoot) }
+        let expectedModel = try promptCatalog.loadPrompt(named: "execution_agent_openai").config.llm
+
+        let socket = OpenAITestWebSocket(
+            incomingMessages: [
+                .success("""
+                {"type":"response.created","response":{"id":"resp_1"}}
+                """),
+                .success("""
+                {"type":"response.output_item.added","output_index":0,"item":{"type":"function_call","id":"fc_1","call_id":"call_1","name":"desktop_action"}}
+                """),
+                .success("""
+                {"type":"response.function_call_arguments.delta","output_index":0,"delta":"{\\"action\\":\\"type\\","}
+                """),
+                .success("""
+                {"type":"response.function_call_arguments.done","output_index":0,"arguments":"{\\"action\\":\\"type\\",\\"text\\":\\"hello via ws\\"}"}
+                """),
+                .success("""
+                {"type":"response.completed","response":{"id":"resp_1"}}
+                """),
+                .success("""
+                {"type":"response.created","response":{"id":"resp_2"}}
+                """),
+                .success("""
+                {"type":"response.completed","response":{"id":"resp_2","output_text":"{\\"status\\":\\"SUCCESS\\",\\"summary\\":\\"Task completed\\",\\"error\\":null,\\"questions\\":[]}"}}
+                """)
+            ]
+        )
+        let connector = OpenAITestWebSocketConnector(connectResults: [.success(socket)])
+
+        let runner = OpenAIComputerUseRunner(
+            apiKeyStore: OpenAIStubAPIKeyStore(values: [.openAI: "openai-test-key"]),
+            promptCatalog: promptCatalog,
+            session: makeSession(),
+            transportMode: .webSocketOnly,
+            webSocketConnector: connector,
+            screenshotProvider: {
+                try Self.makeValidScreenshot()
+            },
+            cursorPositionProvider: { (300, 200) }
+        )
+        let executor = OpenAIMockDesktopExecutor()
+
+        let result = try await runner.runToolLoop(taskMarkdown: "# Task\nType hello via ws", executor: executor)
+
+        #expect(result.outcome == .success)
+        #expect(executor.typedTexts == ["hello via ws"])
+        #expect(connector.connectCount == 1)
+        #expect(socket.sentTexts.count == 2)
+
+        guard
+            let firstPayloadData = socket.sentTexts.first?.data(using: .utf8),
+            let firstPayload = try JSONSerialization.jsonObject(with: firstPayloadData) as? [String: Any],
+            let firstInput = firstPayload["input"] as? [[String: Any]],
+            let firstMessage = firstInput.first,
+            let firstContent = firstMessage["content"] as? [[String: Any]]
+        else {
+            Issue.record("Missing first WebSocket payload.")
+            return
+        }
+
+        #expect(firstPayload["type"] as? String == "response.create")
+        #expect(firstPayload["model"] as? String == expectedModel)
+        #expect((firstPayload["tools"] as? [[String: Any]])?.count == 2)
+        #expect(firstPayload["previous_response_id"] == nil)
+        #expect(firstContent.contains(where: { ($0["type"] as? String) == "input_image" }))
+        let promptText = firstContent.first(where: { ($0["type"] as? String) == "input_text" })?["text"] as? String
+        #expect(promptText?.contains("CURRENT_CURSOR: (300, 200)") == true)
+
+        guard
+            let secondPayloadData = socket.sentTexts.last?.data(using: .utf8),
+            let secondPayload = try JSONSerialization.jsonObject(with: secondPayloadData) as? [String: Any],
+            let secondInput = secondPayload["input"] as? [[String: Any]],
+            let functionOutput = secondInput.first(where: { ($0["type"] as? String) == "function_call_output" })
+        else {
+            Issue.record("Missing second WebSocket payload.")
+            return
+        }
+
+        #expect(secondPayload["previous_response_id"] as? String == "resp_1")
+        #expect(functionOutput["call_id"] as? String == "call_1")
+        #expect((functionOutput["output"] as? String)?.contains("\"ok\":true") == true)
+    }
+
+    @Test
     func runToolLoopUsesSelectedDisplayCoordinatesWhenScreenshotDownscaled() async throws {
         let (promptCatalog, tempRoot) = try makePromptCatalog()
         defer { try? FileManager.default.removeItem(at: tempRoot) }
@@ -393,6 +548,201 @@ struct OpenAIComputerUseRunnerTests {
         #expect(result.outcome == .success)
         #expect(result.executedSteps.contains("Move mouse to (900, 700)"))
         #expect(executor.moves == [OpenAIXY(x: 640, y: 400), OpenAIXY(x: 900, y: 700)])
+    }
+
+    @Test
+    func runToolLoopFallsBackToHTTPWhenWebSocketConnectFails() async throws {
+        let (promptCatalog, tempRoot) = try makePromptCatalog()
+        defer { try? FileManager.default.removeItem(at: tempRoot) }
+
+        OpenAIQueueURLProtocol.reset()
+        defer { OpenAIQueueURLProtocol.reset() }
+
+        OpenAIQueueURLProtocol.enqueue { request in
+            let responseBody = """
+            {
+              "id": "resp_1",
+              "output": [
+                {
+                  "type": "function_call",
+                  "id": "fc_1",
+                  "call_id": "call_1",
+                  "name": "desktop_action",
+                  "arguments": "{\\"action\\":\\"type\\",\\"text\\":\\"fallback hello\\"}"
+                }
+              ]
+            }
+            """
+            return (Self.response(url: request.url!, code: 200), Data(responseBody.utf8))
+        }
+
+        OpenAIQueueURLProtocol.enqueue { request in
+            let responseBody = """
+            {
+              "id": "resp_2",
+              "output": [
+                {
+                  "type": "message",
+                  "content": [
+                    {
+                      "type": "output_text",
+                      "text": "{\\"status\\":\\"SUCCESS\\",\\"summary\\":\\"ok\\",\\"error\\":null,\\"questions\\":[]}"
+                    }
+                  ]
+                }
+              ]
+            }
+            """
+            return (Self.response(url: request.url!, code: 200), Data(responseBody.utf8))
+        }
+
+        let connector = OpenAITestWebSocketConnector(
+            connectResults: [.failure(URLError(.cannotConnectToHost))]
+        )
+
+        let runner = OpenAIComputerUseRunner(
+            apiKeyStore: OpenAIStubAPIKeyStore(values: [.openAI: "openai-test-key"]),
+            promptCatalog: promptCatalog,
+            session: makeSession(),
+            transportMode: .webSocketPreferred,
+            webSocketConnector: connector,
+            screenshotProvider: {
+                try Self.makeValidScreenshot()
+            }
+        )
+        let executor = OpenAIMockDesktopExecutor()
+
+        let result = try await runner.runToolLoop(taskMarkdown: "# Task\nType fallback hello", executor: executor)
+
+        #expect(result.outcome == .success)
+        #expect(executor.typedTexts == ["fallback hello"])
+        #expect(connector.connectCount == 1)
+        #expect(OpenAIQueueURLProtocol.capturedRequests.count == 2)
+    }
+
+    @Test
+    func runToolLoopFallsBackToHTTPWhenWebSocketLosesPreviousResponseState() async throws {
+        let (promptCatalog, tempRoot) = try makePromptCatalog()
+        defer { try? FileManager.default.removeItem(at: tempRoot) }
+
+        OpenAIQueueURLProtocol.reset()
+        defer { OpenAIQueueURLProtocol.reset() }
+
+        OpenAIQueueURLProtocol.enqueue { request in
+            guard
+                let bodyData = Self.requestBodyData(from: request),
+                let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any],
+                let previousResponseId = json["previous_response_id"] as? String,
+                let input = json["input"] as? [[String: Any]],
+                let functionOutput = input.first(where: { ($0["type"] as? String) == "function_call_output" })
+            else {
+                throw NSError(domain: "OpenAIComputerUseRunnerTests", code: 301)
+            }
+
+            #expect(previousResponseId == "resp_1")
+            #expect(functionOutput["call_id"] as? String == "call_1")
+
+            let responseBody = """
+            {
+              "id": "resp_http_2",
+              "output": [
+                {
+                  "type": "message",
+                  "content": [
+                    {
+                      "type": "output_text",
+                      "text": "{\\"status\\":\\"SUCCESS\\",\\"summary\\":\\"fallback ok\\",\\"error\\":null,\\"questions\\":[]}"
+                    }
+                  ]
+                }
+              ]
+            }
+            """
+            return (Self.response(url: request.url!, code: 200), Data(responseBody.utf8))
+        }
+
+        let socket = OpenAITestWebSocket(
+            incomingMessages: [
+                .success("""
+                {"type":"response.created","response":{"id":"resp_1"}}
+                """),
+                .success("""
+                {"type":"response.output_item.done","output_index":0,"item":{"type":"function_call","id":"fc_1","call_id":"call_1","name":"desktop_action","arguments":"{\\"action\\":\\"type\\",\\"text\\":\\"ws first turn\\"}"}}
+                """),
+                .success("""
+                {"type":"response.completed","response":{"id":"resp_1"}}
+                """),
+                .success("""
+                {"type":"error","status":400,"error":{"code":"previous_response_not_found","message":"Previous response with id 'resp_1' not found.","type":"invalid_request_error"}}
+                """)
+            ]
+        )
+        let connector = OpenAITestWebSocketConnector(connectResults: [.success(socket)])
+
+        let runner = OpenAIComputerUseRunner(
+            apiKeyStore: OpenAIStubAPIKeyStore(values: [.openAI: "openai-test-key"]),
+            promptCatalog: promptCatalog,
+            session: makeSession(),
+            transportMode: .webSocketPreferred,
+            webSocketConnector: connector,
+            screenshotProvider: {
+                try Self.makeValidScreenshot()
+            }
+        )
+        let executor = OpenAIMockDesktopExecutor()
+
+        let result = try await runner.runToolLoop(taskMarkdown: "# Task\nType ws first turn", executor: executor)
+
+        #expect(result.outcome == .success)
+        #expect(executor.typedTexts == ["ws first turn"])
+        #expect(connector.connectCount == 1)
+        #expect(OpenAIQueueURLProtocol.capturedRequests.count == 1)
+    }
+
+    @Test
+    func runToolLoopReconnectsWebSocketAfterConnectionLimitError() async throws {
+        let (promptCatalog, tempRoot) = try makePromptCatalog()
+        defer { try? FileManager.default.removeItem(at: tempRoot) }
+
+        let firstSocket = OpenAITestWebSocket(
+            incomingMessages: [
+                .success("""
+                {"type":"error","status":400,"error":{"code":"websocket_connection_limit_reached","message":"Responses websocket connection limit reached (60 minutes). Create a new websocket connection to continue.","type":"invalid_request_error"}}
+                """)
+            ]
+        )
+        let secondSocket = OpenAITestWebSocket(
+            incomingMessages: [
+                .success("""
+                {"type":"response.created","response":{"id":"resp_ws_2"}}
+                """),
+                .success("""
+                {"type":"response.completed","response":{"id":"resp_ws_2","output_text":"{\\"status\\":\\"SUCCESS\\",\\"summary\\":\\"reconnected\\",\\"error\\":null,\\"questions\\":[]}"}}
+                """)
+            ]
+        )
+        let connector = OpenAITestWebSocketConnector(
+            connectResults: [.success(firstSocket), .success(secondSocket)]
+        )
+
+        let runner = OpenAIComputerUseRunner(
+            apiKeyStore: OpenAIStubAPIKeyStore(values: [.openAI: "openai-test-key"]),
+            promptCatalog: promptCatalog,
+            session: makeSession(),
+            transportMode: .webSocketOnly,
+            webSocketConnector: connector,
+            screenshotProvider: {
+                try Self.makeValidScreenshot()
+            }
+        )
+
+        let result = try await runner.runToolLoop(taskMarkdown: "# Task\nReturn success", executor: OpenAIMockDesktopExecutor())
+
+        #expect(result.outcome == .success)
+        #expect(result.llmSummary == "reconnected")
+        #expect(connector.connectCount == 2)
+        #expect(firstSocket.sentTexts.count == 1)
+        #expect(secondSocket.sentTexts.count == 1)
     }
 
     @Test
