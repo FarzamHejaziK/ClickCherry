@@ -224,6 +224,44 @@ description: Step-by-step implementation plan with code scope, automated tests, 
   - automated coverage is complete as of 2026-03-27.
   - interactive desktop validation is still pending in local runtime and remains the immediate next step.
 
+### Responses WebSocket transport increment (implemented: 2026-04-01)
+
+#### Code
+- Add an internal transport mode enum for the OpenAI execution runner:
+  - `http`
+  - `webSocketPreferred`
+  - `webSocketOnly`
+- Store the selected mode in `MainShellStateStore` `UserDefaults` handling and default the active app path to `webSocketPreferred`.
+- Extract the previous HTTP `/v1/responses` logic into an HTTP transport session without changing request semantics.
+- Add a WebSocket transport session that:
+  - opens `wss://api.openai.com/v1/responses`
+  - sends `response.create` events using the same per-turn request body fields as the HTTP path
+  - accumulates stream events into a normalized `OpenAIResponsesResponse`
+  - preserves the existing tool loop contract above the transport boundary
+- Keep `OpenAIComputerUseRunner` as the orchestration owner and make transport selection/fallback internal to the transport layer.
+- Preserve diagnostics parity by recording request/response exchanges and trace entries for both HTTP and WebSocket paths.
+
+#### Automated tests
+- Keep the focused OpenAI runner suites green with the transport abstraction in place.
+- Add focused tests covering:
+  - initial WebSocket request envelope contents
+  - follow-up turns with `previous_response_id` and `function_call_output`
+  - fallback from initial WebSocket connect failure to HTTP
+  - fallback from `previous_response_not_found` to HTTP
+  - reconnect-once behavior for `websocket_connection_limit_reached`
+- Validation commands completed successfully on 2026-04-01:
+  - `xcodebuild test -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerVisionTests CODE_SIGNING_ALLOWED=NO`
+  - `xcodebuild build -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" CODE_SIGNING_ALLOWED=NO`
+
+#### Manual test
+- Local launch smoke completed on 2026-04-01:
+  - launched the built debug app successfully
+  - confirmed the process started cleanly
+  - terminated the launched app after startup verification
+- Interactive provider-backed validation still pending:
+  - compare one safe multi-turn task in `http` mode and `webSocketPreferred` mode
+  - confirm tool behavior, screenshot flow, final status handling, trace readability, and latency impact
+
 ## Step 5: Scheduling (cron-style while app is open)
 
 ### Code

@@ -1,36 +1,139 @@
 import Foundation
 
-extension OpenAIComputerUseRunner {
-    func sendResponsesRequest(
-        model: String,
-        input: [[String: Any]],
-        tools: [[String: Any]],
-        previousResponseId: String?,
-        reasoningEffort: String?,
-        reasoningSummary: String?,
-        apiKey: String
-    ) async throws -> OpenAIResponsesResponse {
-        var requestBody: [String: Any] = [
-            "model": model,
-            "input": input,
-            "tools": tools,
-            "tool_choice": "auto",
-            "truncation": "auto"
-        ]
-        if let previousResponseId, !previousResponseId.isEmpty {
-            requestBody["previous_response_id"] = previousResponseId
-        }
-        if let reasoningEffort, !reasoningEffort.isEmpty {
-            var reasoning: [String: Any] = ["effort": reasoningEffort]
-            if let reasoningSummary, !reasoningSummary.isEmpty {
-                reasoning["summary"] = reasoningSummary
-            }
-            requestBody["reasoning"] = reasoning
-        }
+protocol OpenAIResponsesWebSocketConnecting {
+    func connect(url: URL, apiKey: String) async throws -> any OpenAIResponsesWebSocket
+}
 
+protocol OpenAIResponsesWebSocket {
+    func send(text: String) async throws
+    func receive() async throws -> String
+    func close(code: URLSessionWebSocketTask.CloseCode, reason: Data?)
+}
+
+final class URLSessionOpenAIResponsesWebSocketConnector: OpenAIResponsesWebSocketConnecting {
+    private let sessionFactory: @Sendable () -> URLSession
+
+    init(sessionFactory: @escaping @Sendable () -> URLSession) {
+        self.sessionFactory = sessionFactory
+    }
+
+    func connect(url: URL, apiKey: String) async throws -> any OpenAIResponsesWebSocket {
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        let session = sessionFactory()
+        let task = session.webSocketTask(with: request)
+        task.resume()
+        return URLSessionOpenAIResponsesWebSocket(session: session, task: task)
+    }
+}
+
+final class URLSessionOpenAIResponsesWebSocket: OpenAIResponsesWebSocket {
+    private let session: URLSession
+    private let task: URLSessionWebSocketTask
+
+    init(session: URLSession, task: URLSessionWebSocketTask) {
+        self.session = session
+        self.task = task
+    }
+
+    func send(text: String) async throws {
+        try await task.send(.string(text))
+    }
+
+    func receive() async throws -> String {
+        let message = try await task.receive()
+        switch message {
+        case .string(let text):
+            return text
+        case .data(let data):
+            guard let text = String(data: data, encoding: .utf8) else {
+                throw OpenAIExecutionPlannerError.invalidResponse
+            }
+            return text
+        @unknown default:
+            throw OpenAIExecutionPlannerError.invalidResponse
+        }
+    }
+
+    func close(code: URLSessionWebSocketTask.CloseCode, reason: Data?) {
+        task.cancel(with: code, reason: reason)
+        session.invalidateAndCancel()
+    }
+}
+
+protocol OpenAIResponsesTransportSession: AnyObject {
+    func send(_ request: OpenAIResponsesTransportRequest) async throws -> OpenAIResponsesResponse
+    func finish()
+}
+
+private enum OpenAIResponsesTransportFallbackError: Error {
+    case fallbackToHTTP(String)
+}
+
+private final class OpenAIResponsesTransportController: OpenAIResponsesTransportSession {
+    private unowned let runner: OpenAIComputerUseRunner
+    private let mode: OpenAIResponsesTransportMode
+    private let httpTransport: OpenAIHTTPResponsesTransportSession
+    private let webSocketTransport: OpenAIWebSocketResponsesTransportSession
+    private var usingHTTPFallback = false
+
+    init(runner: OpenAIComputerUseRunner) {
+        self.runner = runner
+        self.mode = runner.transportMode
+        self.httpTransport = OpenAIHTTPResponsesTransportSession(runner: runner)
+        self.webSocketTransport = OpenAIWebSocketResponsesTransportSession(
+            runner: runner,
+            connector: runner.webSocketConnector
+        )
+    }
+
+    func send(_ request: OpenAIResponsesTransportRequest) async throws -> OpenAIResponsesResponse {
+        switch mode {
+        case .http:
+            return try await httpTransport.send(request)
+        case .webSocketOnly:
+            return try await webSocketTransport.send(request)
+        case .webSocketPreferred:
+            if usingHTTPFallback {
+                return try await httpTransport.send(request)
+            }
+
+            do {
+                return try await webSocketTransport.send(request)
+            } catch let error as OpenAIResponsesTransportFallbackError {
+                usingHTTPFallback = true
+                let reason: String
+                switch error {
+                case .fallbackToHTTP(let message):
+                    reason = message
+                }
+                runner.recordTrace(
+                    kind: .info,
+                    "Responses WebSocket transport falling back to HTTP for the remainder of this run: \(reason)"
+                )
+                webSocketTransport.finish()
+                return try await httpTransport.send(request)
+            }
+        }
+    }
+
+    func finish() {
+        webSocketTransport.finish()
+        httpTransport.finish()
+    }
+}
+
+private final class OpenAIHTTPResponsesTransportSession: OpenAIResponsesTransportSession {
+    private unowned let runner: OpenAIComputerUseRunner
+
+    init(runner: OpenAIComputerUseRunner) {
+        self.runner = runner
+    }
+
+    func send(_ transportRequest: OpenAIResponsesTransportRequest) async throws -> OpenAIResponsesResponse {
         let encodedRequest: Data
         do {
-            encodedRequest = try JSONSerialization.data(withJSONObject: requestBody)
+            encodedRequest = try transportRequest.encodedResponseCreateBody()
         } catch {
             throw OpenAIExecutionPlannerError.invalidResponse
         }
@@ -38,7 +141,7 @@ extension OpenAIComputerUseRunner {
         var request = URLRequest(url: URL(string: "https://api.openai.com/v1/responses")!)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer \(transportRequest.apiKey)", forHTTPHeaderField: "Authorization")
         request.httpBody = encodedRequest
 
         let bytesSent = request.httpBody?.count
@@ -50,9 +153,9 @@ extension OpenAIComputerUseRunner {
         let attempt: Int
         let attemptStartedAt: Date
         do {
-            pair = try await dataWithRetry(for: request)
+            pair = try await runner.dataWithRetry(for: request)
             guard let http = pair.response as? HTTPURLResponse else {
-                recordCall(
+                runner.recordCall(
                     startedAt: pair.attemptStartedAt,
                     finishedAt: Date(),
                     attempt: pair.attempt,
@@ -73,17 +176,17 @@ extension OpenAIComputerUseRunner {
         } catch let error as OpenAIExecutionPlannerError {
             throw error
         } catch {
-            if isCancellation(error) {
+            if runner.isCancellation(error) {
                 throw CancellationError()
             }
-            throw OpenAIExecutionPlannerError.requestFailed(describeTransportError(error))
+            throw OpenAIExecutionPlannerError.requestFailed(runner.describeTransportError(error))
         }
 
-        let requestID = headerValue(response, name: "x-request-id")
+        let requestID = runner.headerValue(response, name: "x-request-id")
         guard (200..<300).contains(response.statusCode) else {
-            let parsedError = try? jsonDecoder.decode(OpenAIErrorEnvelope.self, from: data)
-            let message = serverMessage(from: data, statusCode: response.statusCode)
-            recordExchange(
+            let parsedError = try? runner.jsonDecoder.decode(OpenAIErrorEnvelope.self, from: data)
+            let message = runner.serverMessage(from: data, statusCode: response.statusCode)
+            runner.recordExchange(
                 startedAt: attemptStartedAt,
                 finishedAt: Date(),
                 attempt: attempt,
@@ -94,7 +197,7 @@ extension OpenAIComputerUseRunner {
                 requestBodyData: encodedRequest,
                 responseBodyData: data
             )
-            recordCall(
+            runner.recordCall(
                 startedAt: attemptStartedAt,
                 finishedAt: Date(),
                 attempt: attempt,
@@ -106,7 +209,7 @@ extension OpenAIComputerUseRunner {
                 outcome: .failure,
                 message: message
             )
-            if let issue = classifyOpenAIUserFacingIssue(
+            if let issue = runner.classifyOpenAIUserFacingIssue(
                 statusCode: response.statusCode,
                 payload: parsedError?.error,
                 requestID: requestID
@@ -116,8 +219,8 @@ extension OpenAIComputerUseRunner {
             throw OpenAIExecutionPlannerError.requestFailed(message)
         }
 
-        guard let payload = try? jsonDecoder.decode(OpenAIResponsesResponse.self, from: data) else {
-            recordExchange(
+        guard let payload = try? runner.jsonDecoder.decode(OpenAIResponsesResponse.self, from: data) else {
+            runner.recordExchange(
                 startedAt: attemptStartedAt,
                 finishedAt: Date(),
                 attempt: attempt,
@@ -128,7 +231,7 @@ extension OpenAIComputerUseRunner {
                 requestBodyData: encodedRequest,
                 responseBodyData: data
             )
-            recordCall(
+            runner.recordCall(
                 startedAt: attemptStartedAt,
                 finishedAt: Date(),
                 attempt: attempt,
@@ -146,7 +249,7 @@ extension OpenAIComputerUseRunner {
         let hasOutputItems = !(payload.output ?? []).isEmpty
         let hasOutputText = !(payload.outputText?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
         guard hasOutputItems || hasOutputText else {
-            recordExchange(
+            runner.recordExchange(
                 startedAt: attemptStartedAt,
                 finishedAt: Date(),
                 attempt: attempt,
@@ -160,7 +263,7 @@ extension OpenAIComputerUseRunner {
             throw OpenAIExecutionPlannerError.invalidToolLoopResponse
         }
 
-        recordExchange(
+        runner.recordExchange(
             startedAt: attemptStartedAt,
             finishedAt: Date(),
             attempt: attempt,
@@ -171,7 +274,7 @@ extension OpenAIComputerUseRunner {
             requestBodyData: encodedRequest,
             responseBodyData: data
         )
-        recordCall(
+        runner.recordCall(
             startedAt: attemptStartedAt,
             finishedAt: Date(),
             attempt: attempt,
@@ -184,6 +287,355 @@ extension OpenAIComputerUseRunner {
             message: nil
         )
         return payload
+    }
+
+    func finish() {}
+}
+
+private final class OpenAIWebSocketResponsesTransportSession: OpenAIResponsesTransportSession {
+    private let url = URL(string: "wss://api.openai.com/v1/responses")!
+    private unowned let runner: OpenAIComputerUseRunner
+    private let connector: any OpenAIResponsesWebSocketConnecting
+    private var socket: (any OpenAIResponsesWebSocket)?
+
+    init(
+        runner: OpenAIComputerUseRunner,
+        connector: any OpenAIResponsesWebSocketConnecting
+    ) {
+        self.runner = runner
+        self.connector = connector
+    }
+
+    func send(_ request: OpenAIResponsesTransportRequest) async throws -> OpenAIResponsesResponse {
+        let encodedRequest: Data
+        let encodedText: String
+        do {
+            encodedRequest = try request.encodedWebSocketEvent()
+            guard let text = String(data: encodedRequest, encoding: .utf8) else {
+                throw OpenAIExecutionPlannerError.invalidResponse
+            }
+            encodedText = text
+        } catch let error as OpenAIExecutionPlannerError {
+            throw error
+        } catch {
+            throw OpenAIExecutionPlannerError.invalidResponse
+        }
+
+        let urlString = url.absoluteString
+
+        for attempt in 1...2 {
+            let startedAt = Date()
+            let bytesSent = encodedRequest.count
+            var bytesReceived = 0
+            let accumulator = OpenAIResponsesWebSocketAccumulator()
+            let hadActiveSocketAtTurnStart = socket != nil
+
+            do {
+                let socket = try await ensureConnected(apiKey: request.apiKey)
+                try await socket.send(text: encodedText)
+
+                while true {
+                    let messageText = try await socket.receive()
+                    bytesReceived += messageText.utf8.count
+                    guard let data = messageText.data(using: .utf8) else {
+                        throw OpenAIExecutionPlannerError.invalidResponse
+                    }
+                    let event = try runner.jsonDecoder.decode(OpenAIResponsesWebSocketEvent.self, from: data)
+                    if let requestID = event.requestID?.trimmingCharacters(in: .whitespacesAndNewlines),
+                       !requestID.isEmpty {
+                        accumulator.requestID = requestID
+                    }
+
+                    if event.type == "error" {
+                        let requestID = accumulator.requestID
+                        let message = event.error?.message?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "WebSocket error"
+                        let responseBodyData = try? runner.jsonEncoder.encode(
+                            OpenAIErrorEnvelope(error: event.error)
+                        )
+
+                        runner.recordExchange(
+                            startedAt: startedAt,
+                            finishedAt: Date(),
+                            attempt: attempt,
+                            url: urlString,
+                            httpStatus: event.status,
+                            requestId: requestID,
+                            outcome: .failure,
+                            requestBodyData: encodedRequest,
+                            responseBodyData: responseBodyData
+                        )
+                        runner.recordCall(
+                            startedAt: startedAt,
+                            finishedAt: Date(),
+                            attempt: attempt,
+                            url: urlString,
+                            httpStatus: event.status,
+                            requestId: requestID,
+                            bytesSent: bytesSent,
+                            bytesReceived: bytesReceived,
+                            outcome: .failure,
+                            message: message
+                        )
+
+                        if event.error?.code == "websocket_connection_limit_reached", attempt < 2 {
+                            runner.recordTrace(
+                                kind: .info,
+                                "Responses WebSocket transport reached the connection limit; reconnecting and retrying the turn."
+                            )
+                            closeSocket(reason: "connection_limit_reached")
+                            break
+                        }
+
+                        if event.error?.code == "previous_response_not_found" {
+                            closeSocket(reason: "previous_response_not_found")
+                            throw OpenAIResponsesTransportFallbackError.fallbackToHTTP(message)
+                        }
+
+                        if let issue = runner.classifyOpenAIUserFacingIssue(
+                            statusCode: event.status ?? 400,
+                            payload: event.error,
+                            requestID: requestID
+                        ) {
+                            throw OpenAIExecutionPlannerError.userFacingIssue(issue)
+                        }
+
+                        throw OpenAIExecutionPlannerError.requestFailed(message)
+                    }
+
+                    if let payload = accumulator.apply(event) {
+                        let normalizedData = try runner.jsonEncoder.encode(payload)
+                        let hasOutputItems = !(payload.output ?? []).isEmpty
+                        let hasOutputText = !(payload.outputText?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+                        guard hasOutputItems || hasOutputText else {
+                            runner.recordExchange(
+                                startedAt: startedAt,
+                                finishedAt: Date(),
+                                attempt: attempt,
+                                url: urlString,
+                                httpStatus: nil,
+                                requestId: accumulator.requestID,
+                                outcome: .failure,
+                                requestBodyData: encodedRequest,
+                                responseBodyData: normalizedData
+                            )
+                            throw OpenAIExecutionPlannerError.invalidToolLoopResponse
+                        }
+
+                        runner.recordExchange(
+                            startedAt: startedAt,
+                            finishedAt: Date(),
+                            attempt: attempt,
+                            url: urlString,
+                            httpStatus: nil,
+                            requestId: accumulator.requestID,
+                            outcome: .success,
+                            requestBodyData: encodedRequest,
+                            responseBodyData: normalizedData
+                        )
+                        runner.recordCall(
+                            startedAt: startedAt,
+                            finishedAt: Date(),
+                            attempt: attempt,
+                            url: urlString,
+                            httpStatus: nil,
+                            requestId: accumulator.requestID,
+                            bytesSent: bytesSent,
+                            bytesReceived: bytesReceived,
+                            outcome: .success,
+                            message: nil
+                        )
+                        return payload
+                    }
+                }
+            } catch is CancellationError {
+                closeSocket(reason: "cancelled")
+                throw CancellationError()
+            } catch let error as OpenAIResponsesTransportFallbackError {
+                throw error
+            } catch let error as OpenAIExecutionPlannerError {
+                throw error
+            } catch {
+                let message = runner.describeTransportError(error)
+                runner.recordExchange(
+                    startedAt: startedAt,
+                    finishedAt: Date(),
+                    attempt: attempt,
+                    url: urlString,
+                    httpStatus: nil,
+                    requestId: accumulator.requestID,
+                    outcome: .failure,
+                    requestBodyData: encodedRequest,
+                    responseBodyData: nil
+                )
+                runner.recordCall(
+                    startedAt: startedAt,
+                    finishedAt: Date(),
+                    attempt: attempt,
+                    url: urlString,
+                    httpStatus: nil,
+                    requestId: accumulator.requestID,
+                    bytesSent: bytesSent,
+                    bytesReceived: bytesReceived,
+                    outcome: .failure,
+                    message: message
+                )
+
+                if attempt < 2,
+                   hadActiveSocketAtTurnStart,
+                   runner.shouldReconnectWebSocketAfterTransportError(error) {
+                    runner.recordTrace(
+                        kind: .info,
+                        "Responses WebSocket transport hit a transient error; reconnecting and retrying the current turn."
+                    )
+                    closeSocket(reason: "transient_transport_error")
+                    continue
+                }
+
+                closeSocket(reason: "transport_failure")
+                throw OpenAIResponsesTransportFallbackError.fallbackToHTTP(message)
+            }
+        }
+
+        throw OpenAIResponsesTransportFallbackError.fallbackToHTTP("Responses WebSocket transport could not complete the current turn.")
+    }
+
+    func finish() {
+        closeSocket(reason: "run_finished")
+    }
+
+    private func ensureConnected(apiKey: String) async throws -> any OpenAIResponsesWebSocket {
+        if let socket {
+            runner.recordTrace(kind: .info, "Responses WebSocket transport reusing the active connection.")
+            return socket
+        }
+
+        runner.recordTrace(kind: .info, "Responses WebSocket transport opening a new connection.")
+        let socket = try await connector.connect(url: url, apiKey: apiKey)
+        self.socket = socket
+        return socket
+    }
+
+    private func closeSocket(reason: String) {
+        guard let socket else { return }
+        runner.recordTrace(kind: .info, "Responses WebSocket transport closing connection (\(reason)).")
+        socket.close(code: .normalClosure, reason: Data(reason.utf8))
+        self.socket = nil
+    }
+}
+
+private final class OpenAIResponsesWebSocketAccumulator {
+    var requestID: String?
+    private var responseID: String?
+    private var outputText = ""
+    private var outputItemsByIndex: [Int: OpenAIResponseOutputItem] = [:]
+    private var functionArgumentBuffers: [Int: String] = [:]
+
+    func apply(_ event: OpenAIResponsesWebSocketEvent) -> OpenAIResponsesResponse? {
+        mergeResponse(event.response)
+
+        switch event.type {
+        case "response.output_item.added", "response.output_item.done":
+            if let item = event.item {
+                store(item: item, index: event.outputIndex ?? nextOutputIndex())
+            }
+        case "response.function_call_arguments.delta":
+            if let outputIndex = event.outputIndex, let delta = event.delta {
+                functionArgumentBuffers[outputIndex, default: ""].append(delta)
+                updateArgumentsForStoredItem(at: outputIndex)
+            }
+        case "response.function_call_arguments.done":
+            if let outputIndex = event.outputIndex {
+                if let arguments = event.arguments {
+                    functionArgumentBuffers[outputIndex] = arguments
+                }
+                updateArgumentsForStoredItem(at: outputIndex)
+            }
+        case "response.output_text.delta":
+            if let delta = event.delta {
+                outputText.append(delta)
+            }
+        case "response.output_text.done":
+            if let text = event.text, outputText.isEmpty {
+                outputText = text
+            }
+        case "response.completed":
+            return buildResponse()
+        default:
+            break
+        }
+
+        return nil
+    }
+
+    private func mergeResponse(_ response: OpenAIResponsesResponse?) {
+        guard let response else { return }
+        if let id = response.id?.trimmingCharacters(in: .whitespacesAndNewlines), !id.isEmpty {
+            responseID = id
+        }
+        if let outputText = response.outputText, !outputText.isEmpty {
+            self.outputText = outputText
+        }
+        if let output = response.output {
+            for (index, item) in output.enumerated() {
+                store(item: item, index: index)
+            }
+        }
+    }
+
+    private func nextOutputIndex() -> Int {
+        (outputItemsByIndex.keys.max() ?? -1) + 1
+    }
+
+    private func store(item: OpenAIResponseOutputItem, index: Int) {
+        var merged = item
+        if let bufferedArguments = functionArgumentBuffers[index],
+           merged.arguments == nil {
+            merged.arguments = .string(bufferedArguments)
+        }
+
+        if let existing = outputItemsByIndex[index] {
+            merged = OpenAIResponseOutputItem(
+                type: merged.type.isEmpty ? existing.type : merged.type,
+                id: merged.id ?? existing.id,
+                callID: merged.callID ?? existing.callID,
+                name: merged.name ?? existing.name,
+                arguments: merged.arguments ?? existing.arguments,
+                content: merged.content ?? existing.content,
+                summary: merged.summary ?? existing.summary,
+                text: merged.text ?? existing.text
+            )
+        }
+        outputItemsByIndex[index] = merged
+    }
+
+    private func updateArgumentsForStoredItem(at index: Int) {
+        guard var item = outputItemsByIndex[index],
+              let bufferedArguments = functionArgumentBuffers[index] else {
+            return
+        }
+        item.arguments = .string(bufferedArguments)
+        outputItemsByIndex[index] = item
+    }
+
+    private func buildResponse() -> OpenAIResponsesResponse {
+        let output: [OpenAIResponseOutputItem]?
+        if outputItemsByIndex.isEmpty {
+            output = nil
+        } else {
+            output = outputItemsByIndex.keys.sorted().compactMap { outputItemsByIndex[$0] }
+        }
+
+        return OpenAIResponsesResponse(
+            id: responseID,
+            output: output,
+            outputText: outputText.isEmpty ? nil : outputText
+        )
+    }
+}
+
+extension OpenAIComputerUseRunner {
+    func makeResponsesTransportSession() -> any OpenAIResponsesTransportSession {
+        OpenAIResponsesTransportController(runner: self)
     }
 
     func dataWithRetry(for request: URLRequest) async throws -> (data: Data, response: URLResponse, attempt: Int, attemptStartedAt: Date) {
@@ -286,6 +738,10 @@ extension OpenAIComputerUseRunner {
         default:
             return false
         }
+    }
+
+    func shouldReconnectWebSocketAfterTransportError(_ error: Error) -> Bool {
+        shouldRetryTransportError(error)
     }
 
     func isCancellation(_ error: Error) -> Bool {

@@ -1,6 +1,6 @@
 ---
 description: Decision record for client-side LLM transport hardening and user-facing provider error handling.
-last_updated: 2026-02-21
+last_updated: 2026-04-01
 ---
 
 # LLM Calls Hardening
@@ -10,6 +10,7 @@ last_updated: 2026-02-21
 - Ongoing issue: intermittent HTTPS/TLS failures during LLM calls, most visible with VPN enabled.
 - Prior evidence in open issues: `NSURLErrorDomain -1200` and `_kCFStreamErrorCodeKey=-9820` (`errSSLPeerBadRecordMac`) in Anthropic-era transport traces.
 - Current user goal: improve robustness of LLM calls and make critical provider failures actionable in-app.
+- Current execution-loop goal: reduce per-turn transport overhead on the multi-turn OpenAI Responses runner while preserving a safe HTTP recovery path.
 
 ## Constraints
 
@@ -28,24 +29,35 @@ last_updated: 2026-02-21
    - Applied to OpenAI execution requests and Gemini extraction requests.
    - Goal: avoid stale/poisoned connection reuse across request turns.
 
-2. User-facing LLM error taxonomy (explicitly handled):
+2. OpenAI execution transport policy: **prefer Responses WebSocket per execution run, with HTTP fallback**.
+   - Applied only to the OpenAI execution runner.
+   - The WebSocket path reuses one connection across turns and sends `response.create` events with the same request semantics as the HTTP `/v1/responses` path.
+   - Default rollout mode is `webSocketPreferred`; HTTP remains available as both an explicit mode and a recovery path.
+   - Fallback rules:
+     - initial socket-connect failure -> fall back to HTTP for the rest of the run
+     - `previous_response_not_found` -> fall back to HTTP for the current run
+     - `websocket_connection_limit_reached` -> open a fresh socket and retry the turn once
+   - Safety rule:
+     - partial socket output must never trigger local tool execution; only a fully normalized response can advance the run loop
+
+3. User-facing LLM error taxonomy (explicitly handled):
    - `invalid_credentials`
    - `rate_limited`
    - `quota_or_budget_exhausted`
    - `billing_or_tier_not_enabled`
 
-3. Provider-specific classification is normalized into one model:
+4. Provider-specific classification is normalized into one model:
    - New shared type: `LLMUserFacingIssue` + `LLMUserFacingIssueKind`.
    - OpenAI and Gemini each map HTTP status + provider payload fields into this model.
 
-4. UX contract for these four error classes:
+5. UX contract for these four error classes:
    - Render as a dedicated canvas card (`LLMUserFacingIssueCanvasView`) instead of plain red text.
    - Include actionable CTAs:
      - `Open Settings` for credential/tier setup paths.
      - `Open Billing` / provider console links where relevant.
    - Keep technical diagnostics visible in-card (`HTTP`, provider code, request id/message when available).
 
-5. Surface integration:
+6. Surface integration:
    - Run-task flow (Task Detail page): show issue canvas when active.
    - Recording extraction flow (Recording Finished dialog): show issue canvas when active.
    - Generic non-classified failures continue using existing error text path.
@@ -77,7 +89,9 @@ last_updated: 2026-02-21
 - Automated:
   - Build passes for app target.
   - OpenAI runner tests include user-facing classification checks.
+  - OpenAI runner tests include WebSocket transport/fallback coverage.
   - Gemini client tests include user-facing classification checks.
 - Manual (pending local runtime verification):
   - Inspect new canvas previews for all four error classes.
   - Trigger representative provider failures and verify CTA behavior (`Open Settings`, `Open Billing`).
+  - Compare one safe multi-turn OpenAI run in HTTP mode vs `webSocketPreferred` mode and verify fallback/logging behavior.

@@ -363,6 +363,41 @@ This means: if the agent still has unresolved questions, should execution stop o
   - decode/encode payload models stay in `OpenAIResponsesModels.swift`
 - This split is organizational only. Do not introduce new behavior-level abstractions that reinterpret the tool loop.
 
+## OpenAI Responses WebSocket transport (locked: 2026-04-01)
+
+- The OpenAI execution runner now supports an internal Responses transport abstraction with three modes:
+  - `http`
+  - `webSocketPreferred`
+  - `webSocketOnly`
+- The app-wide default for the active execution path is `webSocketPreferred`.
+  - The selected mode is stored in `UserDefaults`.
+  - There is no user-facing settings control for this in v1; it is an internal rollout switch.
+- The WebSocket path uses OpenAI Responses WebSocket mode at `wss://api.openai.com/v1/responses`.
+  - One socket connection is opened per execution run and reused across turns when healthy.
+  - Each turn sends `type: "response.create"` with the same semantic payload as the HTTP Responses request:
+    - `model`
+    - `input`
+    - `tools`
+    - `tool_choice`
+    - `truncation`
+    - `reasoning`
+    - `previous_response_id`
+- The execution contract stays unchanged above the transport layer:
+  - `OpenAIComputerUseRunner` still owns the orchestration loop.
+  - Tool schemas, prompt content, screenshot payloads, completion parsing, and run artifacts stay transport-agnostic.
+  - Local tools are executed only after a complete normalized response has been assembled.
+- The WebSocket transport accumulates Responses stream events and normalizes them back into `OpenAIResponsesResponse` before the runner parses function calls or completion JSON.
+- Fallback and recovery policy:
+  - if initial WebSocket connection creation fails, the runner falls back to HTTP for the rest of that run.
+  - if the server reports `previous_response_not_found`, the runner falls back to HTTP for the current run rather than failing the task immediately.
+  - if the server reports `websocket_connection_limit_reached`, the runner opens a fresh socket and retries the current turn once.
+  - transient failures on an already active socket may reconnect once for the current turn; partial socket output must never trigger local tool execution.
+- Diagnostics parity is required across both transports:
+  - request/response exchanges must still be persisted per turn
+  - WebSocket requests are logged as outbound `response.create` JSON
+  - normalized final response JSON is persisted so downstream debugging stays consistent with the HTTP path
+  - trace logs must explicitly record socket open, reuse, reconnect, fallback, and close reasons
+
 ## Execution takeover UX (locked: 2026-02-10)
 
 - While a run is executing, the app must show a centered on-screen HUD overlay indicating the agent is running and in control.

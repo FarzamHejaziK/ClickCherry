@@ -218,6 +218,47 @@ xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/
    - After a click/type/open action, confirm the next model turn sees a fresh full-display screenshot instead of staying trapped in the prior crop.
    - Attempt a response that would chain screenshot + click in one turn and confirm the later visual step is deferred until the next screenshot.
 
+## OpenAI Responses WebSocket transport smoke test
+
+Status:
+- Automated verification completed successfully on 2026-04-01.
+- Local app launch smoke completed successfully on 2026-04-01.
+- Interactive provider-backed HTTP vs WebSocket comparison is still pending.
+
+1. Run the focused transport suites with parallel test duplication disabled:
+
+```bash
+xcodebuild test -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj \
+  -scheme TaskAgentMacOSApp \
+  -destination "platform=macOS" \
+  -parallel-testing-enabled NO \
+  -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests \
+  -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerVisionTests \
+  CODE_SIGNING_ALLOWED=NO
+```
+
+2. Run a clean app build:
+
+```bash
+xcodebuild build -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj \
+  -scheme TaskAgentMacOSApp \
+  -destination "platform=macOS" \
+  CODE_SIGNING_ALLOWED=NO
+```
+
+3. Perform a local app launch smoke:
+   - Launch `/Users/ferzamh/Library/Developer/Xcode/DerivedData/TaskAgentMacOSApp-gskaqmcqndoejiefhqxytxdhbljh/Build/Products/Debug/ClickCherry Dev.app`.
+   - Confirm the debug app process starts cleanly.
+   - Quit the launched app after startup verification.
+
+4. Perform this interactive provider-backed checklist in the app:
+   - Run one safe multi-turn task with the transport forced to `http` and capture baseline trace/log timing.
+   - Run the same task with the transport set to `webSocketPreferred`.
+   - Confirm both runs produce the same tool calls, screenshot-assisted flow, and final success/clarification handling.
+   - Confirm `agent-run-...-llm-exchanges` remain readable and the persisted trace shows socket open/reuse/fallback events on the WebSocket run.
+   - If possible, force a socket failure and confirm the run falls back to HTTP without executing tools from partial socket output.
+   - Compare wall-clock latency across the two runs and record whether WebSocket is measurably faster on the multi-turn path.
+
 ## Overlay visual validation harness
 
 Status:
