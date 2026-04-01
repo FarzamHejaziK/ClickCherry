@@ -4,25 +4,27 @@ description: Short, continuously updated plan of the immediate next implementati
 
 # Next Steps
 
-1. Step: Validate the new OpenAI Responses WebSocket transport in live provider-backed runs and decide whether the current internal-only rollout settings are sufficient.
-2. Why now: The transport abstraction, fallback behavior, focused automated coverage, app build, and local launch smoke are complete. The remaining uncertainty is live socket behavior, recovery quality, and real latency impact against the OpenAI API.
+1. Step: Redesign the execution takeover overlay into a transparent live run feed on the selected display.
+2. Why now: The current centered HUD confirms takeover but does not surface enough run context, does not keep the Escape stop state visible long enough, and is visually weaker than the rest of the execution UX. The underlying run event stream and screenshot log already exist, so the next highest-leverage step is to expose that data in the overlay without changing the model-facing capture contract.
 3. Code tasks:
-  - Run one safe multi-turn task in `http` mode and one in `webSocketPreferred` mode using the same task and desktop target.
-  - Verify exchange logs and execution traces remain readable and that socket lifecycle events are persisted clearly.
-  - Confirm fallback to HTTP preserves run continuity when the socket path fails before the runner can complete a turn.
-  - Keep the transport mode internal and `UserDefaults`-backed unless live validation shows a strong need for a debug-facing toggle.
-  - After live transport validation is complete, return to the higher-level Dock-hover/success-evidence follow-up work.
+  - Replace the centered `Agent is running` HUD with a top-anchored transparent activity overlay.
+  - Extend `AgentControlOverlayService` so it can render live state updates from the active run.
+  - Reuse `runHistory` events and `runScreenshotLogByRunID` screenshots to populate the overlay feed with newest-first ordering.
+  - Keep the overlay click-through and excluded from model screenshots through the existing window-number exclusion path.
+  - Change the Escape cancellation flow so the overlay stays visible with a stopping message until the run settles.
 4. Automated tests:
-  - Run `xcodebuild test -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerVisionTests CODE_SIGNING_ALLOWED=NO`.
+  - Run `xcodebuild test -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests CODE_SIGNING_ALLOWED=NO`.
   - Run `xcodebuild build -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" CODE_SIGNING_ALLOWED=NO`.
-  - If any transport follow-up changes are made after live validation, rerun the focused suite before expanding to broader tests.
+  - If the overlay implementation introduces reusable view logic outside the state store, add focused tests or previews for that surface before broadening coverage.
 5. Manual tests:
-  - Run a known-safe multi-turn OpenAI task in `http` mode and capture baseline timing plus diagnostics.
-  - Run the same task in `webSocketPreferred` mode and compare timing, tool behavior, screenshots, and final result.
-  - Confirm the app still launches cleanly from the debug build after any transport follow-up changes.
-  - If feasible, induce a socket-path failure and confirm the run falls back to HTTP without partial-turn tool execution.
+  - Run a known-safe multi-turn task and confirm the overlay appears on the selected display with a transparent top activity feed.
+  - Confirm the newest action is always shown at the top and older actions remain visible below it.
+  - Confirm recent screenshot thumbnails shown in the overlay match the run screenshots persisted for diagnostics.
+  - Press `Escape` mid-run and confirm a visible stopping state remains on screen until the run cancels.
+  - Confirm the app still launches cleanly from the debug build after the overlay redesign.
+  - Confirm the model-visible screenshots never include the overlay itself.
 6. Exit criteria:
-  - Live WebSocket runs match HTTP behavior for tool selection, screenshot flow, and final status handling.
-  - Persisted diagnostics make socket open/reuse/reconnect/fallback events easy to inspect.
-  - WebSocket is at least neutral and preferably faster on a representative multi-turn task.
-  - Remaining execution-quality follow-up work is again dominated by model behavior rather than transport behavior.
+  - The overlay clearly shows current and recent run activity without blocking interaction on the desktop.
+  - Escape cancellation remains visible on-screen until the run settles.
+  - The overlay stays excluded from model screenshots and does not regress selected-display capture behavior.
+  - Automated tests and a debug build pass after the redesign.

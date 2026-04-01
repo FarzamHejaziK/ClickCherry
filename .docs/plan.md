@@ -262,6 +262,34 @@ description: Step-by-step implementation plan with code scope, automated tests, 
   - compare one safe multi-turn task in `http` mode and `webSocketPreferred` mode
   - confirm tool behavior, screenshot flow, final status handling, trace readability, and latency impact
 
+### Execution takeover overlay redesign increment (planned: 2026-04-01)
+
+#### Code
+- Replace the centered `Agent is running` HUD with a transparent, top-anchored activity overlay on the selected display.
+- Extend `AgentControlOverlayService` so the overlay can receive live run state updates instead of only static show/hide commands.
+- Feed the overlay from the active run's existing event and screenshot streams:
+  - newest action or status at the top
+  - previous actions stacked below
+  - recent model-visible screenshots rendered as compact thumbnails
+- Keep the overlay click-through, non-activating, and excluded from model screenshots through the existing window-exclusion path.
+- Update Escape cancellation behavior so the overlay remains visible in a stopping state until the run actually settles, instead of disappearing immediately on key press.
+- Preserve the current selected-display border overlay and the existing takeover cursor behavior.
+
+#### Automated tests
+- Expand `TaskAgentMacOSAppTests/MainShellStateStoreTests.swift` to cover:
+  - live overlay activation on run start
+  - overlay updates from appended trace events and screenshot log entries
+  - Escape-triggered stopping state remaining visible until run completion
+  - final overlay dismissal after cancellation or normal completion
+- Keep the app build green after the overlay service and state-store changes.
+
+#### Manual test
+- Run a safe multi-turn task and confirm the overlay appears on the selected display as a transparent top activity rail.
+- Confirm the newest action appears first and earlier actions remain visible below it while the run continues.
+- Confirm recent screenshot thumbnails shown in the overlay match the model-visible run screenshots.
+- Press `Escape` during a run and confirm the overlay switches to a visible stopping state before dismissing after the run settles.
+- Confirm the overlay never appears inside screenshots sent to the model, even when the overlay itself shows screenshot thumbnails.
+
 ## Step 5: Scheduling (cron-style while app is open)
 
 ### Code

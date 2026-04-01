@@ -8,6 +8,30 @@ description: Running implementation log of completed work, test evidence, blocke
 
 ## Entry
 - Date: 2026-04-01
+- Step: Plan the execution takeover overlay redesign and align docs before implementation
+- Changes made:
+  - Updated docs:
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/design.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/plan.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/ui_ux_changes.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/worklog.md`
+  - Decisions recorded:
+    - replace the centered agent takeover HUD with a transparent, top-anchored live activity overlay
+    - show the newest action first, keep older actions below, and allow recent model-visible screenshots to appear inline
+    - keep `Escape` cancellation visibly on-screen until the run settles instead of hiding the overlay immediately
+    - preserve overlay exclusion from model screenshots so the agent never sees the user-facing overlay
+- Automated tests run:
+  - N/A (docs-only).
+- Manual tests run:
+  - N/A (docs-only).
+- Result:
+  - The overlay redesign direction, implementation checklist, and validation expectations are now aligned across the active docs before runtime code changes begin.
+- Issues/blockers:
+  - Implementation and runtime verification are still pending.
+
+## Entry
+- Date: 2026-04-01
 - Step: Enable Responses WebSocket transport for the OpenAI execution runner with HTTP fallback
 - Changes made:
   - Updated OpenAI execution transport and runner wiring in:
@@ -290,72 +314,3 @@ description: Running implementation log of completed work, test evidence, blocke
 - Issues/blockers:
   - Manual validation is still needed on a real multi-display setup with visible app windows (for example Chrome on the selected display).
 
-## Entry
-- Date: 2026-03-22
-- Step: Fix hardened-runtime DMG permission behavior and document the root cause
-- Changes made:
-  - Updated code and release-signing paths:
-    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/ClickCherry.entitlements`
-    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj/project.pbxproj`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.github/workflows/release.yml`
-    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`
-    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/OnboardingStateStore.swift`
-    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
-    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/MainShell/Pages/SettingsPageView.swift`
-    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSAppTests/OnboardingStateStoreTests.swift`
-  - Updated docs:
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/xcode_signing_setup.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/testing.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/permissions_incident_report.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/open_issues.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/worklog.md`
-  - Root-cause findings recorded:
-    - public DMGs diverged from local Xcode runs because hardened-runtime signing originally omitted `com.apple.security.device.audio-input`.
-    - Screen Recording stale-name rows came from temporary local backup/test apps and required global `tccutil reset ScreenCapture` for a true clean-slate test.
-    - Microphone does not have a manual `+` add flow in System Settings, so the native macOS permission dialog is the critical first-registration path.
-- Automated tests run:
-  - `xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Release -destination "platform=macOS" -derivedDataPath /tmp/clickcherry-release-1044 build` (pass).
-  - `xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/clickcherry-tests-1044 -only-testing:TaskAgentMacOSAppTests test` (pass).
-- Manual tests run:
-  - A/B signing experiment on 2026-03-22:
-    - hardened runtime without microphone entitlement: no native microphone dialog
-    - hardened runtime with microphone entitlement: native microphone dialog appeared
-    - non-runtime local-signing variant: native microphone dialog appeared
-  - Installed the published `v0.1.44` GitHub DMG to `/Applications`, reset TCC state, and confirmed the clean public artifact path now behaves correctly.
-- Result:
-  - Hardened-runtime DMG permission regression resolved and documented; `v0.1.44` is the first release with the corrected microphone entitlement path.
-- Issues/blockers:
-  - None.
-
-## Entry
-- Date: 2026-02-26
-- Step: Fix DMG extraction failure by packaging prompt catalogs in release bundles
-- Changes made:
-  - Updated:
-    - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj/project.pbxproj`
-    - `/Users/farzamh/code-git-local/task-agent-macos/CHANGELOG.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/docs/release-process.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/open_source.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/next_steps.md`
-    - `/Users/farzamh/code-git-local/task-agent-macos/.docs/worklog.md`
-  - Build/resource changes:
-    - restored `prompt.md`/`config.yaml` exclusion to prevent flat resource collisions.
-    - added a sandbox-safe `Copy Prompt Catalog` script phase that copies prompts into `Contents/Resources/Prompts/<prompt-id>/` for Debug and Release builds.
-    - verified packaged Release app now contains `task_extraction`, `execution_agent`, and `execution_agent_openai` prompt folders with both `prompt.md` and `config.yaml`.
-- Automated tests run:
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -configuration Release -destination "platform=macOS" -derivedDataPath /tmp/taskagent-release-dd build` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests test` (pass).
-  - `xcodebuild -project /Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/PromptCatalogServiceTests test` (pass).
-- Manual tests run:
-  - Shell-validated Release app bundle content:
-    - `/tmp/taskagent-release-dd/Build/Products/Release/ClickCherry.app/Contents/Resources/Prompts/task_extraction/prompt.md`
-    - `/tmp/taskagent-release-dd/Build/Products/Release/ClickCherry.app/Contents/Resources/Prompts/task_extraction/config.yaml`
-    - `/tmp/taskagent-release-dd/Build/Products/Release/ClickCherry.app/Contents/Resources/Prompts/execution_agent/prompt.md`
-    - `/tmp/taskagent-release-dd/Build/Products/Release/ClickCherry.app/Contents/Resources/Prompts/execution_agent/config.yaml`
-    - `/tmp/taskagent-release-dd/Build/Products/Release/ClickCherry.app/Contents/Resources/Prompts/execution_agent_openai/prompt.md`
-    - `/tmp/taskagent-release-dd/Build/Products/Release/ClickCherry.app/Contents/Resources/Prompts/execution_agent_openai/config.yaml`
-- Result:
-  - Release packaging issue resolved; DMG build now includes required extraction prompt assets.
-- Issues/blockers:
-  - None.

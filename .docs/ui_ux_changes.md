@@ -8,8 +8,8 @@ description: Canonical log for UI/UX plans, decisions, and implementation alignm
 
 - This file is the source of truth for UI/UX change planning and decision tracking.
 - UI/UX changes documented here must follow:
-  - `/Users/farzamh/code-git-local/task-agent-macos/.docs/plan.md` for implementation sequencing and validation strategy.
-  - `/Users/farzamh/code-git-local/task-agent-macos/.docs/design.md` for finalized/locked design decisions.
+  - `/Users/ferzamh/code-git-local/ClickCherry/.docs/plan.md` for implementation sequencing and validation strategy.
+  - `/Users/ferzamh/code-git-local/ClickCherry/.docs/design.md` for finalized/locked design decisions.
 
 ## Entry Template
 
@@ -24,6 +24,32 @@ description: Canonical log for UI/UX plans, decisions, and implementation alignm
 - Notes:
 
 ## Entries
+
+## Entry
+- Date: 2026-04-01
+- Area: Execution takeover overlay redesign plan
+- Change Summary:
+  - Planned UI targets:
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AgentControlOverlayService.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/MainShellStateStore.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/MainShellStateStore+RunTask.swift`
+  - Planned UI updates:
+    - replace the centered takeover HUD with a transparent, top-anchored activity overlay on the selected display
+    - show the newest action or status at the top and keep previous actions visible below it
+    - surface recent model-visible screenshots as compact inline thumbnails
+    - keep `Escape` cancellation visible as a stopping state until the run actually settles
+    - preserve screenshot exclusion so the execution model never sees the overlay
+- Plan Alignment:
+  - Aligns with `/Users/ferzamh/code-git-local/ClickCherry/.docs/plan.md` by turning the next execution increment into an overlay-focused UX pass with explicit automated and manual validation.
+- Design Decision Alignment:
+  - Aligns with `/Users/ferzamh/code-git-local/ClickCherry/.docs/design.md` by revising the takeover UX from a centered HUD to a live activity feed that remains hidden from model screenshots.
+- Validation:
+  - Automated tests:
+    - Pending implementation; target `TaskAgentMacOSAppTests/MainShellStateStoreTests` plus a full app build in this task.
+  - Manual tests:
+    - Pending implementation; validate live overlay ordering, screenshot thumbnail behavior, `Escape` stopping visibility, and model-screenshot exclusion.
+- Notes:
+  - This entry records the approved UI/UX direction before implementation. Runtime code changes are still pending.
 
 ## Entry
 - Date: 2026-02-26

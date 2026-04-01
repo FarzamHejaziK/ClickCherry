@@ -234,12 +234,29 @@ private final class ConfigurablePermissionService: PermissionService {
 
 private final class MockAgentControlOverlayService: AgentControlOverlayService {
     private(set) var showCount = 0
+    private(set) var updateCount = 0
     private(set) var hideCount = 0
     private(set) var shownDisplayIDs: [Int?] = []
+    private(set) var phases: [AgentControlOverlayPhase] = []
+    private(set) var snapshots: [AgentControlOverlaySnapshot] = []
+
+    var lastPhase: AgentControlOverlayPhase? {
+        phases.last
+    }
+
+    var lastSnapshot: AgentControlOverlaySnapshot? {
+        snapshots.last
+    }
 
     func showAgentInControl(displayID: Int?) {
         showCount += 1
         shownDisplayIDs.append(displayID)
+    }
+
+    func updateAgentInControl(snapshot: AgentControlOverlaySnapshot, phase: AgentControlOverlayPhase) {
+        updateCount += 1
+        snapshots.append(snapshot)
+        phases.append(phase)
     }
 
     func hideAgentInControl() {
@@ -248,6 +265,12 @@ private final class MockAgentControlOverlayService: AgentControlOverlayService {
 
     func windowNumberForScreenshotExclusion() -> Int? {
         nil
+    }
+
+    func resetUpdates() {
+        updateCount = 0
+        phases = []
+        snapshots = []
     }
 }
 
@@ -1784,7 +1807,7 @@ struct MainShellStateStoreTests {
 
     @Test
     @MainActor
-    func startRunTaskNowShowsOverlayAndCancelsOnEscapeKey() async throws {
+    func startRunTaskNowShowsInitialRunningOverlaySnapshot() async throws {
         let fm = FileManager.default
         let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
@@ -1825,15 +1848,186 @@ struct MainShellStateStoreTests {
         store.startRunTaskNow()
         #expect(store.isRunningTask == true)
         #expect(overlay.showCount == 1)
+        #expect(overlay.updateCount >= 1)
         #expect(borderOverlay.shownDisplayIDs == [1])
         #expect(monitor.startCount == 1)
         #expect(cursorPresentation.activateCount == 1)
+        let firstSnapshot = try #require(overlay.snapshots.first)
+        #expect(overlay.phases.first == .running)
+        #expect(firstSnapshot.headline == "Agent is running")
+        #expect(firstSnapshot.events.isEmpty)
+        #expect(firstSnapshot.screenshots.isEmpty)
+
+        store.stopRunTask()
+        engine.finish(
+            with: AutomationRunResult(
+                outcome: .cancelled,
+                executedSteps: [],
+                generatedQuestions: [],
+                errorMessage: nil,
+                llmSummary: nil
+            )
+        )
+        for _ in 0..<50 {
+            if store.isRunningTask == false { break }
+            await Task.yield()
+        }
+    }
+
+    @Test
+    @MainActor
+    func activeRunOverlayRefreshesWithNewestFirstEventsAndScreenshots() async throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let task = try taskService.createTask(title: "Overlay refresh task")
+
+        let engine = BlockingAutomationEngine()
+        let overlay = MockAgentControlOverlayService()
+
+        let store = MainShellStateStore(
+            taskService: taskService,
+            automationEngine: engine,
+            apiKeyStore: MockAPIKeyStore(initialValues: [.openAI: "openai-test-key"]),
+            permissionService: AlwaysGrantedPermissionService(),
+            captureService: MockRecordingCaptureService(),
+            overlayService: MockRecordingOverlayService(),
+            agentControlOverlayService: overlay,
+            userInterruptionMonitor: MockUserInterruptionMonitor()
+        )
+
+        store.reloadTasks()
+        store.selectTask(task.id)
+        store.startRunTaskNow()
+        await Task.yield()
+        overlay.resetUpdates()
+
+        store.appendTraceEventToActiveRun(
+            ExecutionTraceEntry(
+                timestamp: Date(timeIntervalSince1970: 10),
+                kind: .localAction,
+                message: "Opened Settings"
+            )
+        )
+        store.appendTraceEventToActiveRun(
+            ExecutionTraceEntry(
+                timestamp: Date(timeIntervalSince1970: 11),
+                kind: .localAction,
+                message: "Clicked Save"
+            )
+        )
+
+        let olderScreenshot = LLMScreenshotLogEntry(
+            timestamp: Date(timeIntervalSince1970: 12),
+            source: .actionScreenshot,
+            mediaType: "image/png",
+            width: 16,
+            height: 16,
+            captureWidthPx: 16,
+            captureHeightPx: 16,
+            coordinateSpaceWidthPx: 16,
+            coordinateSpaceHeightPx: 16,
+            rawByteCount: 4,
+            base64ByteCount: 8,
+            imageData: Data([0x89, 0x50, 0x4e, 0x47])
+        )
+        let newerScreenshot = LLMScreenshotLogEntry(
+            timestamp: Date(timeIntervalSince1970: 13),
+            source: .postActionSnapshot,
+            mediaType: "image/png",
+            width: 16,
+            height: 16,
+            captureWidthPx: 16,
+            captureHeightPx: 16,
+            coordinateSpaceWidthPx: 16,
+            coordinateSpaceHeightPx: 16,
+            rawByteCount: 4,
+            base64ByteCount: 8,
+            imageData: Data([0x89, 0x50, 0x4e, 0x47])
+        )
+        store.appendScreenshotLogToActiveRun(olderScreenshot)
+        store.appendScreenshotLogToActiveRun(newerScreenshot)
+
+        let latestSnapshot = try #require(overlay.lastSnapshot)
+        #expect(overlay.lastPhase == .running)
+        #expect(latestSnapshot.headline == "Clicked Save")
+        #expect(Array(latestSnapshot.events.prefix(2)).map { $0.message } == ["Clicked Save", "Opened Settings"])
+        #expect(latestSnapshot.screenshots == [newerScreenshot, olderScreenshot])
+
+        store.stopRunTask()
+        engine.finish(
+            with: AutomationRunResult(
+                outcome: .cancelled,
+                executedSteps: [],
+                generatedQuestions: [],
+                errorMessage: nil,
+                llmSummary: nil
+            )
+        )
+        for _ in 0..<50 {
+            if store.isRunningTask == false { break }
+            await Task.yield()
+        }
+    }
+
+    @Test
+    @MainActor
+    func startRunTaskNowKeepsStoppingOverlayVisibleUntilEscapeCancellationSettles() async throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let task = try taskService.createTask(title: "Agent control cancel task")
+
+        let engine = BlockingAutomationEngine()
+        let overlay = MockAgentControlOverlayService()
+        let borderOverlay = MockRecordingOverlayService()
+        let monitor = MockUserInterruptionMonitor()
+        let cursorPresentation = MockAgentCursorPresentationService()
+        var revealCalls = 0
+
+        let store = MainShellStateStore(
+            taskService: taskService,
+            automationEngine: engine,
+            apiKeyStore: MockAPIKeyStore(initialValues: [.openAI: "openai-test-key"]),
+            permissionService: AlwaysGrantedPermissionService(),
+            captureService: MockRecordingCaptureService(),
+            overlayService: borderOverlay,
+            agentControlOverlayService: overlay,
+            userInterruptionMonitor: monitor,
+            agentCursorPresentationService: cursorPresentation,
+            revealAppAfterRunCancellation: {
+                revealCalls += 1
+            }
+        )
+
+        store.reloadTasks()
+        store.selectTask(task.id)
+
+        store.startRunTaskNow()
 
         monitor.triggerUserInterruption()
         await Task.yield()
 
         #expect(store.runStatusMessage == "Cancelling (Escape pressed)...")
-        #expect(overlay.hideCount >= 1)
+        let stoppingSnapshot = try #require(overlay.lastSnapshot)
+        #expect(overlay.lastPhase == .stopping)
+        #expect(stoppingSnapshot.headline == "Stopping agent…")
+        #expect(stoppingSnapshot.stopReason == "Escape pressed")
+        #expect(overlay.hideCount == 0)
         #expect(borderOverlay.hideCallCount >= 1)
         #expect(monitor.stopCount >= 1)
         #expect(cursorPresentation.deactivateCount >= 1)
@@ -1855,11 +2049,122 @@ struct MainShellStateStoreTests {
         }
         #expect(store.isRunningTask == false)
         #expect(store.runStatusMessage == "Run cancelled.")
+        #expect(overlay.hideCount >= 1)
     }
 
     @Test
     @MainActor
-    func startRunTaskNowUsesSelectedDisplayScreencaptureIndexForBothOverlays() throws {
+    func stopRunTaskTransitionsOverlayToStoppingBeforeFinalHide() async throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let task = try taskService.createTask(title: "Manual stop overlay task")
+
+        let engine = BlockingAutomationEngine()
+        let overlay = MockAgentControlOverlayService()
+
+        let store = MainShellStateStore(
+            taskService: taskService,
+            automationEngine: engine,
+            apiKeyStore: MockAPIKeyStore(initialValues: [.openAI: "openai-test-key"]),
+            permissionService: AlwaysGrantedPermissionService(),
+            captureService: MockRecordingCaptureService(),
+            overlayService: MockRecordingOverlayService(),
+            agentControlOverlayService: overlay,
+            userInterruptionMonitor: MockUserInterruptionMonitor(),
+            agentCursorPresentationService: MockAgentCursorPresentationService()
+        )
+
+        store.reloadTasks()
+        store.selectTask(task.id)
+        store.startRunTaskNow()
+
+        store.stopRunTask()
+
+        let stoppingSnapshot = try #require(overlay.lastSnapshot)
+        #expect(overlay.lastPhase == .stopping)
+        #expect(stoppingSnapshot.headline == "Stopping agent…")
+        #expect(stoppingSnapshot.stopReason == nil)
+        #expect(overlay.hideCount == 0)
+
+        engine.finish(
+            with: AutomationRunResult(
+                outcome: .cancelled,
+                executedSteps: [],
+                generatedQuestions: [],
+                errorMessage: nil,
+                llmSummary: nil
+            )
+        )
+        for _ in 0..<50 {
+            if store.isRunningTask == false { break }
+            await Task.yield()
+        }
+        #expect(overlay.hideCount >= 1)
+    }
+
+    @Test
+    @MainActor
+    func startRunTaskNowHidesOverlayAfterSuccessfulCompletion() async throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let task = try taskService.createTask(title: "Successful overlay cleanup task")
+
+        let engine = BlockingAutomationEngine()
+        let overlay = MockAgentControlOverlayService()
+
+        let store = MainShellStateStore(
+            taskService: taskService,
+            automationEngine: engine,
+            apiKeyStore: MockAPIKeyStore(initialValues: [.openAI: "openai-test-key"]),
+            permissionService: AlwaysGrantedPermissionService(),
+            captureService: MockRecordingCaptureService(),
+            overlayService: MockRecordingOverlayService(),
+            agentControlOverlayService: overlay,
+            userInterruptionMonitor: MockUserInterruptionMonitor()
+        )
+
+        store.reloadTasks()
+        store.selectTask(task.id)
+        store.startRunTaskNow()
+
+        engine.finish(
+            with: AutomationRunResult(
+                outcome: .success,
+                executedSteps: ["Done"],
+                generatedQuestions: [],
+                errorMessage: nil,
+                llmSummary: "Completed"
+            )
+        )
+
+        for _ in 0..<50 {
+            if store.isRunningTask == false { break }
+            await Task.yield()
+        }
+
+        #expect(store.runStatusMessage == "Run complete.")
+        #expect(overlay.hideCount >= 1)
+    }
+
+    @Test
+    @MainActor
+    func startRunTaskNowUsesSelectedDisplayScreencaptureIndexForBothOverlays() async throws {
         let fm = FileManager.default
         let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
@@ -1873,6 +2178,7 @@ struct MainShellStateStoreTests {
         let task = try taskService.createTask(title: "Selected run display task")
 
         let captureService = MockRecordingCaptureService()
+        let engine = BlockingAutomationEngine()
         captureService.displays = [
             CaptureDisplayOption(id: 1001, label: "Display 1", screencaptureDisplayIndex: 1),
             CaptureDisplayOption(id: 1002, label: "Display 2", screencaptureDisplayIndex: 2)
@@ -1884,7 +2190,7 @@ struct MainShellStateStoreTests {
 
         let store = MainShellStateStore(
             taskService: taskService,
-            automationEngine: BlockingAutomationEngine(),
+            automationEngine: engine,
             apiKeyStore: MockAPIKeyStore(initialValues: [.openAI: "openai-test-key"]),
             permissionService: AlwaysGrantedPermissionService(),
             captureService: captureService,
@@ -1906,11 +2212,24 @@ struct MainShellStateStoreTests {
         #expect(store.errorMessage == nil)
 
         store.stopRunTask()
+        engine.finish(
+            with: AutomationRunResult(
+                outcome: .cancelled,
+                executedSteps: [],
+                generatedQuestions: [],
+                errorMessage: nil,
+                llmSummary: nil
+            )
+        )
+        for _ in 0..<50 {
+            if store.isRunningTask == false { break }
+            await Task.yield()
+        }
     }
 
     @Test
     @MainActor
-    func startRunTaskNowMonitorFailureDoesNotBlockRun() throws {
+    func startRunTaskNowMonitorFailureDoesNotBlockRun() async throws {
         let fm = FileManager.default
         let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
@@ -1958,6 +2277,22 @@ struct MainShellStateStoreTests {
         store.stopRunTask()
         #expect(borderOverlay.hideCallCount == 1)
         #expect(cursorPresentation.deactivateCount == 1)
-        #expect(overlay.hideCount == 1)
+        #expect(overlay.hideCount == 0)
+        #expect(overlay.lastPhase == .stopping)
+
+        engine.finish(
+            with: AutomationRunResult(
+                outcome: .cancelled,
+                executedSteps: [],
+                generatedQuestions: [],
+                errorMessage: nil,
+                llmSummary: nil
+            )
+        )
+        for _ in 0..<50 {
+            if store.isRunningTask == false { break }
+            await Task.yield()
+        }
+        #expect(overlay.hideCount >= 1)
     }
 }

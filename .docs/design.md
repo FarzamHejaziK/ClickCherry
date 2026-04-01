@@ -398,15 +398,21 @@ This means: if the agent still has unresolved questions, should execution stop o
   - normalized final response JSON is persisted so downstream debugging stays consistent with the HTTP path
   - trace logs must explicitly record socket open, reuse, reconnect, fallback, and close reasons
 
-## Execution takeover UX (locked: 2026-02-10)
+## Execution takeover UX (revised, locked: 2026-04-01)
 
-- While a run is executing, the app must show a centered on-screen HUD overlay indicating the agent is running and in control.
-- The run is cancelled when the user presses `Escape` (explicit takeover), and the HUD overlay is hidden.
-- When a run starts from the UI, the main app window is immediately minimized (the HUD overlay remains visible).
+- While a run is executing, the app must show a transparent, top-anchored takeover overlay on the selected display instead of a centered blocking HUD.
+- The overlay is a live activity feed:
+  - the newest agent action or status is pinned at the top
+  - previous actions remain visible below in reverse chronological order
+  - recent model-visible screenshots may be shown inline as compact thumbnails for operator awareness
+- The overlay remains click-through, non-activating, and visually lightweight so it informs the user without blocking the desktop.
+- When the user presses `Escape`, the run enters a visible stopping state in the overlay; that stopping or cancelled state remains visible until the run settles and the app reveal flow completes.
+- When a run starts from the UI, the main app window is immediately minimized and the takeover overlay remains visible.
 - Implementation details:
   - A global `CGEventTap` monitors `keyDown` and triggers only on `Escape`.
   - The desktop action executor tags injected CGEvents with a sentinel `eventSourceUserData` value so the interruption monitor ignores synthetic events (avoid self-cancel).
-  - Desktop screenshots are captured while excluding the HUD overlay window so it does not appear in images sent to the LLM tool loop.
+  - Desktop screenshots are captured while excluding the takeover overlay window so it never appears in images sent to the LLM tool loop, including any activity rows or screenshot thumbnails rendered in that overlay.
+  - The overlay reuses the active run's event stream and screenshot log so the user-visible feed and persisted diagnostics stay aligned.
   - During takeover, the app leaves cursor presentation unchanged (no system cursor-size override and no cursor-following halo overlay).
 - Permission requirements for this UX:
   - Screen Recording: screenshots for the tool loop.
