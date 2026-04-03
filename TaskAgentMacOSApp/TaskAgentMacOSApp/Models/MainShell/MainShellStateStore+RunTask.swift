@@ -277,15 +277,29 @@ extension MainShellStateStore {
             return
         }
 
-        let recentEvents = Array(run.events.suffix(6).reversed())
+        let rawNewestEvent = run.events.last
+        let displayNewestEvent = rawNewestEvent.flatMap(overlayDisplayEvent)
+        let recentEvents = Array(run.events.compactMap(overlayDisplayEvent).suffix(6).reversed())
         let recentScreenshots = Array((runScreenshotLogByRunID[activeRunID] ?? []).suffix(3).reversed())
+        let newestScreenshot = recentScreenshots.first
+        let latestActivityAt = [
+            run.startedAt,
+            rawNewestEvent?.timestamp ?? run.startedAt,
+            newestScreenshot?.timestamp ?? run.startedAt
+        ].max() ?? run.startedAt
+        let activityState: AgentControlOverlayActivityState
         let headline: String
 
         switch activeRunOverlayPhase {
         case .running:
-            headline = recentEvents.first?.message ?? "Agent is running"
+            activityState = overlayActivityState(
+                newestEvent: rawNewestEvent,
+                newestScreenshot: newestScreenshot
+            )
+            headline = displayNewestEvent?.message ?? overlayDefaultHeadline(for: activityState)
         case .stopping:
             headline = "Stopping agent…"
+            activityState = .stopping
         }
 
         agentControlOverlayService.updateAgentInControl(
@@ -293,10 +307,248 @@ extension MainShellStateStore {
                 headline: headline,
                 stopReason: activeRunOverlayStopReason,
                 events: recentEvents,
-                screenshots: recentScreenshots
+                screenshots: recentScreenshots,
+                startedAt: run.startedAt,
+                latestActivityAt: latestActivityAt,
+                activityState: activityState
             ),
             phase: activeRunOverlayPhase
         )
+    }
+
+    private func overlayActivityState(
+        newestEvent: AgentRunEvent?,
+        newestScreenshot: LLMScreenshotLogEntry?
+    ) -> AgentControlOverlayActivityState {
+        if let newestScreenshot,
+           newestScreenshot.timestamp >= (newestEvent?.timestamp ?? .distantPast) {
+            return .capturing
+        }
+
+        guard let newestEvent else {
+            return .starting
+        }
+
+        switch newestEvent.kind {
+        case .llm, .info:
+            return .thinking
+        case .tool:
+            return .usingTool
+        case .action:
+            return .acting
+        case .completion:
+            return .completing
+        case .cancelled:
+            return .stopping
+        case .error:
+            return .error
+        }
+    }
+
+    private func overlayDefaultHeadline(for activityState: AgentControlOverlayActivityState) -> String {
+        switch activityState {
+        case .starting:
+            return "Agent is running"
+        case .thinking:
+            return "Thinking through the next step"
+        case .usingTool:
+            return "Preparing the next action"
+        case .acting:
+            return "Working on the screen"
+        case .capturing:
+            return "Reviewing the screen"
+        case .completing:
+            return "Finishing the task"
+        case .error:
+            return "Ran into an issue while working"
+        case .stopping:
+            return "Stopping agent…"
+        }
+    }
+
+    private func overlayDisplayEvent(_ event: AgentRunEvent) -> AgentRunEvent? {
+        guard let message = overlayDisplayMessage(for: event) else {
+            return nil
+        }
+
+        return AgentRunEvent(
+            id: event.id,
+            timestamp: event.timestamp,
+            kind: event.kind,
+            message: message
+        )
+    }
+
+    private func overlayDisplayMessage(for event: AgentRunEvent) -> String? {
+        switch event.kind {
+        case .info:
+            return nil
+        case .llm:
+            return "Thinking through the next step"
+        case .tool, .action:
+            return overlayActionMessage(from: event.message)
+        case .completion:
+            return "Finishing the task"
+        case .cancelled:
+            return "Stopping the agent"
+        case .error:
+            return overlayErrorMessage(from: event.message)
+        }
+    }
+
+    private func overlayActionMessage(from message: String) -> String? {
+        let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return nil
+        }
+
+        let lower = trimmed.lowercased()
+
+        if lower.hasPrefix("opened ") {
+            return "Opening \(trimmed.dropFirst("Opened ".count))"
+        }
+        if lower.hasPrefix("clicked ") {
+            return "Clicking \(trimmed.dropFirst("Clicked ".count))"
+        }
+        if lower.hasPrefix("selected ") {
+            return "Selecting \(trimmed.dropFirst("Selected ".count))"
+        }
+        if lower.hasPrefix("pressed ") {
+            return "Pressing \(trimmed.dropFirst("Pressed ".count))"
+        }
+        if lower.hasPrefix("read cursor position") || lower.contains("cursor_position") {
+            return "Checking the pointer position"
+        }
+        if lower.hasPrefix("move mouse to") || lower.contains(".mouse_move") || lower.contains(".move_mouse") || lower.contains(".move(") {
+            return "Moving the pointer"
+        }
+        if lower.hasPrefix("right click at") || lower.contains(".right_click") {
+            return "Opening a context menu"
+        }
+        if lower.hasPrefix("double click at") || lower.contains(".double_click") {
+            return "Double-clicking on the screen"
+        }
+        if lower.hasPrefix("click at") || lower.contains(".left_click") {
+            return "Clicking on the screen"
+        }
+        if lower.hasPrefix("type text ") || lower.contains(".type(") {
+            return "Typing into the active field"
+        }
+        if lower.hasPrefix("press shortcut ") || lower.contains(".key(") {
+            return "Using a keyboard shortcut"
+        }
+        if lower.hasPrefix("open app ") || lower.contains(".open_app(") {
+            if let appName = overlayQuotedValue(in: trimmed) {
+                return "Opening \(appName)"
+            }
+            return "Opening an app"
+        }
+        if lower.hasPrefix("open url ") || lower.contains(".open_url(") {
+            if let destination = overlayURLLabel(in: trimmed) {
+                return "Opening \(destination)"
+            }
+            return "Opening a page"
+        }
+        if lower.hasPrefix("scroll ") || lower.contains(".scroll") {
+            return "Scrolling the page"
+        }
+        if lower.hasPrefix("wait ") || lower.contains(".wait") {
+            return "Waiting for the screen to settle"
+        }
+        if lower.hasPrefix("capture full screenshot") {
+            return "Reviewing the screen"
+        }
+        if lower.hasPrefix("capture current screenshot view") {
+            return "Reviewing the current view"
+        }
+        if lower.hasPrefix("capture crop screenshot") || (lower.contains(".screenshot(") && lower.contains("mode=crop")) {
+            return "Inspecting part of the screen"
+        }
+        if lower.contains(".screenshot(") {
+            return "Reviewing the screen"
+        }
+        if lower.hasPrefix("terminal exec:") || lower.hasPrefix("terminal_exec(") {
+            return "Running a terminal command"
+        }
+        if lower.hasPrefix("turn ") {
+            return "Thinking through the next step"
+        }
+        if overlayShouldHideBackendMessage(trimmed) {
+            return nil
+        }
+        return trimmed
+    }
+
+    private func overlayErrorMessage(from message: String) -> String? {
+        let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return nil
+        }
+
+        let lower = trimmed.lowercased()
+        if lower.contains("transport") || lower.contains("websocket") || lower.contains("http") || lower.contains("https") || lower.contains("connection") || lower.contains("network") {
+            return "Hit a connection issue while working"
+        }
+        if lower.contains("permission") || lower.contains("screen recording") || lower.contains("accessibility") || lower.contains("input monitoring") {
+            return "Ran into a permissions issue"
+        }
+        if lower.contains("cursor presentation") || lower.contains("run display") || lower.contains("prepared screen") || lower.contains("fullscreen") {
+            return nil
+        }
+        return "Ran into an issue while working"
+    }
+
+    private func overlayShouldHideBackendMessage(_ message: String) -> Bool {
+        let lower = message.lowercased()
+        let backendMarkers = [
+            "function_call",
+            "output types:",
+            "completion payload:",
+            "debug visual observation",
+            "debug mouse location",
+            "run display set to display",
+            "prepared screen by hiding",
+            "run requested for task",
+            "cursor presentation",
+            "fullscreen",
+            "request id",
+            "bytes sent",
+            "bytes received",
+            "provider",
+            "transport",
+            "websocket"
+        ]
+        return backendMarkers.contains { lower.contains($0) }
+    }
+
+    private func overlayQuotedValue(in message: String) -> String? {
+        if let value = overlayQuotedValue(in: message, delimiter: "'") {
+            return value
+        }
+        return overlayQuotedValue(in: message, delimiter: "\"")
+    }
+
+    private func overlayQuotedValue(in message: String, delimiter: Character) -> String? {
+        guard let start = message.firstIndex(of: delimiter) else {
+            return nil
+        }
+        let afterStart = message.index(after: start)
+        guard let end = message[afterStart...].firstIndex(of: delimiter) else {
+            return nil
+        }
+        let value = message[afterStart..<end].trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.isEmpty ? nil : value
+    }
+
+    private func overlayURLLabel(in message: String) -> String? {
+        guard let rawValue = overlayQuotedValue(in: message) else {
+            return nil
+        }
+        guard let url = URL(string: rawValue) else {
+            return nil
+        }
+        let host = url.host?.replacingOccurrences(of: "www.", with: "")
+        return host?.isEmpty == false ? host : "a page"
     }
 
     private func finishActiveRun(outcome: AutomationRunOutcome) -> AgentRunRecord? {

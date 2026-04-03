@@ -1857,6 +1857,8 @@ struct MainShellStateStoreTests {
         #expect(firstSnapshot.headline == "Agent is running")
         #expect(firstSnapshot.events.isEmpty)
         #expect(firstSnapshot.screenshots.isEmpty)
+        #expect(firstSnapshot.activityState == .starting)
+        #expect(firstSnapshot.latestActivityAt == firstSnapshot.startedAt)
 
         store.stopRunTask()
         engine.finish(
@@ -1957,9 +1959,101 @@ struct MainShellStateStoreTests {
 
         let latestSnapshot = try #require(overlay.lastSnapshot)
         #expect(overlay.lastPhase == .running)
-        #expect(latestSnapshot.headline == "Clicked Save")
-        #expect(Array(latestSnapshot.events.prefix(2)).map { $0.message } == ["Clicked Save", "Opened Settings"])
+        #expect(latestSnapshot.headline == "Clicking Save")
+        #expect(Array(latestSnapshot.events.prefix(2)).map { $0.message } == ["Clicking Save", "Opening Settings"])
         #expect(latestSnapshot.screenshots == [newerScreenshot, olderScreenshot])
+        #expect(latestSnapshot.latestActivityAt >= latestSnapshot.startedAt)
+        #expect(latestSnapshot.activityState == .capturing)
+
+        store.stopRunTask()
+        engine.finish(
+            with: AutomationRunResult(
+                outcome: .cancelled,
+                executedSteps: [],
+                generatedQuestions: [],
+                errorMessage: nil,
+                llmSummary: nil
+            )
+        )
+        for _ in 0..<50 {
+            if store.isRunningTask == false { break }
+            await Task.yield()
+        }
+    }
+
+    @Test
+    @MainActor
+    func activeRunOverlayUsesUserFacingMessagesInsteadOfBackendDetails() async throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let task = try taskService.createTask(title: "Overlay copy cleanup task")
+
+        let engine = BlockingAutomationEngine()
+        let overlay = MockAgentControlOverlayService()
+
+        let store = MainShellStateStore(
+            taskService: taskService,
+            automationEngine: engine,
+            apiKeyStore: MockAPIKeyStore(initialValues: [.openAI: "openai-test-key"]),
+            permissionService: AlwaysGrantedPermissionService(),
+            captureService: MockRecordingCaptureService(),
+            overlayService: MockRecordingOverlayService(),
+            agentControlOverlayService: overlay,
+            userInterruptionMonitor: MockUserInterruptionMonitor()
+        )
+
+        store.reloadTasks()
+        store.selectTask(task.id)
+        store.startRunTaskNow()
+        await Task.yield()
+        overlay.resetUpdates()
+
+        store.appendTraceEventToActiveRun(
+            ExecutionTraceEntry(
+                timestamp: Date(timeIntervalSince1970: 20),
+                kind: .info,
+                message: "Transport ready over HTTPS."
+            )
+        )
+        store.appendLLMCallEventToActiveRun(
+            LLMCallLogEntry(
+                startedAt: Date(timeIntervalSince1970: 21),
+                finishedAt: Date(timeIntervalSince1970: 22),
+                provider: .openAI,
+                operation: .execution,
+                attempt: 2,
+                url: "https://api.openai.com/v1/responses",
+                httpStatus: 200,
+                outcome: .success
+            )
+        )
+        store.appendTraceEventToActiveRun(
+            ExecutionTraceEntry(
+                timestamp: Date(timeIntervalSince1970: 23),
+                kind: .toolUse,
+                message: "computer.open_url(\"https://example.com/account\")"
+            )
+        )
+
+        let latestSnapshot = try #require(overlay.lastSnapshot)
+        #expect(latestSnapshot.headline == "Opening example.com")
+        #expect(Array(latestSnapshot.events.prefix(2)).map { $0.message } == [
+            "Opening example.com",
+            "Thinking through the next step"
+        ])
+        let renderedCopy = latestSnapshot.events.map(\.message).joined(separator: " ").lowercased()
+        #expect(renderedCopy.contains("transport") == false)
+        #expect(renderedCopy.contains("http") == false)
+        #expect(renderedCopy.contains("https") == false)
+        #expect(renderedCopy.contains("openai") == false)
 
         store.stopRunTask()
         engine.finish(
@@ -2027,6 +2121,7 @@ struct MainShellStateStoreTests {
         #expect(overlay.lastPhase == .stopping)
         #expect(stoppingSnapshot.headline == "Stopping agent…")
         #expect(stoppingSnapshot.stopReason == "Escape pressed")
+        #expect(stoppingSnapshot.activityState == .stopping)
         #expect(overlay.hideCount == 0)
         #expect(borderOverlay.hideCallCount >= 1)
         #expect(monitor.stopCount >= 1)
@@ -2092,6 +2187,7 @@ struct MainShellStateStoreTests {
         #expect(overlay.lastPhase == .stopping)
         #expect(stoppingSnapshot.headline == "Stopping agent…")
         #expect(stoppingSnapshot.stopReason == nil)
+        #expect(stoppingSnapshot.activityState == .stopping)
         #expect(overlay.hideCount == 0)
 
         engine.finish(
