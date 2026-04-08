@@ -278,8 +278,7 @@ extension MainShellStateStore {
         }
 
         let rawNewestEvent = run.events.last
-        let displayNewestEvent = rawNewestEvent.flatMap(overlayDisplayEvent)
-        let recentEvents = Array(run.events.compactMap(overlayDisplayEvent).suffix(6).reversed())
+        let recentEvents = overlayRecentEvents(for: run, activeRunID: activeRunID)
         let recentScreenshots = Array((runScreenshotLogByRunID[activeRunID] ?? []).suffix(3).reversed())
         let newestScreenshot = recentScreenshots.first
         let latestActivityAt = [
@@ -296,7 +295,7 @@ extension MainShellStateStore {
                 newestEvent: rawNewestEvent,
                 newestScreenshot: newestScreenshot
             )
-            headline = displayNewestEvent?.message ?? overlayDefaultHeadline(for: activityState)
+            headline = recentEvents.first?.message ?? overlayDefaultHeadline(for: activityState)
         case .stopping:
             headline = "Stopping agent…"
             activityState = .stopping
@@ -314,6 +313,17 @@ extension MainShellStateStore {
             ),
             phase: activeRunOverlayPhase
         )
+    }
+
+    private func overlayRecentEvents(for run: AgentRunRecord, activeRunID: UUID) -> [AgentRunEvent] {
+        let runEvents = run.events.suffix(6).compactMap(overlayDisplayEvent)
+        let screenshotEvents = (runScreenshotLogByRunID[activeRunID] ?? []).suffix(6).map(overlayDisplayEvent)
+        return Array((runEvents + screenshotEvents).sorted { lhs, rhs in
+            if lhs.timestamp == rhs.timestamp {
+                return lhs.id.uuidString > rhs.id.uuidString
+            }
+            return lhs.timestamp > rhs.timestamp
+        }.prefix(6))
     }
 
     private func overlayActivityState(
@@ -376,6 +386,15 @@ extension MainShellStateStore {
             timestamp: event.timestamp,
             kind: event.kind,
             message: message
+        )
+    }
+
+    private func overlayDisplayEvent(_ entry: LLMScreenshotLogEntry) -> AgentRunEvent {
+        AgentRunEvent(
+            id: entry.id,
+            timestamp: entry.timestamp,
+            kind: .action,
+            message: overlayScreenshotMessage(for: entry.source)
         )
     }
 
@@ -477,6 +496,17 @@ extension MainShellStateStore {
             return nil
         }
         return trimmed
+    }
+
+    private func overlayScreenshotMessage(for source: LLMScreenshotSource) -> String {
+        switch source {
+        case .initialPromptImage:
+            return "Taking the first screenshot"
+        case .actionScreenshot:
+            return "Taking a fresh screenshot"
+        case .postActionSnapshot:
+            return "Reviewing the latest screen update"
+        }
     }
 
     private func overlayErrorMessage(from message: String) -> String? {

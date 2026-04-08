@@ -1959,10 +1959,88 @@ struct MainShellStateStoreTests {
 
         let latestSnapshot = try #require(overlay.lastSnapshot)
         #expect(overlay.lastPhase == .running)
-        #expect(latestSnapshot.headline == "Clicking Save")
-        #expect(Array(latestSnapshot.events.prefix(2)).map { $0.message } == ["Clicking Save", "Opening Settings"])
+        #expect(latestSnapshot.headline == "Reviewing the latest screen update")
+        #expect(Array(latestSnapshot.events.prefix(4)).map { $0.message } == [
+            "Reviewing the latest screen update",
+            "Taking a fresh screenshot",
+            "Clicking Save",
+            "Opening Settings"
+        ])
         #expect(latestSnapshot.screenshots == [newerScreenshot, olderScreenshot])
         #expect(latestSnapshot.latestActivityAt >= latestSnapshot.startedAt)
+        #expect(latestSnapshot.activityState == .capturing)
+
+        store.stopRunTask()
+        engine.finish(
+            with: AutomationRunResult(
+                outcome: .cancelled,
+                executedSteps: [],
+                generatedQuestions: [],
+                errorMessage: nil,
+                llmSummary: nil
+            )
+        )
+        for _ in 0..<50 {
+            if store.isRunningTask == false { break }
+            await Task.yield()
+        }
+    }
+
+    @Test
+    @MainActor
+    func activeRunOverlayShowsFirstScreenshotAsImmediateFeedActivity() async throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let taskService = TaskService(
+            baseDir: tempRoot,
+            fileManager: fm,
+            workspaceService: WorkspaceService(fileManager: fm)
+        )
+        let task = try taskService.createTask(title: "Overlay first screenshot task")
+
+        let engine = BlockingAutomationEngine()
+        let overlay = MockAgentControlOverlayService()
+
+        let store = MainShellStateStore(
+            taskService: taskService,
+            automationEngine: engine,
+            apiKeyStore: MockAPIKeyStore(initialValues: [.openAI: "openai-test-key"]),
+            permissionService: AlwaysGrantedPermissionService(),
+            captureService: MockRecordingCaptureService(),
+            overlayService: MockRecordingOverlayService(),
+            agentControlOverlayService: overlay,
+            userInterruptionMonitor: MockUserInterruptionMonitor()
+        )
+
+        store.reloadTasks()
+        store.selectTask(task.id)
+        store.startRunTaskNow()
+        await Task.yield()
+        overlay.resetUpdates()
+
+        let firstScreenshot = LLMScreenshotLogEntry(
+            timestamp: Date().addingTimeInterval(5),
+            source: .initialPromptImage,
+            mediaType: "image/png",
+            width: 16,
+            height: 16,
+            captureWidthPx: 16,
+            captureHeightPx: 16,
+            coordinateSpaceWidthPx: 16,
+            coordinateSpaceHeightPx: 16,
+            rawByteCount: 4,
+            base64ByteCount: 8,
+            imageData: Data([0x89, 0x50, 0x4e, 0x47])
+        )
+        store.appendScreenshotLogToActiveRun(firstScreenshot)
+
+        let latestSnapshot = try #require(overlay.lastSnapshot)
+        #expect(latestSnapshot.headline == "Taking the first screenshot")
+        #expect(Array(latestSnapshot.events.map(\.message)) == ["Taking the first screenshot"])
+        #expect(latestSnapshot.screenshots == [firstScreenshot])
         #expect(latestSnapshot.activityState == .capturing)
 
         store.stopRunTask()

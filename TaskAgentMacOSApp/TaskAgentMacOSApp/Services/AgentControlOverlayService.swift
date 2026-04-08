@@ -296,6 +296,9 @@ private struct AgentControlOverlayRailView: View {
     private var visibleEvents: [AgentRunEvent] {
         switch phase {
         case .running:
+            if snapshot.events.count <= 1 {
+                return snapshot.events
+            }
             return Array(snapshot.events.dropFirst().prefix(5))
         case .stopping:
             return Array(snapshot.events.prefix(5))
@@ -548,8 +551,12 @@ private struct AgentControlOverlayRailView: View {
 
     private func eventSection() -> some View {
         VStack(alignment: .leading, spacing: 7) {
-            ForEach(visibleEvents) { event in
-                overlayEventRow(event)
+            if visibleEvents.isEmpty {
+                emptyEventSection()
+            } else {
+                ForEach(visibleEvents) { event in
+                    overlayEventRow(event)
+                }
             }
         }
         .frame(
@@ -558,6 +565,51 @@ private struct AgentControlOverlayRailView: View {
             maxHeight: reservedEventSectionHeight,
             alignment: .topLeading
         )
+    }
+
+    private func emptyEventSection() -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .foregroundStyle(activityAccentColor.opacity(0.72 + pulseStrength * 0.12))
+
+                Text("Waiting for the first action…")
+                    .font(.system(size: 11.5, weight: .semibold))
+                    .foregroundStyle(Color.white.opacity(0.58))
+            }
+
+            placeholderEventRow(widthFraction: 0.88)
+            placeholderEventRow(widthFraction: 0.70)
+            placeholderEventRow(widthFraction: 0.82)
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+    }
+
+    private func placeholderEventRow(widthFraction: CGFloat) -> some View {
+        HStack(alignment: .center, spacing: 10) {
+            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                .fill(Color.white.opacity(0.10 + pulseStrength * 0.03))
+                .frame(width: 56, height: 11)
+
+            Capsule(style: .continuous)
+                .fill(activityAccentColor.opacity(0.10 + pulseStrength * 0.04))
+                .overlay(
+                    Capsule(style: .continuous)
+                        .stroke(activityAccentColor.opacity(0.14 + pulseStrength * 0.05), lineWidth: 1)
+                )
+                .frame(width: 72, height: 20)
+
+            GeometryReader { proxy in
+                let width = max(72, proxy.size.width * widthFraction)
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .fill(Color.white.opacity(0.09 + pulseStrength * 0.04))
+                    .frame(width: width, height: 11, alignment: .leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(height: 11)
+        }
+        .padding(.vertical, 1)
     }
 
     private func overlayEventRow(_ event: AgentRunEvent) -> some View {
