@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 
 enum AgentControlOverlayPhase: String, Equatable, Sendable {
@@ -53,6 +54,22 @@ protocol AgentControlOverlayService {
     func windowNumberForScreenshotExclusion() -> Int?
 }
 
+@MainActor
+private final class AgentControlOverlayViewModel: ObservableObject {
+    @Published var snapshot = AgentControlOverlaySnapshot(headline: "Agent is running")
+    @Published var phase: AgentControlOverlayPhase = .running
+
+    func update(snapshot: AgentControlOverlaySnapshot, phase: AgentControlOverlayPhase) {
+        self.snapshot = snapshot
+        self.phase = phase
+    }
+
+    func reset() {
+        snapshot = AgentControlOverlaySnapshot(headline: "Agent is running")
+        phase = .running
+    }
+}
+
 final class HUDWindowAgentControlOverlayService: AgentControlOverlayService {
     private final class HUDPanel: NSPanel {
         override var canBecomeKey: Bool { false }
@@ -66,6 +83,7 @@ final class HUDWindowAgentControlOverlayService: AgentControlOverlayService {
     private var currentDisplayID: Int?
     private var currentPhase: AgentControlOverlayPhase = .running
     private var currentSnapshot = AgentControlOverlaySnapshot(headline: "Agent is running")
+    private let overlayViewModel = AgentControlOverlayViewModel()
 
     func showAgentInControl(displayID: Int?) {
         guard Thread.isMainThread else {
@@ -76,13 +94,13 @@ final class HUDWindowAgentControlOverlayService: AgentControlOverlayService {
         }
 
         currentDisplayID = displayID
+        overlayViewModel.update(snapshot: currentSnapshot, phase: currentPhase)
         let targetScreen = preferredScreen(displayID: displayID)
         let size = overlaySize(for: currentSnapshot, phase: currentPhase, on: targetScreen.visibleFrame)
         let frame = topCenteredFrame(size: size, on: targetScreen.visibleFrame, yOffsetFromTop: 18)
 
         if let window = overlayWindow {
-            window.setFrame(frame, display: true)
-            hostingView?.frame = NSRect(origin: .zero, size: size)
+            updateWindowLayoutIfNeeded(window: window, frame: frame, size: size)
             window.orderFrontRegardless()
             ensureActivationObserver()
             return
@@ -110,7 +128,7 @@ final class HUDWindowAgentControlOverlayService: AgentControlOverlayService {
         window.animationBehavior = .none
 
         let hostingView = NSHostingView(
-            rootView: AgentControlOverlayRailView(snapshot: currentSnapshot, phase: currentPhase)
+            rootView: AgentControlOverlayRailView(viewModel: overlayViewModel)
         )
         hostingView.frame = NSRect(origin: .zero, size: size)
         window.contentView = hostingView
@@ -132,6 +150,7 @@ final class HUDWindowAgentControlOverlayService: AgentControlOverlayService {
 
         currentSnapshot = snapshot
         currentPhase = phase
+        overlayViewModel.update(snapshot: snapshot, phase: phase)
 
         guard let window = overlayWindow else {
             return
@@ -140,9 +159,7 @@ final class HUDWindowAgentControlOverlayService: AgentControlOverlayService {
         let targetScreen = window.screen ?? preferredScreen(displayID: currentDisplayID)
         let size = overlaySize(for: snapshot, phase: phase, on: targetScreen.visibleFrame)
         let frame = topCenteredFrame(size: size, on: targetScreen.visibleFrame, yOffsetFromTop: 18)
-        window.setFrame(frame, display: true)
-        hostingView?.frame = NSRect(origin: .zero, size: size)
-        hostingView?.rootView = AgentControlOverlayRailView(snapshot: snapshot, phase: phase)
+        updateWindowLayoutIfNeeded(window: window, frame: frame, size: size)
         window.orderFrontRegardless()
         ensureActivationObserver()
     }
@@ -162,6 +179,7 @@ final class HUDWindowAgentControlOverlayService: AgentControlOverlayService {
         currentDisplayID = nil
         currentPhase = .running
         currentSnapshot = AgentControlOverlaySnapshot(headline: "Agent is running")
+        overlayViewModel.reset()
 
         if let activationObserver {
             NSWorkspace.shared.notificationCenter.removeObserver(activationObserver)
@@ -195,22 +213,7 @@ final class HUDWindowAgentControlOverlayService: AgentControlOverlayService {
 
     private func overlaySize(for snapshot: AgentControlOverlaySnapshot, phase: AgentControlOverlayPhase, on container: NSRect) -> NSSize {
         let width = min(max(container.width - 40, 380), 620)
-        let visibleEventCount: Int
-        switch phase {
-        case .running:
-            visibleEventCount = min(max(snapshot.events.count - 1, 0), 5)
-        case .stopping:
-            visibleEventCount = min(snapshot.events.count, 5)
-        }
-
-        var height: CGFloat = 168
-        height += CGFloat(visibleEventCount) * 24
-        if snapshot.stopReason != nil {
-            height += 18
-        }
-        if !snapshot.screenshots.isEmpty {
-            height += 110
-        }
+        var height: CGFloat = 398
         height = min(max(height, 148), max(container.height - 26, 148))
         return NSSize(width: width, height: height)
     }
@@ -231,17 +234,59 @@ final class HUDWindowAgentControlOverlayService: AgentControlOverlayService {
         // There is always at least one screen.
         return screens[0]
     }
+
+    private func updateWindowLayoutIfNeeded(window: NSWindow, frame: NSRect, size: NSSize) {
+        let pixelAlignedFrame = frame.integral
+        if window.frame.integral != pixelAlignedFrame {
+            window.setFrame(pixelAlignedFrame, display: true)
+        }
+
+        let contentFrame = NSRect(origin: .zero, size: size)
+        if hostingView?.frame.integral != contentFrame.integral {
+            hostingView?.frame = contentFrame
+        }
+    }
+}
+
+private enum AgentControlOverlayImageCache {
+    private static let cache = NSCache<NSUUID, NSImage>()
+
+    static func image(for entry: LLMScreenshotLogEntry) -> NSImage? {
+        let key = entry.id as NSUUID
+        if let cached = cache.object(forKey: key) {
+            return cached
+        }
+        guard let image = NSImage(data: entry.imageData) else {
+            return nil
+        }
+        cache.setObject(image, forKey: key)
+        return image
+    }
 }
 
 private struct AgentControlOverlayRailView: View {
-    let snapshot: AgentControlOverlaySnapshot
-    let phase: AgentControlOverlayPhase
+    @ObservedObject var viewModel: AgentControlOverlayViewModel
+
+    @State private var spinnerRotationDegrees: Double = 0
+    @State private var railTravelProgress: CGFloat = 0
+    @State private var pulseStrength: Double = 0
+
+    private let reservedEventSectionHeight: CGFloat = 120
+    private let reservedScreenshotSectionHeight: CGFloat = 110
 
     private static let timeFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm:ss"
         return formatter
     }()
+
+    private var snapshot: AgentControlOverlaySnapshot {
+        viewModel.snapshot
+    }
+
+    private var phase: AgentControlOverlayPhase {
+        viewModel.phase
+    }
 
     private var newestEvent: AgentRunEvent? {
         guard phase == .running else { return nil }
@@ -283,43 +328,38 @@ private struct AgentControlOverlayRailView: View {
     }
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 0.35, paused: false)) { context in
-            let now = context.date
-
-            VStack(alignment: .leading, spacing: 12) {
-                headerRow(at: now)
-                activityRail(at: now)
-                liveStatusCard(at: now)
-
-                if !visibleEvents.isEmpty {
-                    VStack(alignment: .leading, spacing: 7) {
-                        ForEach(visibleEvents) { event in
-                            overlayEventRow(event)
-                        }
-                    }
-                }
-
-                screenshotsSection(at: now)
-            }
-            .padding(16)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(Color.black.opacity(0.32))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .stroke(Color.white.opacity(0.05), lineWidth: 1)
-                    )
-                    .shadow(color: Color.black.opacity(0.10), radius: 14, x: 0, y: 8)
-            )
-            .padding(.horizontal, 6)
-            .padding(.vertical, 4)
+        VStack(alignment: .leading, spacing: 12) {
+            headerRow()
+            activityRail()
+            liveStatusCard()
+            eventSection()
+            screenshotsSection()
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.black.opacity(0.32))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.10), radius: 14, x: 0, y: 8)
+        )
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
+        .onAppear(perform: restartContinuousAnimations)
+        .onChange(of: phase) { _, _ in
+            restartContinuousAnimations()
+        }
+        .onChange(of: snapshot.activityState) { _, _ in
+            restartContinuousAnimations()
         }
     }
 
-    private func headerRow(at now: Date) -> some View {
+    private func headerRow() -> some View {
         HStack(alignment: .top, spacing: 12) {
-            statusChip(at: now)
+            statusChip()
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(statusTitle)
@@ -333,9 +373,12 @@ private struct AgentControlOverlayRailView: View {
             Spacer(minLength: 0)
 
             VStack(alignment: .trailing, spacing: 2) {
-                Text(elapsedText(at: now))
-                    .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(Color.white.opacity(0.68))
+                TimelineView(.periodic(from: snapshot.startedAt, by: 1.0)) { context in
+                    Text(elapsedText(at: context.date))
+                        .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(Color.white.opacity(0.68))
+                        .frame(width: 72, alignment: .trailing)
+                }
                 Text("Overlay hidden from agent screenshots")
                     .font(.system(size: 10.5, weight: .medium))
                     .foregroundStyle(Color.white.opacity(0.42))
@@ -343,9 +386,9 @@ private struct AgentControlOverlayRailView: View {
         }
     }
 
-    private func statusChip(at now: Date) -> some View {
+    private func statusChip() -> some View {
         HStack(spacing: 7) {
-            spinner(at: now)
+            spinner()
             Text(phase == .running ? "LIVE" : "STOPPING")
                 .font(.system(size: 10.5, weight: .bold))
         }
@@ -362,21 +405,19 @@ private struct AgentControlOverlayRailView: View {
         )
     }
 
-    private func spinner(at now: Date) -> some View {
+    private func spinner() -> some View {
         Circle()
             .trim(from: 0.14, to: 0.84)
             .stroke(activityAccentColor.opacity(0.96), style: StrokeStyle(lineWidth: 1.6, lineCap: .round))
             .frame(width: 10, height: 10)
-            .rotationEffect(.degrees(now.timeIntervalSinceReferenceDate * (phase == .running ? 220 : 110)))
+            .rotationEffect(.degrees(spinnerRotationDegrees))
     }
 
-    private func activityRail(at now: Date) -> some View {
+    private func activityRail() -> some View {
         GeometryReader { proxy in
             let width = max(proxy.size.width, 1)
             let segmentWidth = max(82, width * 0.22)
-            let cycleDuration = phase == .running ? 1.45 : 2.3
-            let progress = now.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: cycleDuration) / cycleDuration
-            let xOffset = (width + segmentWidth) * progress - segmentWidth
+            let xOffset = (width + segmentWidth) * railTravelProgress - segmentWidth
 
             ZStack(alignment: .leading) {
                 Capsule(style: .continuous)
@@ -403,71 +444,93 @@ private struct AgentControlOverlayRailView: View {
         .clipShape(Capsule(style: .continuous))
     }
 
-    private func liveStatusCard(at now: Date) -> some View {
-        let age = max(0, now.timeIntervalSince(snapshot.latestActivityAt))
-        let freshness = max(0.0, 1.0 - min(age, 2.0) / 2.0)
-        let pulse = 0.5 + 0.5 * sin(now.timeIntervalSinceReferenceDate * 3.8)
+    private func liveStatusCard() -> some View {
+        TimelineView(.periodic(from: .now, by: 0.5)) { context in
+            let now = context.date
+            let age = max(0, now.timeIntervalSince(snapshot.latestActivityAt))
+            let freshness = max(0.0, 1.0 - min(age, 2.0) / 2.0)
 
-        return VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Text(liveVerb(at: now) + animatedDots(at: now))
-                    .font(.system(size: 12.5, weight: .semibold))
-                    .foregroundStyle(activityAccentColor.opacity(0.95))
-
-                Text(lastActivityText(at: now))
-                    .font(.system(size: 10.5, weight: .medium, design: .monospaced))
-                    .foregroundStyle(Color.white.opacity(0.48))
-
-                Spacer(minLength: 0)
-
-                if let newestEvent {
-                    eventKindBadge(for: newestEvent.kind)
-                }
-            }
-
-            Text(snapshot.headline)
-                .font(.system(size: 21, weight: .semibold))
-                .foregroundStyle(Color.white.opacity(0.98))
-                .lineLimit(2)
-
-            HStack(spacing: 8) {
-                Text(rotatingTip(at: now))
-                    .font(.system(size: 11.5, weight: .medium))
-                    .foregroundStyle(Color.white.opacity(0.64))
-                    .lineLimit(1)
-
-                Spacer(minLength: 0)
-
-                Text(Self.timeFormatter.string(from: snapshot.latestActivityAt))
-                    .font(.system(size: 10.5, weight: .medium, design: .monospaced))
-                    .foregroundStyle(Color.white.opacity(0.42))
-            }
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.white.opacity(0.018 + (freshness * pulse * 0.030)))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(activityAccentColor.opacity(0.05 + freshness * 0.14), lineWidth: 1)
-        )
-    }
-
-    @ViewBuilder
-    private func screenshotsSection(at now: Date) -> some View {
-        if !visibleScreenshots.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 8) {
-                    Text("Recent model-visible screenshots")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(Color.white.opacity(0.56))
-                    Text("streaming")
-                        .font(.system(size: 9.5, weight: .bold))
-                        .foregroundStyle(activityAccentColor.opacity(0.92))
+                    HStack(spacing: 0) {
+                        Text(liveVerb)
+                        Text(animatedDots(at: now))
+                            .frame(width: 20, alignment: .leading)
+                    }
+                    .font(.system(size: 12.5, weight: .semibold))
+                    .foregroundStyle(activityAccentColor.opacity(0.95))
+                    .frame(width: 128, alignment: .leading)
+
+                    Text(lastActivityText(at: now))
+                        .font(.system(size: 10.5, weight: .medium, design: .monospaced))
+                        .foregroundStyle(Color.white.opacity(0.48))
+                        .frame(width: 104, alignment: .leading)
+
+                    Spacer(minLength: 0)
+
+                    if let newestEvent {
+                        eventKindBadge(for: newestEvent.kind)
+                    }
                 }
 
+                Text(snapshot.headline)
+                    .font(.system(size: 21, weight: .semibold))
+                    .foregroundStyle(Color.white.opacity(0.98))
+                    .lineLimit(2)
+
+                HStack(spacing: 8) {
+                    Text(rotatingTip(at: now))
+                        .font(.system(size: 11.5, weight: .medium))
+                        .foregroundStyle(Color.white.opacity(0.64))
+                        .lineLimit(1)
+
+                    Spacer(minLength: 0)
+
+                    Text(Self.timeFormatter.string(from: snapshot.latestActivityAt))
+                        .font(.system(size: 10.5, weight: .medium, design: .monospaced))
+                        .foregroundStyle(Color.white.opacity(0.42))
+                        .frame(width: 62, alignment: .trailing)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color.white.opacity(0.018 + freshness * (0.010 + pulseStrength * 0.020)))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(activityAccentColor.opacity(0.05 + freshness * (0.06 + pulseStrength * 0.08)), lineWidth: 1)
+            )
+        }
+    }
+
+    private func screenshotsSection() -> some View {
+        TimelineView(.periodic(from: .now, by: 0.5)) { context in
+            screenshotsSectionContent(now: context.date)
+        }
+    }
+
+    private func screenshotsSectionContent(now: Date) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Text("Recent model-visible screenshots")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Color.white.opacity(0.56))
+                Text("streaming")
+                    .font(.system(size: 9.5, weight: .bold))
+                    .foregroundStyle(activityAccentColor.opacity(0.92))
+            }
+
+            if visibleScreenshots.isEmpty {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.white.opacity(0.015))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(Color.white.opacity(0.03), lineWidth: 1)
+                    )
+                    .frame(height: 82)
+            } else {
                 HStack(spacing: 10) {
                     ForEach(Array(visibleScreenshots.enumerated()), id: \.element.id) { offset, screenshot in
                         screenshotCard(screenshot, isNewest: offset == 0, now: now)
@@ -475,6 +538,26 @@ private struct AgentControlOverlayRailView: View {
                 }
             }
         }
+        .frame(
+            maxWidth: .infinity,
+            minHeight: reservedScreenshotSectionHeight,
+            maxHeight: reservedScreenshotSectionHeight,
+            alignment: .topLeading
+        )
+    }
+
+    private func eventSection() -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            ForEach(visibleEvents) { event in
+                overlayEventRow(event)
+            }
+        }
+        .frame(
+            maxWidth: .infinity,
+            minHeight: reservedEventSectionHeight,
+            maxHeight: reservedEventSectionHeight,
+            alignment: .topLeading
+        )
     }
 
     private func overlayEventRow(_ event: AgentRunEvent) -> some View {
@@ -514,7 +597,6 @@ private struct AgentControlOverlayRailView: View {
     private func screenshotCard(_ entry: LLMScreenshotLogEntry, isNewest: Bool, now: Date) -> some View {
         let age = max(0, now.timeIntervalSince(entry.timestamp))
         let isFresh = isNewest && age < 2.5
-        let pulse = 0.5 + 0.5 * sin(now.timeIntervalSinceReferenceDate * 4.5)
 
         return VStack(alignment: .leading, spacing: 6) {
             ZStack(alignment: .topLeading) {
@@ -530,7 +612,7 @@ private struct AgentControlOverlayRailView: View {
                         .padding(.vertical, 4)
                         .background(
                             Capsule(style: .continuous)
-                                .fill(activityAccentColor.opacity(0.40 + pulse * 0.20))
+                                .fill(activityAccentColor.opacity(0.40 + pulseStrength * 0.20))
                         )
                         .padding(6)
                 }
@@ -544,17 +626,17 @@ private struct AgentControlOverlayRailView: View {
         .padding(7)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.white.opacity(0.015 + (isFresh ? pulse * 0.020 : 0)))
+                .fill(Color.white.opacity(0.015 + (isFresh ? pulseStrength * 0.020 : 0)))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke((isFresh ? activityAccentColor : Color.white).opacity(isFresh ? 0.22 + pulse * 0.10 : 0.03), lineWidth: 1)
+                .stroke((isFresh ? activityAccentColor : Color.white).opacity(isFresh ? 0.22 + pulseStrength * 0.10 : 0.03), lineWidth: 1)
         )
     }
 
     @ViewBuilder
     private func screenshotImage(for entry: LLMScreenshotLogEntry) -> some View {
-        if let image = NSImage(data: entry.imageData) {
+        if let image = AgentControlOverlayImageCache.image(for: entry) {
             Image(nsImage: image)
                 .resizable()
                 .scaledToFill()
@@ -566,6 +648,27 @@ private struct AgentControlOverlayRailView: View {
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(Color.white.opacity(0.35))
             }
+        }
+    }
+
+    private var liveVerb: String {
+        switch snapshot.activityState {
+        case .starting:
+            return "Starting"
+        case .thinking:
+            return "Thinking"
+        case .usingTool:
+            return "Using tool"
+        case .acting:
+            return "Taking action"
+        case .capturing:
+            return "Capturing"
+        case .completing:
+            return "Wrapping up"
+        case .error:
+            return "Needs attention"
+        case .stopping:
+            return "Stopping"
         }
     }
 
@@ -588,24 +691,25 @@ private struct AgentControlOverlayRailView: View {
         }
     }
 
-    private func liveVerb(at now: Date) -> String {
-        switch snapshot.activityState {
-        case .starting:
-            return "Starting"
-        case .thinking:
-            return "Thinking"
-        case .usingTool:
-            return "Using tool"
-        case .acting:
-            return "Taking action"
-        case .capturing:
-            return "Capturing"
-        case .completing:
-            return "Wrapping up"
-        case .error:
-            return "Needs attention"
-        case .stopping:
-            return "Stopping"
+    private func restartContinuousAnimations() {
+        spinnerRotationDegrees = 0
+        railTravelProgress = 0
+        pulseStrength = 0
+
+        let spinnerDuration = phase == .running ? 0.95 : 1.7
+        let railDuration = phase == .running ? 1.25 : 2.1
+        let pulseDuration = phase == .running ? 1.15 : 1.8
+
+        DispatchQueue.main.async {
+            withAnimation(.linear(duration: spinnerDuration).repeatForever(autoreverses: false)) {
+                spinnerRotationDegrees = 360
+            }
+            withAnimation(.linear(duration: railDuration).repeatForever(autoreverses: false)) {
+                railTravelProgress = 1
+            }
+            withAnimation(.easeInOut(duration: pulseDuration).repeatForever(autoreverses: true)) {
+                pulseStrength = 1
+            }
         }
     }
 
