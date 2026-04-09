@@ -114,6 +114,39 @@ Use this template per finalized decision:
 - Automation scope: desktop-wide computer-use execution in v1 (not web-only).
 - Scheduler mode: easiest v1 path = run jobs while app is open only (no background helper yet).
 
+## Source organization decision (locked: 2026-04-09)
+
+- The app codebase uses a feature-first source layout with a thin shared core.
+- Top-level app target folders are:
+  - `App`
+  - `Features`
+  - `Core`
+  - `UI`
+  - `Resources`
+- `Features` owns product-area code such as:
+  - `MainShell`
+  - `Onboarding`
+  - `Recording`
+  - `TaskExecution`
+  - `Permissions`
+  - `PromptCatalog`
+- `Core` owns reusable non-UI/shared concerns only:
+  - `Models`
+  - `Desktop`
+  - `Persistence`
+  - `Workspace`
+  - `LLM`
+- `UI` owns reusable presentation-only code:
+  - `Components`
+  - `Styles`
+  - `Titlebar`
+- `Resources` owns app assets and prompt files:
+  - `Assets.xcassets`
+  - `Prompts`
+- Do not introduce a generic `Shared` catch-all folder; shared files must land in a named ownership bucket under `Core` or `UI`.
+- Production prompt text remains file-backed and versioned under `Resources/Prompts/...`, and runtime loading continues through `PromptCatalogService`.
+- Test folders should mirror the production layout so ownership and navigation stay obvious after future refactors.
+
 ## Run policy with open questions (locked: 2026-02-08)
 
 This means: if the agent still has unresolved questions, should execution stop or continue?
@@ -405,6 +438,15 @@ This means: if the agent still has unresolved questions, should execution stop o
   - the newest agent action or status is pinned at the top
   - previous actions remain visible below in reverse chronological order
   - recent model-visible screenshots may be shown inline as compact thumbnails for operator awareness
+- The overlay should feel like a lightweight live status rail, not a modal card:
+  - transparency should stay high enough that the desktop remains visible behind it
+  - the overlay should visually read as "what the agent is doing right now" rather than "the app is busy"
+- Overlay copy must stay user-facing:
+  - describe the agent action in plain language
+  - suppress backend/transport detail such as HTTP, WebSocket, request plumbing, or internal model protocol wording
+- Early-run empty space should feel intentional rather than unfinished:
+  - if there are not yet enough action rows to fill the reserved activity area, show a calm waiting state and muted placeholder rows
+  - screenshot capture/review events are valid operator-facing activity and should appear as feed rows so the overlay fills quickly
 - The overlay remains click-through, non-activating, and visually lightweight so it informs the user without blocking the desktop.
 - When the user presses `Escape`, the run enters a visible stopping state in the overlay; that stopping or cancelled state remains visible until the run settles and the app reveal flow completes.
 - When a run starts from the UI, the main app window is immediately minimized and the takeover overlay remains visible.
@@ -413,7 +455,14 @@ This means: if the agent still has unresolved questions, should execution stop o
   - The desktop action executor tags injected CGEvents with a sentinel `eventSourceUserData` value so the interruption monitor ignores synthetic events (avoid self-cancel).
   - Desktop screenshots are captured while excluding the takeover overlay window so it never appears in images sent to the LLM tool loop, including any activity rows or screenshot thumbnails rendered in that overlay.
   - The overlay reuses the active run's event stream and screenshot log so the user-visible feed and persisted diagnostics stay aligned.
+  - Overlay animation state must persist across snapshot updates; avoid replacing the entire root view on each event refresh.
+  - Overlay layout should stay stable while content changes; reserve activity space up front and avoid panel-height wobble during event/screenshot arrival.
+  - Lightweight liveliness is acceptable, but low-frequency whole-view timer refreshes that cause visible stutter are not.
   - During takeover, the app leaves cursor presentation unchanged (no system cursor-size override and no cursor-following halo overlay).
+- Pointer-motion note:
+  - A slower "humanized" cursor-path experiment was tried and rolled back because the added latency made execution feel worse.
+  - Default pointer behavior remains fast/direct in v1.
+  - If more natural motion is revisited later, it must not materially slow task execution and should be considered optional rather than the default path.
 - Permission requirements for this UX:
   - Screen Recording: screenshots for the tool loop.
   - Accessibility: inject clicks/keys.

@@ -109,6 +109,13 @@ description: Step-by-step implementation plan with code scope, automated tests, 
 - Keep takeover cursor presentation unchanged (normal cursor size, no cursor-following halo overlay). (Implemented)
 - Execution provider is OpenAI only; remove execution-provider selection UI and always route runs through OpenAI. (Implemented)
 - OpenAI Responses runner exposes both `desktop_action` and `terminal_exec`. (Implemented)
+- Replace the centered takeover HUD with a transparent, top-anchored live run overlay on the selected display. (Implemented)
+- Populate the overlay from active run events plus screenshot logs with newest-first ordering and recent thumbnails. (Implemented)
+- Keep `Escape` cancellation visible as a stopping state until final run cleanup rather than hiding the overlay immediately. (Implemented)
+- Project run events into user-facing overlay copy and suppress backend transport/setup detail. (Implemented)
+- Surface screenshot capture/review as overlay activity rows and use placeholder rows so the early-run feed never looks unfinished. (Implemented)
+- Keep overlay animation state and layout stable across updates; avoid whole-view rebuilds and panel-height wobble. (Implemented)
+- Attempted slower "natural" mouse motion was rolled back; default pointer motion remains direct to avoid slowing execution. (Implemented rollback)
 - Expand tool/action coverage to drag in tool-loop path. (Pending)
 - Baseline policy for this implementation increment:
   - allow run with unresolved open questions and request clarifications in run report.
@@ -141,12 +148,16 @@ description: Step-by-step implementation plan with code scope, automated tests, 
 ### Manual test
 - Run at least one extracted task using `Run Task` and confirm real desktop actions execute.
 - While the run is executing, confirm:
-  - a centered "agent running" overlay appears.
-  - pressing `Escape` cancels the run and hides the overlay.
+  - a transparent, top-anchored live activity overlay appears on the selected display.
+  - the newest action/status stays at the top and previous actions remain visible below it.
+  - screenshot thumbnails match the persisted model-visible screenshots for the run.
+  - screenshot-taking/reviewing appears as user-facing activity in the feed.
+  - pressing `Escape` changes the overlay into a visible stopping state that remains on-screen until the run settles.
   - cursor presentation stays normal (no enlarged cursor and no cursor-following halo overlay).
 - Confirm clicking `Run Task` minimizes the app window immediately (agent overlay remains visible).
 - Confirm cursor presentation remains unchanged after run completion/cancellation (including early takeover setup failure).
 - Confirm the agent overlay is not present in the screenshots sent to the LLM (no overlay visible in agent behavior / screenshots used for navigation).
+- Confirm overlay copy describes user-visible agent work and does not expose backend transport details such as HTTP/WebSocket wording.
 - Validate `terminal_exec` can run unrestricted commands and open apps reliably (ex: `open -a "Google Chrome"`), and that stdout/stderr/exit code are reported back to the tool loop.
 - Validate UI-oriented terminal commands are rejected and model switches to `desktop_action` actions.
 - Validate request payload size does not grow linearly with screenshot count during long tool loops.
@@ -155,6 +166,7 @@ description: Step-by-step implementation plan with code scope, automated tests, 
 - Trigger an ambiguity/failure case and confirm `HEARTBEAT.md` receives unresolved blocking question(s).
 - Answer the generated question in-app, rerun, and confirm progression.
 - Reopen task/relaunch app and confirm clarification + run state persists.
+- Confirm any future cursor-motion polish does not materially slow visible desktop actions before adopting it.
 
 ### Maintainability follow-up: OpenAI execution-runner split
 
@@ -182,6 +194,56 @@ description: Step-by-step implementation plan with code scope, automated tests, 
 - Validation note:
   - Completed on 2026-03-26 with user-reported success after following the OpenAI runner smoke checklist.
 - Confirm there is no visible regression in run startup, HUD behavior, screenshot-driven interaction, or error presentation.
+
+### Maintainability follow-up: feature-first folder organization (implemented: 2026-04-09)
+
+#### Code
+- Status: implemented on 2026-04-09 as a no-intended-behavior-change source/layout refactor.
+- Reorganize the app target into a feature-first structure:
+  - `TaskAgentMacOSApp/TaskAgentMacOSApp/App`
+  - `TaskAgentMacOSApp/TaskAgentMacOSApp/Features`
+  - `TaskAgentMacOSApp/TaskAgentMacOSApp/Core`
+  - `TaskAgentMacOSApp/TaskAgentMacOSApp/UI`
+  - `TaskAgentMacOSApp/TaskAgentMacOSApp/Resources`
+- Co-locate feature code under `Features/MainShell`, `Features/Onboarding`, `Features/Recording`, `Features/TaskExecution`, `Features/Permissions`, and `Features/PromptCatalog`.
+- Move shared non-UI types and services under `Core/Models`, `Core/Desktop`, `Core/Persistence`, `Core/Workspace`, and `Core/LLM`.
+- Move reusable UI-only code under `UI/Components`, `UI/Styles`, and `UI/Titlebar`.
+- Move app assets and prompt folders under `Resources/Assets.xcassets` and `Resources/Prompts`.
+- Update `PromptCatalogService` source lookup and the Xcode prompt-copy build phase so debug/source lookup and bundled prompt loading still resolve the same prompt names and versions after the resource move.
+- Reorganize tests to mirror the new source ownership under `TaskAgentMacOSAppTests/Core`, `TaskAgentMacOSAppTests/Features`, `TaskAgentMacOSAppTests/TestSupport`, and `TaskAgentMacOSAppUITests/App`.
+
+#### Automated tests
+- Run the full app build after the file moves:
+
+```bash
+xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj \
+  -scheme TaskAgentMacOSApp \
+  -destination "platform=macOS" \
+  build
+```
+
+- Run the full test suite after the file moves:
+
+```bash
+xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj \
+  -scheme TaskAgentMacOSApp \
+  -destination "platform=macOS" \
+  test
+```
+
+- Keep prompt-catalog regression coverage green after the `Resources/Prompts` move, including default source-path resolution for `execution_agent_openai`.
+
+#### Manual test
+- Inspect the built app bundle and confirm `Contents/Resources/Prompts` contains the expected prompt files and versioned OpenAI prompt folders.
+- Launch the debug app and run the highest-risk structural smoke flows:
+  - onboarding through permissions/provider setup
+  - MainShell navigation and task open/create
+  - recording import/capture
+  - extraction prompt loading
+  - one execution run
+- Validation note:
+  - automated build/test, prompt-bundle inspection, and a brief debug-app launch smoke completed successfully on 2026-04-09.
+  - full interactive runtime walkthrough is still the remaining manual follow-up after the structural refactor.
 
 ### Execution vision-grounding increment (implemented: 2026-03-27)
 

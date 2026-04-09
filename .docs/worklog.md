@@ -7,6 +7,68 @@ description: Running implementation log of completed work, test evidence, blocke
 > Previous archived entries are in `/Users/ferzamh/code-git-local/ClickCherry/.docs/legacy_worklog.md`.
 
 ## Entry
+- Date: 2026-04-09
+- Step: Land the feature-first folder reorganization and sync the active docs to the new layout
+- Changes made:
+  - Reorganized the app target into:
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/App`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Features`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Core`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/UI`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Resources`
+  - Reorganized tests to mirror the new ownership under:
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSAppTests/Core`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSAppTests/Features`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSAppTests/TestSupport`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSAppUITests/App`
+  - Moved prompts from `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts` to `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Resources/Prompts` and moved the asset catalog under `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Resources/Assets.xcassets`.
+  - Updated `PromptCatalogService` source lookup plus the Xcode prompt-copy build phase so both debug/source lookup and bundled-app prompt loading continue to work after the resource move.
+  - Added prompt-loading regression coverage and updated active docs:
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/design.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/plan.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/testing.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/ui_ux_changes.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/worklog.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/clickcherry-folder-reorg-build -parallel-testing-enabled NO build` (pass).
+  - `xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/clickcherry-folder-reorg-tests -parallel-testing-enabled NO test` (pass).
+- Manual tests run:
+  - Inspected the built app bundle and confirmed `Contents/Resources/Prompts` contains the expected prompt files, including `execution_agent_openai/v1`, `v2`, and `v3`.
+  - Launched `/tmp/clickcherry-folder-reorg-build/Build/Products/Debug/ClickCherry Dev.app`, confirmed startup, then terminated the launched app.
+  - Full interactive runtime walkthrough was not completed in this session.
+- Result:
+  - The repository now uses the new feature-first layout with stable prompt/resource loading, and the active docs now reflect both the implemented structure and the remaining manual validation follow-up.
+- Issues/blockers:
+  - Interactive app-path smoke validation is still the remaining follow-up after the structural refactor.
+
+## Entry
+- Date: 2026-04-09
+- Step: Sync overlay implementation learnings and rollback decisions into active docs
+- Changes made:
+  - Updated docs:
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/design.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/plan.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/ui_ux_changes.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/worklog.md`
+  - Added the missing learnings from the execution-overlay work completed in this chat:
+    - the final top-anchored transparent overlay behavior and screenshot-driven activity feed
+    - visible `Escape` stopping-state persistence until run settlement
+    - user-facing overlay copy requirements and suppression of backend transport detail
+    - intentional early-run placeholder rows and screenshot activity rows to avoid empty feed space
+    - the need for persistent overlay state and stable reserved layout to avoid stutter and alignment wobble
+    - the rollback decision for slower humanized mouse motion because it made execution feel too slow
+- Automated tests run:
+  - N/A (docs-only).
+- Manual tests run:
+  - N/A (docs-only).
+- Result:
+  - The active docs now reflect the overlay behavior and product learnings that were implemented and discussed in this thread, and `next_steps` now points at selective polish rather than the already-completed redesign.
+- Issues/blockers:
+  - None.
+
+## Entry
 - Date: 2026-04-01
 - Step: Plan the execution takeover overlay redesign and align docs before implementation
 - Changes made:
@@ -257,60 +319,3 @@ description: Running implementation log of completed work, test evidence, blocke
   - `MainShellStateStore` is now split into smaller domain files, targeted tests stayed green through the refactor, and the broader app build still succeeds.
 - Issues/blockers:
   - Interactive UI smoke coverage is still pending for the refactored MainShell flows.
-
-## Entry
-- Date: 2026-03-25
-- Step: Record OpenAI computer-use regression and decision not to adopt it
-- Changes made:
-  - Updated docs:
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/open_issues.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/worklog.md`
-  - Findings recorded:
-    - the OpenAI built-in `computer` experiment regressed a simple `Hover over Google Chrome in Dock` task that the previous implementation handled more reliably.
-    - analysis indicated the migrated runner started without the initial screenshot attached and accepted model-reported `SUCCESS` without local postcondition verification.
-  - Decision recorded:
-    - do not use OpenAI built-in `computer` in the active implementation at this time.
-    - keep the previous computer-use implementation as the current path.
-- Automated tests run:
-  - N/A (docs-only).
-- Manual tests run:
-  - N/A (docs-only; decision based on user-observed local runtime regression evidence).
-- Result:
-  - Open issue and execution queue now reflect the decision not to adopt OpenAI built-in computer use.
-- Issues/blockers:
-  - None.
-
-## Entry
-- Date: 2026-03-24
-- Step: Fix selected-display agent screenshots capturing only wallpaper/desktop
-- Changes made:
-  - Updated runtime screenshot path:
-    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
-    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomationEngine.swift`
-    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/DesktopScreenshotService.swift`
-    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AgentControlOverlayService.swift`
-    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/RecordingOverlayService.swift`
-  - Updated run/setup behavior:
-    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`
-    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/RunTaskPreflightDialogCanvasView.swift`
-  - Added/updated test coverage:
-    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
-    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSAppTests/PermissionServiceTests.swift`
-  - Updated docs:
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/open_issues.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/worklog.md`
-  - Behavior changes:
-    - `Run Task` now requires Screen Recording permission before the agent can start.
-    - Agent screenshots now temporarily hide the run HUD/border and use exact-fidelity `/usr/sbin/screencapture -D <displayIndex>` capture so the model sees the selected display as the user sees it.
-    - Screen Recording status now uses `CGPreflightScreenCaptureAccess()` as the source of truth instead of treating a successful ScreenCaptureKit probe as proof of grant.
-- Automated tests run:
-  - `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/clickcherry-screenshot-fix-tests -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests -only-testing:TaskAgentMacOSAppTests/PermissionServiceTests CODE_SIGNING_ALLOWED=NO test` (pass; 41 tests).
-- Manual tests run:
-  - N/A (user-side runtime validation still pending for live multi-display behavior).
-- Result:
-  - Selected-display agent screenshot path now targets exact user-visible display content and blocks runs when Screen Recording is missing.
-- Issues/blockers:
-  - Manual validation is still needed on a real multi-display setup with visible app windows (for example Chrome on the selected display).
-

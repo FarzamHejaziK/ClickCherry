@@ -6127,3 +6127,59 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - Release packaging issue resolved; DMG build now includes required extraction prompt assets.
 - Issues/blockers:
   - None.
+
+## Entry
+- Date: 2026-03-24
+- Step: Fix selected-display agent screenshots capturing only wallpaper/desktop
+- Changes made:
+  - Updated runtime screenshot path:
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShellStateStore.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomationEngine.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/DesktopScreenshotService.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/AgentControlOverlayService.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/RecordingOverlayService.swift`
+  - Updated run/setup behavior:
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/PermissionService.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Views/Shared/RunTaskPreflightDialogCanvasView.swift`
+  - Added/updated test coverage:
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSAppTests/MainShellStateStoreTests.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSAppTests/PermissionServiceTests.swift`
+  - Updated docs:
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/open_issues.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/worklog.md`
+  - Behavior changes:
+    - `Run Task` now requires Screen Recording permission before the agent can start.
+    - Agent screenshots now temporarily hide the run HUD/border and use exact-fidelity `/usr/sbin/screencapture -D <displayIndex>` capture so the model sees the selected display as the user sees it.
+    - Screen Recording status now uses `CGPreflightScreenCaptureAccess()` as the source of truth instead of treating a successful ScreenCaptureKit probe as proof of grant.
+- Automated tests run:
+  - `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/clickcherry-screenshot-fix-tests -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests -only-testing:TaskAgentMacOSAppTests/PermissionServiceTests CODE_SIGNING_ALLOWED=NO test` (pass; 41 tests).
+- Manual tests run:
+  - N/A (user-side runtime validation still pending for live multi-display behavior).
+- Result:
+  - Selected-display agent screenshot path now targets exact user-visible display content and blocks runs when Screen Recording is missing.
+- Issues/blockers:
+  - Manual validation is still needed on a real multi-display setup with visible app windows (for example Chrome on the selected display).
+
+## Entry
+- Date: 2026-03-25
+- Step: Record OpenAI computer-use regression and decision not to adopt it
+- Changes made:
+  - Updated docs:
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/open_issues.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/worklog.md`
+  - Findings recorded:
+    - the OpenAI built-in `computer` experiment regressed a simple `Hover over Google Chrome in Dock` task that the previous implementation handled more reliably.
+    - analysis indicated the migrated runner started without the initial screenshot attached and accepted model-reported `SUCCESS` without local postcondition verification.
+  - Decision recorded:
+    - do not use OpenAI built-in `computer` in the active implementation at this time.
+    - keep the previous computer-use implementation as the current path.
+- Automated tests run:
+  - N/A (docs-only).
+- Manual tests run:
+  - N/A (docs-only; decision based on user-observed local runtime regression evidence).
+- Result:
+  - Open issue and execution queue now reflect the decision not to adopt OpenAI built-in computer use.
+- Issues/blockers:
+  - None.

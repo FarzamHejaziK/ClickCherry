@@ -90,6 +90,63 @@ xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/
    - Start and stop capture, then verify the finished-recording review flow appears.
    - Import a supported recording and verify extraction to both a new task and an existing task.
 
+## Feature-first folder reorganization smoke test
+
+Use this after path or ownership refactors touching the `App` / `Features` / `Core` / `UI` / `Resources` layout or any move of `Resources/Prompts`.
+
+Status:
+- Automated verification completed successfully on 2026-04-09.
+- Prompt bundle inspection completed successfully on 2026-04-09.
+- Full interactive runtime walkthrough is still pending after the structural refactor.
+
+1. Run the full test suite:
+
+```bash
+xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj \
+  -scheme TaskAgentMacOSApp \
+  -destination "platform=macOS" \
+  -derivedDataPath /tmp/clickcherry-folder-reorg-tests \
+  test
+```
+
+2. Run a clean app build:
+
+```bash
+xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj \
+  -scheme TaskAgentMacOSApp \
+  -destination "platform=macOS" \
+  -derivedDataPath /tmp/clickcherry-folder-reorg-build \
+  build
+```
+
+3. Inspect the bundled prompts in the built app:
+
+```bash
+find /tmp/clickcherry-folder-reorg-build/Build/Products/Debug/ClickCherry\ Dev.app/Contents/Resources/Prompts \
+  -maxdepth 4 \
+  -type f \
+  | sort
+```
+
+4. If only prompt/resource wiring changed, rerun the focused prompt suite:
+
+```bash
+xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj \
+  -scheme TaskAgentMacOSApp \
+  -destination "platform=macOS" \
+  -only-testing:TaskAgentMacOSAppTests/PromptCatalogServiceTests \
+  test
+```
+
+5. Perform this interactive smoke checklist in the app:
+   - Launch the debug app from the reorganized project and confirm it starts.
+   - Complete onboarding through permissions/provider setup.
+   - Create/open a task and navigate the MainShell pages.
+   - Import or record a task recording and confirm the review/extraction flow still appears.
+   - Run extraction and confirm prompt loading still works from both source lookup and the bundled app resources.
+   - Run one task execution and confirm run history/screenshots still persist.
+   - Reopen an existing task/workspace and confirm state loads normally.
+
 ## OpenAI runner refactor smoke test
 
 Use this focused pass after structural refactors to `OpenAIAutomationEngine.swift` or files under `TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomation/`.

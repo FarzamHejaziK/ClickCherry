@@ -26,6 +26,68 @@ description: Canonical log for UI/UX plans, decisions, and implementation alignm
 ## Entries
 
 ## Entry
+- Date: 2026-04-09
+- Area: Feature-first source/resource reorganization with no intended UI behavior change
+- Change Summary:
+  - Reorganized the app target into:
+    - `TaskAgentMacOSApp/TaskAgentMacOSApp/App`
+    - `TaskAgentMacOSApp/TaskAgentMacOSApp/Features`
+    - `TaskAgentMacOSApp/TaskAgentMacOSApp/Core`
+    - `TaskAgentMacOSApp/TaskAgentMacOSApp/UI`
+    - `TaskAgentMacOSApp/TaskAgentMacOSApp/Resources`
+  - Moved reusable UI code into `UI/Components`, `UI/Styles`, and `UI/Titlebar`.
+  - Moved prompt assets and the asset catalog under `Resources` without intending any visible product/UI redesign.
+  - Kept existing screen ownership and user flows unchanged; this was a maintainability/navigation refactor rather than a visual or interaction redesign.
+- Plan Alignment:
+  - Aligns with `/Users/ferzamh/code-git-local/ClickCherry/.docs/plan.md` by recording the implemented feature-first folder reorganization and its regression-focused validation checklist.
+- Design Decision Alignment:
+  - Aligns with `/Users/ferzamh/code-git-local/ClickCherry/.docs/design.md` source-organization decision:
+    - feature-first ownership for product areas
+    - thin shared `Core`
+    - reusable-presentation-only `UI`
+    - stable `Resources` ownership for prompts and assets
+- Validation:
+  - Automated tests:
+    - `xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/clickcherry-folder-reorg-build -parallel-testing-enabled NO build` (pass on 2026-04-09).
+    - `xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/clickcherry-folder-reorg-tests -parallel-testing-enabled NO test` (pass on 2026-04-09).
+  - Manual tests:
+    - Inspected the built app bundle and confirmed prompts were still bundled under `Contents/Resources/Prompts`.
+    - Launched `/tmp/clickcherry-folder-reorg-build/Build/Products/Debug/ClickCherry Dev.app`, confirmed startup, then terminated the launched app.
+    - Full interactive runtime walkthrough is still pending after the structural move.
+- Notes:
+  - No intended UI copy/layout/interaction change shipped in this refactor. Any visible regression after this step should be treated as structural fallout to fix, not as a planned UX change.
+
+## Entry
+- Date: 2026-04-09
+- Area: Execution takeover overlay live-feed refinement and post-implementation learnings
+- Change Summary:
+  - Recorded the implemented execution-overlay direction in the docs after the runtime work shipped:
+    - the centered takeover HUD was replaced with a transparent, top-anchored live activity rail
+    - the overlay now shows newest-first user-facing activity, prior actions below, and recent model-visible screenshots inline
+    - `Escape` stop remains visibly on-screen as a stopping state until the run actually settles
+    - screenshot capture/review is treated as valid operator-facing activity so the feed fills early
+    - early-run empty space is intentionally reserved and rendered with a waiting state plus muted placeholder rows
+    - backend transport/setup text should not appear in the overlay; the copy should only describe what the agent is doing
+    - overlay smoothness depends on preserving view state and layout stability; replacing the whole root view or driving the whole panel with a coarse timer produced visible stutter and awkward alignment
+    - a slower humanized mouse-motion experiment was rejected and rolled back because it made the agent feel sluggish
+- Plan Alignment:
+  - Aligns with `/Users/ferzamh/code-git-local/ClickCherry/.docs/plan.md` Step 4 by documenting the now-implemented takeover-overlay redesign, the upgraded manual validation expectations, and the decision to keep pointer motion fast by default.
+- Design Decision Alignment:
+  - Aligns with `/Users/ferzamh/code-git-local/ClickCherry/.docs/design.md` takeover UX decisions:
+    - live top-anchored overlay instead of a centered HUD
+    - overlay excluded from model screenshots
+    - visible stopping state on `Escape`
+    - user-facing activity wording only
+    - stable, lightweight overlay behavior without cursor-presentation changes
+- Validation:
+  - Automated tests:
+    - N/A (docs-only sync; implementation-side validation was already recorded in runtime work and tests).
+  - Manual tests:
+    - N/A (docs-only sync; this entry records lessons from the completed implementation and live feedback loop).
+- Notes:
+  - The key product learning is that "more dynamic" should come from overlay-local presentation and clearer activity mapping, not from slowing the actual desktop actions.
+
+## Entry
 - Date: 2026-04-01
 - Area: Execution takeover overlay redesign plan
 - Change Summary:

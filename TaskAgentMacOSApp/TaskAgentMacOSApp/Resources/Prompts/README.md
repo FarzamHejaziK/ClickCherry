@@ -11,8 +11,8 @@ Required keys in `config.yaml`:
 - `llm` - target model/provider label (for example `gemini-3-flash`).
 
 Example:
-- `Prompts/task_extraction/prompt.md`
-- `Prompts/task_extraction/config.yaml`
+- `Resources/Prompts/task_extraction/prompt.md`
+- `Resources/Prompts/task_extraction/config.yaml`
 
 Current note:
 - `task_extraction` uses the file-based prompt layout above.

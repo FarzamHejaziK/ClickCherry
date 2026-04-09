@@ -149,11 +149,10 @@ struct PromptCatalogService {
         var candidates: [URL] = []
 
         #if DEBUG
-        let sourcePrompts = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .appendingPathComponent("Prompts", isDirectory: true)
-        candidates.append(sourcePrompts)
+        let sourceDirectory = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+        if let sourcePrompts = findPromptsRoot(startingAt: sourceDirectory, fileManager: fileManager) {
+            candidates.append(sourcePrompts)
+        }
         #endif
 
         if let bundlePrompts = Bundle.main.resourceURL?.appendingPathComponent("Prompts", isDirectory: true) {
@@ -166,6 +165,30 @@ struct PromptCatalogService {
                 return false
             }
             return seenPaths.insert(candidate.path).inserted
+        }
+    }
+
+    private static func findPromptsRoot(startingAt directory: URL, fileManager: FileManager) -> URL? {
+        var currentDirectory = directory
+
+        while true {
+            let resourcesPrompts = currentDirectory
+                .appendingPathComponent("Resources", isDirectory: true)
+                .appendingPathComponent("Prompts", isDirectory: true)
+            if fileManager.fileExists(atPath: resourcesPrompts.path) {
+                return resourcesPrompts
+            }
+
+            let legacyPrompts = currentDirectory.appendingPathComponent("Prompts", isDirectory: true)
+            if fileManager.fileExists(atPath: legacyPrompts.path) {
+                return legacyPrompts
+            }
+
+            let parentDirectory = currentDirectory.deletingLastPathComponent()
+            if parentDirectory.path == currentDirectory.path {
+                return nil
+            }
+            currentDirectory = parentDirectory
         }
     }
 }

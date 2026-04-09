@@ -31,6 +31,14 @@ struct PromptCatalogServiceTests {
     }
 
     @Test
+    func defaultCatalogFindsReorganizedSourcePrompts() throws {
+        let loaded = try PromptCatalogService().loadPrompt(named: "execution_agent_openai")
+
+        #expect(loaded.config.version == "v3")
+        #expect(loaded.sourceURL?.path.contains("/Resources/Prompts/execution_agent_openai/") == true)
+    }
+
+    @Test
     func loadPromptFailsWhenRequiredConfigKeyMissing() throws {
         let fm = FileManager.default
         let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)

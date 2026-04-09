@@ -241,16 +241,16 @@
 			inputFileListPaths = (
 			);
 			inputPaths = (
-				"$(SRCROOT)/TaskAgentMacOSApp/Prompts/README.md",
-				"$(SRCROOT)/TaskAgentMacOSApp/Prompts/execution_agent",
-				"$(SRCROOT)/TaskAgentMacOSApp/Prompts/execution_agent/config.yaml",
-				"$(SRCROOT)/TaskAgentMacOSApp/Prompts/execution_agent/prompt.md",
-				"$(SRCROOT)/TaskAgentMacOSApp/Prompts/execution_agent_openai",
-				"$(SRCROOT)/TaskAgentMacOSApp/Prompts/execution_agent_openai/config.yaml",
-				"$(SRCROOT)/TaskAgentMacOSApp/Prompts/execution_agent_openai/prompt.md",
-				"$(SRCROOT)/TaskAgentMacOSApp/Prompts/task_extraction",
-				"$(SRCROOT)/TaskAgentMacOSApp/Prompts/task_extraction/config.yaml",
-				"$(SRCROOT)/TaskAgentMacOSApp/Prompts/task_extraction/prompt.md",
+				"$(SRCROOT)/TaskAgentMacOSApp/Resources/Prompts/README.md",
+				"$(SRCROOT)/TaskAgentMacOSApp/Resources/Prompts/execution_agent/config.yaml",
+				"$(SRCROOT)/TaskAgentMacOSApp/Resources/Prompts/execution_agent/prompt.md",
+				"$(SRCROOT)/TaskAgentMacOSApp/Resources/Prompts/execution_agent_openai/config.yaml",
+				"$(SRCROOT)/TaskAgentMacOSApp/Resources/Prompts/execution_agent_openai/prompt.md",
+				"$(SRCROOT)/TaskAgentMacOSApp/Resources/Prompts/execution_agent_openai/v1/prompt.md",
+				"$(SRCROOT)/TaskAgentMacOSApp/Resources/Prompts/execution_agent_openai/v2/prompt.md",
+				"$(SRCROOT)/TaskAgentMacOSApp/Resources/Prompts/execution_agent_openai/v3/prompt.md",
+				"$(SRCROOT)/TaskAgentMacOSApp/Resources/Prompts/task_extraction/config.yaml",
+				"$(SRCROOT)/TaskAgentMacOSApp/Resources/Prompts/task_extraction/prompt.md",
 			);
 			outputFileListPaths = (
 			);
@@ -262,13 +262,19 @@
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/Prompts/execution_agent_openai",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/Prompts/execution_agent_openai/config.yaml",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/Prompts/execution_agent_openai/prompt.md",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/Prompts/execution_agent_openai/v1",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/Prompts/execution_agent_openai/v1/prompt.md",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/Prompts/execution_agent_openai/v2",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/Prompts/execution_agent_openai/v2/prompt.md",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/Prompts/execution_agent_openai/v3",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/Prompts/execution_agent_openai/v3/prompt.md",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/Prompts/task_extraction",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/Prompts/task_extraction/config.yaml",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/Prompts/task_extraction/prompt.md",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\nPROMPTS_SOURCE=\"${SRCROOT}/TaskAgentMacOSApp/Prompts\"\nPROMPTS_DEST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/Prompts\"\nmkdir -p \"${PROMPTS_DEST}/execution_agent\"\nmkdir -p \"${PROMPTS_DEST}/execution_agent_openai\"\nmkdir -p \"${PROMPTS_DEST}/task_extraction\"\ncp \"${PROMPTS_SOURCE}/README.md\" \"${PROMPTS_DEST}/README.md\"\ncp \"${PROMPTS_SOURCE}/execution_agent/config.yaml\" \"${PROMPTS_DEST}/execution_agent/config.yaml\"\ncp \"${PROMPTS_SOURCE}/execution_agent/prompt.md\" \"${PROMPTS_DEST}/execution_agent/prompt.md\"\ncp \"${PROMPTS_SOURCE}/execution_agent_openai/config.yaml\" \"${PROMPTS_DEST}/execution_agent_openai/config.yaml\"\ncp \"${PROMPTS_SOURCE}/execution_agent_openai/prompt.md\" \"${PROMPTS_DEST}/execution_agent_openai/prompt.md\"\ncp \"${PROMPTS_SOURCE}/task_extraction/config.yaml\" \"${PROMPTS_DEST}/task_extraction/config.yaml\"\ncp \"${PROMPTS_SOURCE}/task_extraction/prompt.md\" \"${PROMPTS_DEST}/task_extraction/prompt.md\"\n";
+			shellScript = "set -e\nPROMPTS_SOURCE=\"${SRCROOT}/TaskAgentMacOSApp/Resources/Prompts\"\nPROMPTS_DEST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/Prompts\"\nmkdir -p \"${PROMPTS_DEST}/execution_agent\" \"${PROMPTS_DEST}/execution_agent_openai/v1\" \"${PROMPTS_DEST}/execution_agent_openai/v2\" \"${PROMPTS_DEST}/execution_agent_openai/v3\" \"${PROMPTS_DEST}/task_extraction\"\ncp \"${PROMPTS_SOURCE}/README.md\" \"${PROMPTS_DEST}/README.md\"\ncp \"${PROMPTS_SOURCE}/execution_agent/config.yaml\" \"${PROMPTS_DEST}/execution_agent/config.yaml\"\ncp \"${PROMPTS_SOURCE}/execution_agent/prompt.md\" \"${PROMPTS_DEST}/execution_agent/prompt.md\"\ncp \"${PROMPTS_SOURCE}/execution_agent_openai/config.yaml\" \"${PROMPTS_DEST}/execution_agent_openai/config.yaml\"\ncp \"${PROMPTS_SOURCE}/execution_agent_openai/prompt.md\" \"${PROMPTS_DEST}/execution_agent_openai/prompt.md\"\ncp \"${PROMPTS_SOURCE}/execution_agent_openai/v1/prompt.md\" \"${PROMPTS_DEST}/execution_agent_openai/v1/prompt.md\"\ncp \"${PROMPTS_SOURCE}/execution_agent_openai/v2/prompt.md\" \"${PROMPTS_DEST}/execution_agent_openai/v2/prompt.md\"\ncp \"${PROMPTS_SOURCE}/execution_agent_openai/v3/prompt.md\" \"${PROMPTS_DEST}/execution_agent_openai/v3/prompt.md\"\ncp \"${PROMPTS_SOURCE}/task_extraction/config.yaml\" \"${PROMPTS_DEST}/task_extraction/config.yaml\"\ncp \"${PROMPTS_SOURCE}/task_extraction/prompt.md\" \"${PROMPTS_DEST}/task_extraction/prompt.md\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
