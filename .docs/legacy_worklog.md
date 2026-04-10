@@ -6215,3 +6215,78 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - `MainShellStateStore` is now split into smaller domain files, targeted tests stayed green through the refactor, and the broader app build still succeeds.
 - Issues/blockers:
   - Interactive UI smoke coverage is still pending for the refactored MainShell flows.
+
+## Entry
+- Date: 2026-03-26
+- Step: Split `OpenAIAutomationEngine.swift` into maintainable concern-based files with no intended behavior change
+- Changes made:
+  - Reorganized OpenAI automation source files:
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomationEngine.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomation/OpenAIComputerUseRunner.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomation/OpenAIComputerUseRunner+Transport.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomation/OpenAIComputerUseRunner+ToolExecution.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomation/OpenAIComputerUseRunner+Capture.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomation/OpenAIComputerUseRunner+ResponseParsing.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomation/OpenAIResponsesModels.swift`
+  - Kept `OpenAIAutomationEngine` as the thin adapter and preserved the existing `OpenAIComputerUseRunner` orchestration surface while moving helpers into same-type extensions.
+  - Updated docs:
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/design.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/plan.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/testing.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/worklog.md`
+- Automated tests run:
+  - `xcodebuild test -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/clickcherry-openai-runner-focused -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests test` (pass; 11 tests).
+  - `xcodebuild test -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/clickcherry-openai-full-tests -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests test` (pass; 98 tests).
+  - `xcodebuild build -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/clickcherry-openai-build -parallel-testing-enabled NO build` (pass).
+- Manual tests run:
+  - Launched `/tmp/clickcherry-openai-build/Build/Products/Debug/ClickCherry Dev.app`, confirmed the debug app process started, then terminated the launched app.
+  - User-reported live provider-backed smoke validation passed on 2026-03-26 after following the OpenAI runner success, `terminal_exec`, cancellation, and diagnostics checklist.
+- Result:
+  - `OpenAIAutomationEngine.swift` is now reduced to the adapter role and the OpenAI runner logic is split by concern under `Services/OpenAIAutomation/` with automated and manual smoke verification complete.
+- Issues/blockers:
+  - None.
+
+## Entry
+- Date: 2026-03-27
+- Step: Implement vision-first grounding for the OpenAI execution runner
+- Changes made:
+  - Added new runtime files:
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/DesktopScreenshotTransformService.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomation/OpenAIComputerUseRunner+VisionState.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomation/OpenAIComputerUseRunner+ScreenshotActions.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSAppTests/DesktopScreenshotTransformServiceTests.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSAppTests/OpenAIComputerUseRunnerVisionTests.swift`
+  - Updated OpenAI runner files:
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomation/OpenAIComputerUseRunner.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomation/OpenAIComputerUseRunner+Capture.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomation/OpenAIComputerUseRunner+ToolExecution.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomation/OpenAIComputerUseRunner+ResponseParsing.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/execution_agent_openai/prompt.md`
+  - Behavior changes:
+    - added screenshot tool modes `full`, `crop`, and `current`
+    - added active image-to-screen vision state for crop-aware coordinate mapping
+    - added PNG crop rendering, zoom scaling, and high-contrast grid overlay support
+    - switched OpenAI control-loop image inputs to `detail: "original"`
+    - removed lossy screenshot optimization from this control path
+    - deferred later same-turn dependent visual `desktop_action` calls with `wait_for_visual_feedback`
+    - reset the next-turn screenshot context back to full-display after non-screenshot desktop actions
+  - Updated docs:
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/design.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/plan.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/testing.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/open_issues.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/worklog.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests test` (pass).
+  - `xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/DesktopScreenshotTransformServiceTests -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerVisionTests test` (pass).
+  - `xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests test` (pass).
+  - `xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" build` (pass).
+- Manual tests run:
+  - Interactive desktop validation not run in this session.
+  - Pending local runtime checks are tracked in `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md` and `/Users/ferzamh/code-git-local/ClickCherry/.docs/testing.md`.
+- Result:
+  - Vision-first grounding is implemented in the active OpenAI execution path with crop/zoom, overlay-assisted localization, active coordinate remapping, same-turn visual guardrails, and green automated coverage.
+- Issues/blockers:
+  - Interactive desktop validation is still needed to confirm real-world improvement on small targets and to decide whether stateful pointer execution should be the next follow-up.
