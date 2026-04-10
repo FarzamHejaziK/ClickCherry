@@ -6183,3 +6183,35 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - Open issue and execution queue now reflect the decision not to adopt OpenAI built-in computer use.
 - Issues/blockers:
   - None.
+
+## Entry
+- Date: 2026-03-26
+- Step: Split `MainShellStateStore` into maintainable domain files with no intended behavior change
+- Changes made:
+  - Reorganized MainShell model files:
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/MainShellStateStore.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/MainShellRoute.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/MainShellDialogs.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/MainShellStateStore+NavigationAndTasks.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/MainShellStateStore+ProviderSetup.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/MainShellStateStore+Preflight.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/MainShellStateStore+Heartbeat.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/MainShellStateStore+Diagnostics.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/MainShellStateStore+RunTask.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/MainShellStateStore+Recording.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/MainShellStateStore+Extraction.swift`
+  - Preserved the existing `MainShellStateStore` public facade and kept recorder classes in the core store file for this pass.
+  - Updated docs:
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/worklog.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/testing.md`
+- Automated tests run:
+  - `xcodebuild test -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass; used as the baseline and rerun after each refactor slice plus the final cleanup pass).
+  - `xcodebuild build -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS"` (pass).
+- Manual tests run:
+  - Launched `/Users/ferzamh/Library/Developer/Xcode/DerivedData/TaskAgentMacOSApp-gskaqmcqndoejiefhqxytxdhbljh/Build/Products/Debug/ClickCherry Dev.app`, confirmed the debug app process started, then terminated the launched app.
+  - Full interactive MainShell smoke validation remains queued in `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`.
+- Result:
+  - `MainShellStateStore` is now split into smaller domain files, targeted tests stayed green through the refactor, and the broader app build still succeeds.
+- Issues/blockers:
+  - Interactive UI smoke coverage is still pending for the refactored MainShell flows.

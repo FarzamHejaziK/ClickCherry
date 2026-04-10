@@ -7,6 +7,35 @@ description: Running implementation log of completed work, test evidence, blocke
 > Previous archived entries are in `/Users/ferzamh/code-git-local/ClickCherry/.docs/legacy_worklog.md`.
 
 ## Entry
+- Date: 2026-04-10
+- Step: Implement Phase 1 of the semantic automation plan with verification-gated visual clicks
+- Changes made:
+  - Updated automation-planning docs:
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/automation_findings.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/automation_plan.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/worklog.md`
+  - Hardened the OpenAI execution prompt so deterministic actions are preferred before visual clicking:
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Resources/Prompts/execution_agent_openai/v3/prompt.md`
+  - Extended the completion payload and runner parsing so final `SUCCESS` after a visual click requires explicit verification status plus screenshot-based evidence:
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Core/LLM/OpenAIResponsesModels.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Features/TaskExecution/OpenAIAutomation/OpenAIComputerUseRunner.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Features/TaskExecution/OpenAIAutomation/OpenAIComputerUseRunner+ResponseParsing.swift`
+  - Changed visual click tool results so click actions are reported as injected and pending verification rather than implicitly complete:
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Features/TaskExecution/OpenAIAutomation/OpenAIComputerUseRunner+ToolExecution.swift`
+  - Added focused regression coverage for prompt wording and verification-gated click completion:
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSAppTests/Features/PromptCatalog/PromptCatalogServiceTests.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSAppTests/Features/TaskExecution/OpenAIComputerUseRunnerTests.swift`
+- Automated tests run:
+  - `xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/clickcherry-phase1-dd -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/PromptCatalogServiceTests -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests CODE_SIGNING_ALLOWED=NO test` (pass; 25 tests).
+- Manual tests run:
+  - Not run in this session. Live validation is now queued in `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`.
+- Result:
+  - Phase 1 is implemented in code and focused automated coverage is green. Manual runtime validation is still required before treating the phase as behaviorally complete.
+- Issues/blockers:
+  - Live app validation is still pending for the new semantic-first and verification-gated behavior.
+
+## Entry
 - Date: 2026-04-09
 - Step: Land the feature-first folder reorganization and sync the active docs to the new layout
 - Changes made:
@@ -288,34 +317,3 @@ description: Running implementation log of completed work, test evidence, blocke
 - Issues/blockers:
   - None.
 
-## Entry
-- Date: 2026-03-26
-- Step: Split `MainShellStateStore` into maintainable domain files with no intended behavior change
-- Changes made:
-  - Reorganized MainShell model files:
-    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/MainShellStateStore.swift`
-    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/MainShellRoute.swift`
-    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/MainShellDialogs.swift`
-    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/MainShellStateStore+NavigationAndTasks.swift`
-    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/MainShellStateStore+ProviderSetup.swift`
-    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/MainShellStateStore+Preflight.swift`
-    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/MainShellStateStore+Heartbeat.swift`
-    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/MainShellStateStore+Diagnostics.swift`
-    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/MainShellStateStore+RunTask.swift`
-    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/MainShellStateStore+Recording.swift`
-    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/MainShellStateStore+Extraction.swift`
-  - Preserved the existing `MainShellStateStore` public facade and kept recorder classes in the core store file for this pass.
-  - Updated docs:
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/worklog.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/testing.md`
-- Automated tests run:
-  - `xcodebuild test -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/MainShellStateStoreTests` (pass; used as the baseline and rerun after each refactor slice plus the final cleanup pass).
-  - `xcodebuild build -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS"` (pass).
-- Manual tests run:
-  - Launched `/Users/ferzamh/Library/Developer/Xcode/DerivedData/TaskAgentMacOSApp-gskaqmcqndoejiefhqxytxdhbljh/Build/Products/Debug/ClickCherry Dev.app`, confirmed the debug app process started, then terminated the launched app.
-  - Full interactive MainShell smoke validation remains queued in `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`.
-- Result:
-  - `MainShellStateStore` is now split into smaller domain files, targeted tests stayed green through the refactor, and the broader app build still succeeds.
-- Issues/blockers:
-  - Interactive UI smoke coverage is still pending for the refactored MainShell flows.

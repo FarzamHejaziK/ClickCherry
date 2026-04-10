@@ -45,7 +45,7 @@ extension OpenAIComputerUseRunner {
         return parts.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    func parseCompletion(from text: String) -> CompletionResult {
+    func parseCompletion(from text: String, pendingVisualVerificationStep: String?) -> CompletionResult {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             return CompletionResult(
@@ -60,8 +60,24 @@ extension OpenAIComputerUseRunner {
         if let payloadData = extractJSONPayloadData(from: trimmed),
            let payload = try? jsonDecoder.decode(OpenAIToolLoopCompletionPayload.self, from: payloadData) {
             let questions = payload.questions?.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty } ?? []
+            let rawOutcome = mapStatus(payload.status)
+            if rawOutcome == .success,
+               let pendingVisualVerificationStep,
+               completionPayloadNeedsVerifiedVisualEvidence(payload) {
+                return CompletionResult(
+                    outcome: .needsClarification,
+                    summary: summarizeCompletionPayload(payload),
+                    questions: dedupe(
+                        questions + [
+                            "The last visual click still needs screenshot-based verification. Inspect the latest screenshot, then either provide verification_status='verified' with evidence or continue acting."
+                        ]
+                    ),
+                    errorMessage: "Visual click '\(pendingVisualVerificationStep)' was not verified before SUCCESS.",
+                    rawCompletionText: trimmed
+                )
+            }
             return CompletionResult(
-                outcome: mapStatus(payload.status),
+                outcome: rawOutcome,
                 summary: summarizeCompletionPayload(payload),
                 questions: questions,
                 errorMessage: payload.error?.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -89,6 +105,12 @@ extension OpenAIComputerUseRunner {
         var parts: [String] = []
         if let summary = payload.summary?.trimmingCharacters(in: .whitespacesAndNewlines), !summary.isEmpty {
             parts.append(summary)
+        }
+        if let verificationStatus = payload.verificationStatus?.trimmingCharacters(in: .whitespacesAndNewlines), !verificationStatus.isEmpty {
+            parts.append("Verification status: \(verificationStatus)")
+        }
+        if let evidence = payload.evidence?.trimmingCharacters(in: .whitespacesAndNewlines), !evidence.isEmpty {
+            parts.append("Evidence: \(evidence)")
         }
         if let observation = payload.debugVisualObservation?.trimmingCharacters(in: .whitespacesAndNewlines), !observation.isEmpty {
             parts.append("Debug visual observation: \(observation)")
@@ -120,6 +142,14 @@ extension OpenAIComputerUseRunner {
         }
         let payload = String(trimmed[firstBrace...lastBrace])
         return payload.data(using: .utf8)
+    }
+
+    func completionPayloadNeedsVerifiedVisualEvidence(_ payload: OpenAIToolLoopCompletionPayload) -> Bool {
+        let verificationStatus = payload.verificationStatus?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        let evidence = payload.evidence?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return verificationStatus != "verified" || evidence.isEmpty
     }
 
     func mapStatus(_ raw: String) -> AutomationRunOutcome {

@@ -39,6 +39,15 @@ struct PromptCatalogServiceTests {
     }
 
     @Test
+    func executionAgentPromptRequiresVerificationAfterVisualClicks() throws {
+        let loaded = try PromptCatalogService().loadPrompt(named: "execution_agent_openai")
+
+        #expect(loaded.prompt.contains("use `open_app` to open or focus an app instead of clicking Dock or app icons"))
+        #expect(loaded.prompt.contains("do not return `SUCCESS` unless the latest screenshot verifies the intended outcome"))
+        #expect(loaded.prompt.contains("\"verification_status\":\"verified|not_needed|unclear\""))
+    }
+
+    @Test
     func loadPromptFailsWhenRequiredConfigKeyMissing() throws {
         let fm = FileManager.default
         let tempRoot = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)

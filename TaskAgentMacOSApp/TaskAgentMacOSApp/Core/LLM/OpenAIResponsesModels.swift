@@ -99,6 +99,8 @@ struct OpenAIErrorEnvelope: Codable {
 struct OpenAIToolLoopCompletionPayload: Codable {
     var status: String
     var summary: String?
+    var verificationStatus: String?
+    var evidence: String?
     var error: String?
     var questions: [String]?
     var debugVisualObservation: String?
@@ -107,6 +109,8 @@ struct OpenAIToolLoopCompletionPayload: Codable {
     enum CodingKeys: String, CodingKey {
         case status
         case summary
+        case verificationStatus = "verification_status"
+        case evidence
         case error
         case questions
         case debugVisualObservation = "debug_visual_observation"

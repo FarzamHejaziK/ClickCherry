@@ -429,6 +429,19 @@ struct OpenAIComputerUseRunnerTests {
         }
 
         OpenAIQueueURLProtocol.enqueue { request in
+            guard
+                let bodyData = Self.requestBodyData(from: request),
+                let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any],
+                let input = json["input"] as? [[String: Any]],
+                let functionOutput = input.first(where: { ($0["type"] as? String) == "function_call_output" }),
+                let output = functionOutput["output"] as? String
+            else {
+                throw NSError(domain: "OpenAIComputerUseRunnerTests", code: 2)
+            }
+
+            #expect(output.contains("\"verification_required\":true"))
+            #expect(output.contains("\"action_state\":\"injected_pending_verification\""))
+
             let responseBody = """
             {
               "id": "resp_2",
@@ -438,7 +451,7 @@ struct OpenAIComputerUseRunnerTests {
                   "content": [
                     {
                       "type": "output_text",
-                      "text": "{\\"status\\":\\"SUCCESS\\",\\"summary\\":\\"ok\\",\\"error\\":null,\\"questions\\":[]}"
+                      "text": "{\\"status\\":\\"SUCCESS\\",\\"summary\\":\\"ok\\",\\"verification_status\\":\\"verified\\",\\"evidence\\":\\"The clicked target is visibly focused in the latest screenshot.\\",\\"error\\":null,\\"questions\\":[]}"
                     }
                   ]
                 }
@@ -471,7 +484,73 @@ struct OpenAIComputerUseRunnerTests {
         )
         let executor = OpenAIMockDesktopExecutor()
 
-        _ = try await runner.runToolLoop(taskMarkdown: "# Task\nClick target", executor: executor)
+        let result = try await runner.runToolLoop(taskMarkdown: "# Task\nClick target", executor: executor)
+        #expect(result.outcome == .success)
+        #expect(result.llmSummary?.contains("Verification status: verified") == true)
+        #expect(executor.clicks.last == OpenAIXY(x: 100, y: 200))
+    }
+
+    @Test
+    func runToolLoopDowngradesSuccessWhenVisualClickLacksVerificationEvidence() async throws {
+        let (promptCatalog, tempRoot) = try makePromptCatalog()
+        defer { try? FileManager.default.removeItem(at: tempRoot) }
+
+        OpenAIQueueURLProtocol.reset()
+        defer { OpenAIQueueURLProtocol.reset() }
+
+        OpenAIQueueURLProtocol.enqueue { request in
+            let responseBody = """
+            {
+              "id": "resp_1",
+              "output": [
+                {
+                  "type": "function_call",
+                  "id": "fc_1",
+                  "call_id": "call_1",
+                  "name": "desktop_action",
+                  "arguments": "{\\"action\\":\\"left_click\\",\\"x\\":100,\\"y\\":200}"
+                }
+              ]
+            }
+            """
+            return (Self.response(url: request.url!, code: 200), Data(responseBody.utf8))
+        }
+
+        OpenAIQueueURLProtocol.enqueue { request in
+            let responseBody = """
+            {
+              "id": "resp_2",
+              "output": [
+                {
+                  "type": "message",
+                  "content": [
+                    {
+                      "type": "output_text",
+                      "text": "{\\"status\\":\\"SUCCESS\\",\\"summary\\":\\"ok\\",\\"error\\":null,\\"questions\\":[]}"
+                    }
+                  ]
+                }
+              ]
+            }
+            """
+            return (Self.response(url: request.url!, code: 200), Data(responseBody.utf8))
+        }
+
+        let runner = OpenAIComputerUseRunner(
+            apiKeyStore: OpenAIStubAPIKeyStore(values: [.openAI: "openai-test-key"]),
+            promptCatalog: promptCatalog,
+            session: makeSession(),
+            screenshotProvider: {
+                try Self.makeValidScreenshot()
+            }
+        )
+        let executor = OpenAIMockDesktopExecutor()
+
+        let result = try await runner.runToolLoop(taskMarkdown: "# Task\nClick target", executor: executor)
+
+        #expect(result.outcome == .needsClarification)
+        #expect(result.errorMessage?.contains("was not verified before SUCCESS") == true)
+        #expect(result.generatedQuestions.contains(where: { $0.contains("still needs screenshot-based verification") }))
         #expect(executor.clicks.last == OpenAIXY(x: 100, y: 200))
     }
 

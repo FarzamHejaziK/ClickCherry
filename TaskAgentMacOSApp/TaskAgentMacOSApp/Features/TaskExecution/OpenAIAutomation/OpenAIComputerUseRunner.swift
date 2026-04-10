@@ -65,6 +65,12 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
         var arguments: String
     }
 
+    enum PostActionVerificationDisposition {
+        case noChange
+        case require(stepDescription: String)
+        case clear
+    }
+
     struct ToolExecutionResult {
         var callID: String
         var output: String
@@ -72,6 +78,7 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
         var stepDescription: String?
         var generatedQuestions: [String]
         var followupVision: OpenAIFollowupVisionStrategy? = nil
+        var verificationDisposition: PostActionVerificationDisposition = .noChange
     }
 
     struct CompletionResult {
@@ -335,6 +342,7 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
 
         var executedSteps: [String] = []
         var generatedQuestions: [String] = []
+        var pendingVisualVerificationStep: String?
 
         do {
             for turn in 1...200 {
@@ -344,7 +352,10 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
                 let functionCalls = try extractFunctionCalls(from: response)
 
                 if functionCalls.isEmpty {
-                    let completion = parseCompletion(from: extractCompletionText(from: response))
+                    let completion = parseCompletion(
+                        from: extractCompletionText(from: response),
+                        pendingVisualVerificationStep: pendingVisualVerificationStep
+                    )
                     recordTrace(
                         kind: .completion,
                         "Completion: status=\(completion.outcome) questions=\(completion.questions.count) summary=\(completion.summary == nil ? "none" : "present")"
@@ -377,6 +388,14 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
 
                     generatedQuestions.append(contentsOf: execution.generatedQuestions)
                     pendingFollowupVision = execution.followupVision ?? pendingFollowupVision
+                    switch execution.verificationDisposition {
+                    case .noChange:
+                        break
+                    case .require(let stepDescription):
+                        pendingVisualVerificationStep = stepDescription
+                    case .clear:
+                        pendingVisualVerificationStep = nil
+                    }
                     followupInput.append(
                         functionCallOutputInput(callID: execution.callID, output: execution.output)
                     )

@@ -89,21 +89,27 @@ extension OpenAIComputerUseRunner {
                 }
                 let mapped = mapToScreenCoordinates(x: x, y: y)
                 try executor.moveMouse(x: mapped.x, y: mapped.y)
-                return successResult(callID: functionCall.callID, stepDescription: "Move mouse to (\(mapped.x), \(mapped.y))")
+                return passiveSuccessResult(callID: functionCall.callID, stepDescription: "Move mouse to (\(mapped.x), \(mapped.y))")
             case "left_click":
                 guard let (x, y) = extractPoint(from: object) else {
                     return invalidInputResult(callID: functionCall.callID, action: action)
                 }
                 let mapped = mapToScreenCoordinates(x: x, y: y)
                 try executor.click(x: mapped.x, y: mapped.y)
-                return successResult(callID: functionCall.callID, stepDescription: "Click at (\(mapped.x), \(mapped.y))")
+                return visualClickResult(
+                    callID: functionCall.callID,
+                    stepDescription: "Click at (\(mapped.x), \(mapped.y))"
+                )
             case "right_click":
                 guard let (x, y) = extractPoint(from: object) else {
                     return invalidInputResult(callID: functionCall.callID, action: action)
                 }
                 let mapped = mapToScreenCoordinates(x: x, y: y)
                 try executor.rightClick(x: mapped.x, y: mapped.y)
-                return successResult(callID: functionCall.callID, stepDescription: "Right click at (\(mapped.x), \(mapped.y))")
+                return visualClickResult(
+                    callID: functionCall.callID,
+                    stepDescription: "Right click at (\(mapped.x), \(mapped.y))"
+                )
             case "double_click":
                 guard let (x, y) = extractPoint(from: object) else {
                     return invalidInputResult(callID: functionCall.callID, action: action)
@@ -111,7 +117,10 @@ extension OpenAIComputerUseRunner {
                 let mapped = mapToScreenCoordinates(x: x, y: y)
                 try executor.click(x: mapped.x, y: mapped.y)
                 try executor.click(x: mapped.x, y: mapped.y)
-                return successResult(callID: functionCall.callID, stepDescription: "Double click at (\(mapped.x), \(mapped.y))")
+                return visualClickResult(
+                    callID: functionCall.callID,
+                    stepDescription: "Double click at (\(mapped.x), \(mapped.y))"
+                )
             case "type":
                 guard let text = object["text"]?.stringValue,
                       !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
@@ -119,7 +128,7 @@ extension OpenAIComputerUseRunner {
                 }
                 recordTrace(kind: .info, "Typing uses clipboard paste (cmd+v) with clipboard restore for reliability.")
                 try executor.typeText(text)
-                return successResult(callID: functionCall.callID, stepDescription: "Type text '\(text)'")
+                return activeSuccessResult(callID: functionCall.callID, stepDescription: "Type text '\(text)'")
             case "key":
                 guard let raw = firstStringValue(from: object, keys: ["key", "text", "keys"]),
                       let shortcut = parseShortcut(raw) else {
@@ -145,7 +154,7 @@ extension OpenAIComputerUseRunner {
                     control: shortcut.control,
                     shift: shortcut.shift
                 )
-                return successResult(callID: functionCall.callID, stepDescription: "Press shortcut '\(raw)'")
+                return activeSuccessResult(callID: functionCall.callID, stepDescription: "Press shortcut '\(raw)'")
             case "open_app":
                 guard let appName = firstStringValue(from: object, keys: ["app", "name"]) else {
                     return invalidInputResult(callID: functionCall.callID, action: action)
@@ -153,7 +162,7 @@ extension OpenAIComputerUseRunner {
                 anchorInteractionTarget(executor: executor, reason: "open_app", performClick: true)
                 await sleepNanoseconds(180_000_000)
                 try executor.openApp(named: appName)
-                return successResult(callID: functionCall.callID, stepDescription: "Open app '\(appName)'")
+                return activeSuccessResult(callID: functionCall.callID, stepDescription: "Open app '\(appName)'")
             case "open_url":
                 guard let urlRaw = firstStringValue(from: object, keys: ["url"]),
                       let url = URL(string: urlRaw) else {
@@ -162,7 +171,7 @@ extension OpenAIComputerUseRunner {
                 anchorInteractionTarget(executor: executor, reason: "open_url", performClick: true)
                 await sleepNanoseconds(180_000_000)
                 try executor.openURL(url)
-                return successResult(callID: functionCall.callID, stepDescription: "Open URL '\(url.absoluteString)'")
+                return activeSuccessResult(callID: functionCall.callID, stepDescription: "Open URL '\(url.absoluteString)'")
             case "scroll":
                 if let (x, y) = extractPoint(from: object) {
                     let mapped = mapToScreenCoordinates(x: x, y: y)
@@ -172,11 +181,11 @@ extension OpenAIComputerUseRunner {
                     return invalidInputResult(callID: functionCall.callID, action: action)
                 }
                 try executor.scroll(deltaX: dx, deltaY: dy)
-                return successResult(callID: functionCall.callID, stepDescription: "Scroll (\(dx), \(dy))")
+                return activeSuccessResult(callID: functionCall.callID, stepDescription: "Scroll (\(dx), \(dy))")
             case "wait":
                 let seconds = max(0.1, object["seconds"]?.doubleValue ?? object["duration"]?.doubleValue ?? 0.5)
                 await sleepNanoseconds(UInt64(seconds * 1_000_000_000))
-                return successResult(callID: functionCall.callID, stepDescription: "Wait \(String(format: "%.1f", seconds))s")
+                return passiveSuccessResult(callID: functionCall.callID, stepDescription: "Wait \(String(format: "%.1f", seconds))s")
             default:
                 return ToolExecutionResult(
                     callID: functionCall.callID,
@@ -207,13 +216,42 @@ extension OpenAIComputerUseRunner {
         }
     }
 
-    func successResult(callID: String, stepDescription: String) -> ToolExecutionResult {
+    func activeSuccessResult(callID: String, stepDescription: String) -> ToolExecutionResult {
+        ToolExecutionResult(
+            callID: callID,
+            output: makeToolOutput(ok: true, message: "Done"),
+            isError: false,
+            stepDescription: stepDescription,
+            generatedQuestions: [],
+            verificationDisposition: .clear
+        )
+    }
+
+    func passiveSuccessResult(callID: String, stepDescription: String) -> ToolExecutionResult {
         ToolExecutionResult(
             callID: callID,
             output: makeToolOutput(ok: true, message: "Done"),
             isError: false,
             stepDescription: stepDescription,
             generatedQuestions: []
+        )
+    }
+
+    func visualClickResult(callID: String, stepDescription: String) -> ToolExecutionResult {
+        ToolExecutionResult(
+            callID: callID,
+            output: makeToolOutput(
+                ok: true,
+                message: "Click injected; verification required from the next screenshot before claiming success.",
+                data: [
+                    "action_state": "injected_pending_verification",
+                    "verification_required": true
+                ]
+            ),
+            isError: false,
+            stepDescription: stepDescription,
+            generatedQuestions: [],
+            verificationDisposition: .require(stepDescription: stepDescription)
         )
     }
 
@@ -330,7 +368,8 @@ extension OpenAIComputerUseRunner {
                 output: payloadText,
                 isError: !payload.ok,
                 stepDescription: "Terminal exec: \(commandSummary)",
-                generatedQuestions: payload.ok ? [] : ["Terminal command failed (\(commandSummary)). What should I do instead?"]
+                generatedQuestions: payload.ok ? [] : ["Terminal command failed (\(commandSummary)). What should I do instead?"],
+                verificationDisposition: payload.ok ? .clear : .noChange
             )
         } catch {
             return ToolExecutionResult(
