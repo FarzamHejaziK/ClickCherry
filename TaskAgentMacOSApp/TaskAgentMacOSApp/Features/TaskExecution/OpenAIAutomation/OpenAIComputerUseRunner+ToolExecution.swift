@@ -6,7 +6,7 @@ extension OpenAIComputerUseRunner {
         executor: any DesktopActionExecutor
     ) async throws -> ToolExecutionResult {
         let toolName = functionCall.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard toolName == "desktop_action" || toolName == "terminal_exec" else {
+        guard toolName == "browser_action" || toolName == "desktop_action" || toolName == "terminal_exec" else {
             return ToolExecutionResult(
                 callID: functionCall.callID,
                 output: makeToolOutput(
@@ -35,6 +35,10 @@ extension OpenAIComputerUseRunner {
                 stepDescription: nil,
                 generatedQuestions: ["Execution input from model was invalid. How should I proceed?"]
             )
+        }
+
+        if toolName == "browser_action" {
+            return try await executeBrowserActionFunctionCall(callID: functionCall.callID, input: object)
         }
 
         if toolName == "terminal_exec" {
@@ -267,6 +271,213 @@ extension OpenAIComputerUseRunner {
             stepDescription: nil,
             generatedQuestions: ["Action '\(action)' had invalid input from the model. How should I proceed?"]
         )
+    }
+
+    func executeBrowserActionFunctionCall(
+        callID: String,
+        input: [String: OpenAIJSONValue]
+    ) async throws -> ToolExecutionResult {
+        let action = (input["action"]?.stringValue ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !action.isEmpty else {
+            return ToolExecutionResult(
+                callID: callID,
+                output: makeToolOutput(ok: false, message: "Browser tool input missing 'action'.", error: "missing_action"),
+                isError: true,
+                stepDescription: nil,
+                generatedQuestions: ["Browser action omitted the requested action. What should I do?"]
+            )
+        }
+
+        do {
+            switch action {
+            case "attach_or_launch_chrome":
+                let options = extractBrowserLaunchOptions(from: input)
+                let session = try await browserExecutor.attachOrLaunchChrome(options: options.hasProfileSelection ? options : nil)
+                let stepDescription = options.hasProfileSelection
+                    ? "Attach to Chrome using \(options.summary)"
+                    : "Attach to managed Chrome"
+                return ToolExecutionResult(
+                    callID: callID,
+                    output: makeToolOutput(
+                        ok: true,
+                        message: "Browser attached.",
+                        data: session.toolData
+                    ),
+                    isError: false,
+                    stepDescription: "\(stepDescription) on port \(session.debuggingPort)",
+                    generatedQuestions: [],
+                    verificationDisposition: .clear
+                )
+            case "list_tabs":
+                let tabs = try await browserExecutor.listTabs()
+                return ToolExecutionResult(
+                    callID: callID,
+                    output: makeToolOutput(
+                        ok: true,
+                        message: "Listed browser tabs.",
+                        data: ["tabs": tabs.map(\.toolData)]
+                    ),
+                    isError: false,
+                    stepDescription: "List Chrome tabs",
+                    generatedQuestions: [],
+                    verificationDisposition: .clear
+                )
+            case "select_tab":
+                let selection = BrowserTabSelection(
+                    index: input["index"]?.intValue,
+                    titleContains: input["title_contains"]?.stringValue,
+                    urlContains: input["url_contains"]?.stringValue
+                )
+                guard selection.hasSelection else {
+                    return invalidInputResult(callID: callID, action: action)
+                }
+                let tab = try await browserExecutor.selectTab(using: selection)
+                return ToolExecutionResult(
+                    callID: callID,
+                    output: makeToolOutput(ok: true, message: "Selected browser tab.", data: tab.toolData),
+                    isError: false,
+                    stepDescription: "Select Chrome tab \(selection.summary)",
+                    generatedQuestions: [],
+                    verificationDisposition: .clear
+                )
+            case "goto":
+                guard let urlRaw = input["url"]?.stringValue,
+                      let url = URL(string: urlRaw) else {
+                    return invalidInputResult(callID: callID, action: action)
+                }
+                let page = try await browserExecutor.goto(url: url)
+                return ToolExecutionResult(
+                    callID: callID,
+                    output: makeToolOutput(ok: true, message: "Navigated browser page.", data: page.toolData),
+                    isError: false,
+                    stepDescription: "Navigate browser to '\(page.url)'",
+                    generatedQuestions: [],
+                    verificationDisposition: .clear
+                )
+            case "click":
+                let query = extractBrowserElementQuery(from: input)
+                guard query.hasSelector else {
+                    return invalidInputResult(callID: callID, action: action)
+                }
+                let page = try await browserExecutor.click(query: query)
+                return ToolExecutionResult(
+                    callID: callID,
+                    output: makeToolOutput(ok: true, message: "Clicked browser element.", data: page.toolData),
+                    isError: false,
+                    stepDescription: "Click browser element \(query.summary)",
+                    generatedQuestions: [],
+                    verificationDisposition: .clear
+                )
+            case "type":
+                let query = extractBrowserElementQuery(from: input)
+                guard query.hasSelector,
+                      let text = firstStringValue(from: input, keys: ["value", "input_text", "text"]),
+                      !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                    return invalidInputResult(callID: callID, action: action)
+                }
+                let pressEnter = input["press_enter"]?.boolValue ?? false
+                let page = try await browserExecutor.type(text: text, query: query, pressEnter: pressEnter)
+                return ToolExecutionResult(
+                    callID: callID,
+                    output: makeToolOutput(ok: true, message: "Typed into browser element.", data: page.toolData),
+                    isError: false,
+                    stepDescription: "Type '\(text)' into browser element \(query.summary)",
+                    generatedQuestions: [],
+                    verificationDisposition: .clear
+                )
+            case "press":
+                guard let key = firstStringValue(from: input, keys: ["key", "text", "keys"]),
+                      !key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                    return invalidInputResult(callID: callID, action: action)
+                }
+                let page = try await browserExecutor.press(key: key)
+                return ToolExecutionResult(
+                    callID: callID,
+                    output: makeToolOutput(ok: true, message: "Pressed browser key.", data: page.toolData),
+                    isError: false,
+                    stepDescription: "Press browser key '\(key)'",
+                    generatedQuestions: [],
+                    verificationDisposition: .clear
+                )
+            case "wait_for":
+                let condition = BrowserWaitCondition(
+                    urlContains: input["url_contains"]?.stringValue,
+                    titleContains: input["title_contains"]?.stringValue,
+                    text: input["text"]?.stringValue,
+                    role: input["role"]?.stringValue,
+                    name: input["name"]?.stringValue,
+                    timeoutSeconds: input["timeout_seconds"]?.doubleValue
+                )
+                guard condition.hasCondition else {
+                    return invalidInputResult(callID: callID, action: action)
+                }
+                let waitResult = try await browserExecutor.waitFor(condition)
+                return ToolExecutionResult(
+                    callID: callID,
+                    output: makeToolOutput(ok: true, message: "Browser wait condition satisfied.", data: waitResult.toolData),
+                    isError: false,
+                    stepDescription: "Wait for browser condition \(condition.summary)",
+                    generatedQuestions: [],
+                    verificationDisposition: .clear
+                )
+            case "snapshot":
+                let snapshot = try await browserExecutor.snapshot()
+                return ToolExecutionResult(
+                    callID: callID,
+                    output: makeToolOutput(ok: true, message: "Captured browser DOM snapshot.", data: snapshot.toolData),
+                    isError: false,
+                    stepDescription: "Capture browser DOM snapshot",
+                    generatedQuestions: [],
+                    verificationDisposition: .clear
+                )
+            case "get_url":
+                let url = try await browserExecutor.getURL()
+                return ToolExecutionResult(
+                    callID: callID,
+                    output: makeToolOutput(ok: true, message: "Current browser URL.", data: ["url": url]),
+                    isError: false,
+                    stepDescription: "Read browser URL '\(url)'",
+                    generatedQuestions: [],
+                    verificationDisposition: .clear
+                )
+            case "get_title":
+                let title = try await browserExecutor.getTitle()
+                return ToolExecutionResult(
+                    callID: callID,
+                    output: makeToolOutput(ok: true, message: "Current browser title.", data: ["title": title]),
+                    isError: false,
+                    stepDescription: "Read browser title '\(title)'",
+                    generatedQuestions: [],
+                    verificationDisposition: .clear
+                )
+            default:
+                return ToolExecutionResult(
+                    callID: callID,
+                    output: makeToolOutput(ok: false, message: "Unsupported browser action '\(action)'.", error: "unsupported_action"),
+                    isError: true,
+                    stepDescription: nil,
+                    generatedQuestions: ["Browser action '\(action)' is unsupported. What should I do instead?"]
+                )
+            }
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch let error as BrowserActionExecutorError {
+            return ToolExecutionResult(
+                callID: callID,
+                output: makeToolOutput(ok: false, message: error.localizedDescription, error: "execution_failed"),
+                isError: true,
+                stepDescription: nil,
+                generatedQuestions: []
+            )
+        } catch {
+            return ToolExecutionResult(
+                callID: callID,
+                output: makeToolOutput(ok: false, message: "Browser action '\(action)' failed: \(error.localizedDescription)", error: "execution_failed"),
+                isError: true,
+                stepDescription: nil,
+                generatedQuestions: []
+            )
+        }
     }
 
     func executeTerminalExecFunctionCall(
@@ -686,6 +897,88 @@ extension OpenAIComputerUseRunner {
             "type": "function_call_output",
             "call_id": callID,
             "output": output
+        ]
+    }
+
+    func extractBrowserElementQuery(from object: [String: OpenAIJSONValue]) -> BrowserElementQuery {
+        BrowserElementQuery(
+            role: object["role"]?.stringValue,
+            name: object["name"]?.stringValue,
+            text: object["text"]?.stringValue,
+            label: object["label"]?.stringValue,
+            placeholder: object["placeholder"]?.stringValue,
+            testID: object["test_id"]?.stringValue,
+            css: object["css"]?.stringValue,
+            locator: object["locator"]?.stringValue
+        )
+    }
+
+    func extractBrowserLaunchOptions(from object: [String: OpenAIJSONValue]) -> BrowserLaunchOptions {
+        BrowserLaunchOptions(
+            profileMode: object["profile_mode"]?.stringValue.flatMap(BrowserProfileMode.init(rawValue:)),
+            profileHint: object["profile_hint"]?.stringValue,
+            profileName: object["profile_name"]?.stringValue,
+            profileDirectory: object["profile_directory"]?.stringValue,
+            userDataDir: object["user_data_dir"]?.stringValue,
+            forceRelaunch: object["force_relaunch"]?.boolValue
+        )
+    }
+
+    func browserActionToolDefinition() -> [String: Any] {
+        [
+            "type": "function",
+            "name": "browser_action",
+            "description": "Drive webpage content in managed Google Chrome using semantic DOM actions over CDP. Use this for browser tabs, navigation, buttons, links, forms, DOM text, and waits inside webpages. Do not use this for macOS dialogs or Chrome toolbar UI.",
+            "parameters": [
+                "type": "object",
+                "properties": [
+                    "action": [
+                        "type": "string",
+                        "enum": [
+                            "attach_or_launch_chrome",
+                            "list_tabs",
+                            "select_tab",
+                            "goto",
+                            "click",
+                            "type",
+                            "press",
+                            "wait_for",
+                            "snapshot",
+                            "get_url",
+                            "get_title"
+                        ]
+                    ],
+                    "profile_mode": [
+                        "type": "string",
+                        "enum": ["auto", "managed", "user_profile"]
+                    ],
+                    "profile_hint": ["type": "string"],
+                    "profile_name": ["type": "string"],
+                    "profile_directory": ["type": "string"],
+                    "user_data_dir": ["type": "string"],
+                    "force_relaunch": ["type": "boolean"],
+                    "url": ["type": "string"],
+                    "index": ["type": "integer"],
+                    "title_contains": ["type": "string"],
+                    "url_contains": ["type": "string"],
+                    "role": ["type": "string"],
+                    "name": ["type": "string"],
+                    "text": ["type": "string"],
+                    "label": ["type": "string"],
+                    "placeholder": ["type": "string"],
+                    "test_id": ["type": "string"],
+                    "css": ["type": "string"],
+                    "locator": ["type": "string"],
+                    "value": ["type": "string"],
+                    "input_text": ["type": "string"],
+                    "key": ["type": "string"],
+                    "keys": ["type": "string"],
+                    "timeout_seconds": ["type": "number"],
+                    "press_enter": ["type": "boolean"]
+                ],
+                "required": ["action"],
+                "additionalProperties": true
+            ]
         ]
     }
 

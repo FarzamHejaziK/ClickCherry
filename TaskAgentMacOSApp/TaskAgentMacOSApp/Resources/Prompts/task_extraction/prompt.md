@@ -59,6 +59,7 @@ Evidence:
 
 Question rules:
 - Ask only blocking questions needed for reliable execution.
+- If the demonstrated task uses a web browser and the browser profile is not already known from the user request or clearly shown in the recording, include a required question asking which browser profile should be used.
 - Maximum 5 questions.
 - If none are needed, return:
   - `## Questions`

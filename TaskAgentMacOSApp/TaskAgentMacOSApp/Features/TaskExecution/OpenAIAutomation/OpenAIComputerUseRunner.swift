@@ -189,6 +189,7 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
     let sleepNanoseconds: @Sendable (UInt64) async -> Void
     let screenshotProvider: () throws -> OpenAICapturedScreenshot
     let cursorPositionProvider: () -> (x: Int, y: Int)?
+    let browserExecutor: any BrowserActionExecutor
     let screenshotLogSink: ((LLMScreenshotLogEntry) -> Void)?
     let callLogSink: ((LLMCallLogEntry) -> Void)?
     let exchangeLogSink: ((LLMExchangeLogEntry) -> Void)?
@@ -226,6 +227,7 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
         sleepNanoseconds: @escaping @Sendable (UInt64) async -> Void = { nanos in
             try? await Task.sleep(nanoseconds: nanos)
         },
+        browserExecutor: (any BrowserActionExecutor)? = nil,
         beforeScreenshotCapture: (@Sendable () -> Void)? = nil,
         afterScreenshotCapture: (@Sendable () -> Void)? = nil,
         screenshotProvider: @escaping () throws -> OpenAICapturedScreenshot = OpenAIComputerUseRunner.captureMainDisplayScreenshot,
@@ -250,6 +252,7 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
         )
         self.transportRetryPolicy = transportRetryPolicy
         self.sleepNanoseconds = sleepNanoseconds
+        self.browserExecutor = browserExecutor ?? NodePlaywrightBrowserActionExecutor()
         self.screenshotProvider = {
             beforeScreenshotCapture?()
             defer { afterScreenshotCapture?() }
@@ -309,13 +312,14 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
         }
         recordTrace(
             kind: .info,
-            "Execution started (model=\(promptTemplate.config.llm), tools=desktop_action,terminal_exec)."
+            "Execution started (model=\(promptTemplate.config.llm), tools=browser_action,desktop_action,terminal_exec)."
         )
 
         let renderedPrompt = renderPrompt(promptTemplate.prompt, taskMarkdown: taskMarkdown, screenshot: initialScreenshot)
         let initialPromptText = appendVisualCoordinateContext(to: renderedPrompt, screenshot: initialScreenshot)
 
         let tools = [
+            browserActionToolDefinition(),
             desktopActionToolDefinition(),
             terminalExecToolDefinition()
         ]

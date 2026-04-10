@@ -1,0 +1,10 @@
+{
+  "name": "clickcherry-browser-sidecar",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Local Playwright helper for ClickCherry browser_action automation.",
+  "dependencies": {
+    "playwright": "^1.54.2"
+  }
+}

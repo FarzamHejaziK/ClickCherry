@@ -10,7 +10,9 @@ ClickCherry should evolve toward three action layers:
 
 1. `browser_action`
    - for webpage content in Chrome and other supported browsers
-   - backed by Playwright via CDP attachment or managed browser launch
+   - backed by one of two browser-semantic backends:
+     - Playwright via CDP for managed/custom profiles
+     - extension + native-app bridge for the user's real Chrome profile
 
 2. `accessibility_action`
    - for native macOS UI
@@ -24,7 +26,9 @@ ClickCherry should evolve toward three action layers:
 
 - Phase 2 defaults to managed Chrome:
   - ClickCherry launches a CDP-enabled Chrome instance it controls.
-  - user-profile startup or attachment is deferred until after the managed-browser baseline is stable.
+  - managed/custom `user-data-dir` profiles remain the supported Playwright baseline.
+- Phase 2 will not treat the default Chrome profile as a supported CDP relaunch target.
+- Real default-profile browser automation moves to a separate extension + native-app bridge path.
 - Phase 3 starts with standard controls first:
   - buttons
   - text fields
@@ -90,8 +94,17 @@ Profile/session note:
 - launching Chrome for CDP requires choosing a browser profile strategy
 - support at least:
   - dedicated automation profile
-  - selected user profile
-- default Phase 2 implementation should ship with managed Chrome first, and treat selected user profiles as a follow-up path
+  - named managed profile
+- do not treat the default Chrome data directory as the future selected-user-profile follow-up path
+- official Chrome behavior now requires Phase 2 to distinguish:
+  - managed/custom profile automation through Playwright/CDP
+  - real-user-session automation through a different browser-semantic mechanism
+
+Real-user-session note:
+
+- when the task depends on the user's real logged-in Chrome profile, the recommended direction is an extension + native-app bridge
+- this path should own webpage DOM interaction for the active real-profile tab
+- browser chrome, OS dialogs, and non-DOM surfaces should remain with desktop and future accessibility layers
 
 ## Phase 3: Native Accessibility Control
 
@@ -123,6 +136,15 @@ This routing policy is cross-cutting and applies as the three phases come online
 3. deterministic shortcut or app/URL action
 4. visual desktop action
 
+Within `browser_action`, the planner should now assume:
+
+1. managed/custom profile requested or acceptable:
+   - use Playwright/CDP
+2. real user Chrome profile required:
+   - use extension/native-app bridge
+3. browser chrome / OS / non-DOM:
+   - use accessibility, deterministic actions, or desktop fallback
+
 Policy examples:
 
 - "open Chrome" -> `open_app`
@@ -137,14 +159,16 @@ Policy examples:
 Recommended approach:
 
 - Swift host process
-- Node Playwright sidecar
-- local JSON or stdio contract between Swift and the sidecar
+- Node Playwright sidecar for managed/custom profiles
+- extension + native-app bridge for the user's real Chrome profile
+- local JSON or stdio contract between Swift and the browser backends
 
 Why:
 
 - official Playwright support exists outside Swift
 - avoids betting product architecture on unofficial wrappers
 - keeps browser automation semantics strong and maintainable
+- avoids fighting Chrome's default-profile remote debugging restrictions when real user-session automation is required
 
 ## Accessibility Layer
 
@@ -177,13 +201,13 @@ Each incremental step should include both automated and manual verification.
 
 ## Immediate Next Steps
 
-1. Manually validate the Phase 1 semantic-first prompt and verification-gated click behavior in the live app.
-2. Design the browser sidecar contract for Playwright/CDP attachment.
-3. Add settings and profile-selection strategy for managed Chrome launch.
-4. Implement `browser_action` after the Phase 1 manual pass is stable.
-5. Implement `accessibility_action` after browser-semantic control is in place.
+1. Keep managed Playwright/CDP as the supported browser_action baseline for custom profiles.
+2. Stop treating the default Chrome profile as a supported CDP takeover target.
+3. Design the browser extension + native-app bridge for real-user-session webpage automation.
+4. Define planner policy for choosing between managed-browser mode and real-user-session mode.
+5. Implement `accessibility_action` after the browser-semantic architecture is stable.
 
 ## Open Questions
 
-- How should the app expose Chrome profile selection in product UX?
-- What is the minimal browser action surface needed to replace the most common website clicks?
+- How should the app expose the distinction between managed-browser mode and real-user-session mode in product UX?
+- What is the minimal extension-backed action surface needed to replace the most common website clicks in the user's real session?

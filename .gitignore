@@ -10,3 +10,7 @@ DerivedData/
 *.xcworkspace/xcuserdata/
 *.xcodeproj/xcuserdata/
 *.xcuserstate
+
+# Node / Playwright sidecar
+node_modules/
+browser_sidecar/node_modules/

@@ -188,6 +188,97 @@ private final class OpenAIMockDesktopExecutor: DesktopActionExecutor {
     }
 }
 
+private final class OpenAIMockBrowserExecutor: BrowserActionExecutor {
+    private(set) var attachRequests: [BrowserLaunchOptions?] = []
+    private(set) var listTabsCalls = 0
+    private(set) var selectedTabs: [BrowserTabSelection] = []
+    private(set) var navigatedURLs: [URL] = []
+    private(set) var clickedQueries: [BrowserElementQuery] = []
+    private(set) var typedValues: [(text: String, query: BrowserElementQuery, pressEnter: Bool)] = []
+    private(set) var pressedKeys: [String] = []
+    private(set) var waitConditions: [BrowserWaitCondition] = []
+    private(set) var snapshotCalls = 0
+    private(set) var urlReads = 0
+    private(set) var titleReads = 0
+
+    var currentPage = BrowserPageState(title: "Example", url: "https://example.com", targetID: "tab-1")
+    var tabs: [BrowserTabInfo] = [
+        BrowserTabInfo(index: 0, title: "Example", url: "https://example.com", isSelected: true, targetID: "tab-1")
+    ]
+    var profiles: [BrowserProfileInfo] = [
+        BrowserProfileInfo(
+            kind: "user_profile",
+            displayName: "Farzam Hejazi",
+            profileDirectory: "Profile 2",
+            userDataDir: "/Users/test/Library/Application Support/Google/Chrome",
+            isDefault: false
+        )
+    ]
+
+    func attachOrLaunchChrome(options: BrowserLaunchOptions?) async throws -> BrowserSessionInfo {
+        attachRequests.append(options)
+        return BrowserSessionInfo(
+            debuggingPort: 9222,
+            launched: true,
+            tabCount: tabs.count,
+            currentPage: currentPage,
+            profile: profiles.first
+        )
+    }
+
+    func listTabs() async throws -> [BrowserTabInfo] {
+        listTabsCalls += 1
+        return tabs
+    }
+
+    func selectTab(using selection: BrowserTabSelection) async throws -> BrowserTabInfo {
+        selectedTabs.append(selection)
+        return tabs.first ?? BrowserTabInfo(index: 0, title: currentPage.title, url: currentPage.url, isSelected: true, targetID: currentPage.targetID)
+    }
+
+    func goto(url: URL) async throws -> BrowserPageState {
+        navigatedURLs.append(url)
+        currentPage.url = url.absoluteString
+        currentPage.title = "LinkedIn"
+        return currentPage
+    }
+
+    func click(query: BrowserElementQuery) async throws -> BrowserPageState {
+        clickedQueries.append(query)
+        return currentPage
+    }
+
+    func type(text: String, query: BrowserElementQuery, pressEnter: Bool) async throws -> BrowserPageState {
+        typedValues.append((text: text, query: query, pressEnter: pressEnter))
+        return currentPage
+    }
+
+    func press(key: String) async throws -> BrowserPageState {
+        pressedKeys.append(key)
+        return currentPage
+    }
+
+    func waitFor(_ condition: BrowserWaitCondition) async throws -> BrowserWaitResult {
+        waitConditions.append(condition)
+        return BrowserWaitResult(conditionDescription: condition.summary, page: currentPage)
+    }
+
+    func snapshot() async throws -> BrowserSnapshot {
+        snapshotCalls += 1
+        return BrowserSnapshot(page: currentPage, textExcerpt: "Example body text")
+    }
+
+    func getURL() async throws -> String {
+        urlReads += 1
+        return currentPage.url
+    }
+
+    func getTitle() async throws -> String {
+        titleReads += 1
+        return currentPage.title
+    }
+}
+
 @Suite(.serialized)
 @MainActor
 struct OpenAIComputerUseRunnerTests {
@@ -234,6 +325,7 @@ struct OpenAIComputerUseRunnerTests {
             }
 
             #expect(model == expectedModel)
+            #expect(tools.compactMap { $0["name"] as? String }.contains("browser_action"))
             #expect(tools.compactMap { $0["name"] as? String }.contains("desktop_action"))
             #expect(tools.compactMap { $0["name"] as? String }.contains("terminal_exec"))
             #expect(content.contains(where: { ($0["type"] as? String) == "input_image" }))
@@ -316,6 +408,171 @@ struct OpenAIComputerUseRunnerTests {
     }
 
     @Test
+    func runToolLoopExecutesBrowserActionAndReturnsSuccess() async throws {
+        let (promptCatalog, tempRoot) = try makePromptCatalog()
+        defer { try? FileManager.default.removeItem(at: tempRoot) }
+
+        OpenAIQueueURLProtocol.reset()
+        defer { OpenAIQueueURLProtocol.reset() }
+
+        OpenAIQueueURLProtocol.enqueue { request in
+            let responseBody = """
+            {
+              "id": "resp_1",
+              "output": [
+                {
+                  "type": "function_call",
+                  "id": "fc_1",
+                  "call_id": "call_1",
+                  "name": "browser_action",
+                  "arguments": "{\\"action\\":\\"goto\\",\\"url\\":\\"https://www.linkedin.com\\"}"
+                }
+              ]
+            }
+            """
+            return (Self.response(url: request.url!, code: 200), Data(responseBody.utf8))
+        }
+
+        OpenAIQueueURLProtocol.enqueue { request in
+            guard
+                let bodyData = Self.requestBodyData(from: request),
+                let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any],
+                let input = json["input"] as? [[String: Any]],
+                let functionOutput = input.first(where: { ($0["type"] as? String) == "function_call_output" }),
+                let output = functionOutput["output"] as? String
+            else {
+                throw NSError(domain: "OpenAIComputerUseRunnerTests", code: 98)
+            }
+
+            #expect(output.contains("\"ok\":true"))
+            #expect(output.contains("linkedin.com"))
+
+            let responseBody = """
+            {
+              "id": "resp_2",
+              "output": [
+                {
+                  "type": "message",
+                  "content": [
+                    {
+                      "type": "output_text",
+                      "text": "{\\"status\\":\\"SUCCESS\\",\\"summary\\":\\"Browser navigation complete\\",\\"verification_status\\":\\"not_needed\\",\\"evidence\\":\\"DOM navigation succeeded via browser_action.\\",\\"error\\":null,\\"questions\\":[]}"
+                    }
+                  ]
+                }
+              ]
+            }
+            """
+            return (Self.response(url: request.url!, code: 200), Data(responseBody.utf8))
+        }
+
+        let browserExecutor = OpenAIMockBrowserExecutor()
+        let runner = OpenAIComputerUseRunner(
+            apiKeyStore: OpenAIStubAPIKeyStore(values: [.openAI: "openai-test-key"]),
+            promptCatalog: promptCatalog,
+            session: makeSession(),
+            browserExecutor: browserExecutor,
+            screenshotProvider: {
+                try Self.makeValidScreenshot()
+            },
+            cursorPositionProvider: { (300, 200) }
+        )
+
+        let result = try await runner.runToolLoop(taskMarkdown: "# Task\nGo to LinkedIn", executor: OpenAIMockDesktopExecutor())
+
+        #expect(result.outcome == .success)
+        #expect(result.llmSummary?.contains("Browser navigation complete") == true)
+        #expect(browserExecutor.navigatedURLs == [URL(string: "https://www.linkedin.com")!])
+    }
+
+    @Test
+    func runToolLoopPassesBrowserProfileHintIntoAttachAction() async throws {
+        let (promptCatalog, tempRoot) = try makePromptCatalog()
+        defer { try? FileManager.default.removeItem(at: tempRoot) }
+
+        OpenAIQueueURLProtocol.reset()
+        defer { OpenAIQueueURLProtocol.reset() }
+
+        OpenAIQueueURLProtocol.enqueue { request in
+            let responseBody = """
+            {
+              "id": "resp_1",
+              "output": [
+                {
+                  "type": "function_call",
+                  "id": "fc_1",
+                  "call_id": "call_1",
+                  "name": "browser_action",
+                  "arguments": "{\\"action\\":\\"attach_or_launch_chrome\\",\\"profile_hint\\":\\"Farzam profile\\"}"
+                }
+              ]
+            }
+            """
+            return (Self.response(url: request.url!, code: 200), Data(responseBody.utf8))
+        }
+
+        OpenAIQueueURLProtocol.enqueue { request in
+            guard
+                let bodyData = Self.requestBodyData(from: request),
+                let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any],
+                let input = json["input"] as? [[String: Any]],
+                let functionOutput = input.first(where: { ($0["type"] as? String) == "function_call_output" }),
+                let output = functionOutput["output"] as? String
+            else {
+                throw NSError(domain: "OpenAIComputerUseRunnerTests", code: 97)
+            }
+
+            #expect(output.contains("\"ok\":true"))
+            #expect(output.contains("Farzam Hejazi"))
+
+            let responseBody = """
+            {
+              "id": "resp_2",
+              "output": [
+                {
+                  "type": "message",
+                  "content": [
+                    {
+                      "type": "output_text",
+                      "text": "{\\"status\\":\\"SUCCESS\\",\\"summary\\":\\"Attached to requested browser profile\\",\\"verification_status\\":\\"not_needed\\",\\"evidence\\":\\"Browser attached with the resolved profile metadata.\\",\\"error\\":null,\\"questions\\":[]}"
+                    }
+                  ]
+                }
+              ]
+            }
+            """
+            return (Self.response(url: request.url!, code: 200), Data(responseBody.utf8))
+        }
+
+        let browserExecutor = OpenAIMockBrowserExecutor()
+        let runner = OpenAIComputerUseRunner(
+            apiKeyStore: OpenAIStubAPIKeyStore(values: [.openAI: "openai-test-key"]),
+            promptCatalog: promptCatalog,
+            session: makeSession(),
+            browserExecutor: browserExecutor,
+            screenshotProvider: {
+                try Self.makeValidScreenshot()
+            },
+            cursorPositionProvider: { (300, 200) }
+        )
+
+        let result = try await runner.runToolLoop(
+            taskMarkdown: """
+            # Task
+            Open LinkedIn in Chrome.
+
+            - [x] Which browser profile should be used?
+              Answer: Farzam profile
+            """,
+            executor: OpenAIMockDesktopExecutor()
+        )
+
+        #expect(result.outcome == .success)
+        #expect(browserExecutor.attachRequests.count == 1)
+        #expect(browserExecutor.attachRequests.first??.profileHint == "Farzam profile")
+    }
+
+    @Test
     func runToolLoopUsesWebSocketTransportAndSendsIncrementalInputs() async throws {
         let (promptCatalog, tempRoot) = try makePromptCatalog()
         defer { try? FileManager.default.removeItem(at: tempRoot) }
@@ -381,7 +638,7 @@ struct OpenAIComputerUseRunnerTests {
 
         #expect(firstPayload["type"] as? String == "response.create")
         #expect(firstPayload["model"] as? String == expectedModel)
-        #expect((firstPayload["tools"] as? [[String: Any]])?.count == 2)
+        #expect((firstPayload["tools"] as? [[String: Any]])?.count == 3)
         #expect(firstPayload["previous_response_id"] == nil)
         #expect(firstContent.contains(where: { ($0["type"] as? String) == "input_image" }))
         let promptText = firstContent.first(where: { ($0["type"] as? String) == "input_text" })?["text"] as? String

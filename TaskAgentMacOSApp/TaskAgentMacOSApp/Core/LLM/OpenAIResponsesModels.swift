@@ -221,6 +221,26 @@ enum OpenAIJSONValue: Codable {
         return Int(double.rounded())
     }
 
+    var boolValue: Bool? {
+        switch self {
+        case .bool(let value):
+            return value
+        case .string(let value):
+            switch value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+            case "true", "yes", "1":
+                return true
+            case "false", "no", "0":
+                return false
+            default:
+                return nil
+            }
+        case .number(let value):
+            return value != 0
+        default:
+            return nil
+        }
+    }
+
     var objectValue: [String: OpenAIJSONValue]? {
         if case .object(let value) = self {
             return value

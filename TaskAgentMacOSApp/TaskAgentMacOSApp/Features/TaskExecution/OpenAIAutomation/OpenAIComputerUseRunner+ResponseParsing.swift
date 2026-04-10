@@ -232,6 +232,31 @@ extension OpenAIComputerUseRunner {
         }
 
         switch action.lowercased() {
+        case "list_tabs", "snapshot", "get_url", "get_title":
+            return "\(functionCall.name).\(action)"
+        case "attach_or_launch_chrome":
+            let options = extractBrowserLaunchOptions(from: object)
+            if options.hasProfileSelection {
+                return "\(functionCall.name).attach_or_launch_chrome(\(options.summary))"
+            }
+            return "\(functionCall.name).attach_or_launch_chrome"
+        case "select_tab":
+            if let index = object["index"]?.intValue {
+                return "\(functionCall.name).select_tab(index=\(index))"
+            }
+            if let titleContains = object["title_contains"]?.stringValue {
+                return "\(functionCall.name).select_tab(title_contains=\"\(truncate(titleContains, limit: 80))\")"
+            }
+            if let urlContains = object["url_contains"]?.stringValue {
+                return "\(functionCall.name).select_tab(url_contains=\"\(truncate(urlContains, limit: 120))\")"
+            }
+            return "\(functionCall.name).select_tab"
+        case "goto":
+            let url = firstStringValue(from: object, keys: ["url"]) ?? ""
+            return "\(functionCall.name).goto(\"\(truncate(url, limit: 140))\")"
+        case "click":
+            let selector = extractBrowserElementQuery(from: object)
+            return "\(functionCall.name).click(\(selector.summary))"
         case "mouse_move", "move_mouse", "move", "left_click", "double_click", "right_click":
             let point = extractPoint(from: object)
             let xText = point.map { String($0.0) } ?? "?"
@@ -243,11 +268,19 @@ extension OpenAIComputerUseRunner {
             }
             return "\(functionCall.name).scroll"
         case "type":
+            if functionCall.name.lowercased() == "browser_action" {
+                let value = firstStringValue(from: object, keys: ["value", "input_text", "text"]) ?? ""
+                let selector = extractBrowserElementQuery(from: object)
+                return "\(functionCall.name).type(value=\"\(truncate(value, limit: 80))\", selector=\(selector.summary))"
+            }
             let text = object["text"]?.stringValue ?? ""
             return "\(functionCall.name).type(text=\"\(truncate(text, limit: 80))\")"
         case "key":
             let raw = firstStringValue(from: object, keys: ["key", "text", "keys"]) ?? ""
             return "\(functionCall.name).key(\"\(truncate(raw, limit: 80))\")"
+        case "press":
+            let raw = firstStringValue(from: object, keys: ["key", "text", "keys"]) ?? ""
+            return "\(functionCall.name).press(\"\(truncate(raw, limit: 80))\")"
         case "open_app":
             let app = firstStringValue(from: object, keys: ["app", "name"]) ?? ""
             return "\(functionCall.name).open_app(\"\(truncate(app, limit: 80))\")"
@@ -260,6 +293,16 @@ extension OpenAIComputerUseRunner {
                 return "\(functionCall.name).wait(\(String(format: "%.1f", seconds))s)"
             }
             return "\(functionCall.name).wait"
+        case "wait_for":
+            let condition = BrowserWaitCondition(
+                urlContains: object["url_contains"]?.stringValue,
+                titleContains: object["title_contains"]?.stringValue,
+                text: object["text"]?.stringValue,
+                role: object["role"]?.stringValue,
+                name: object["name"]?.stringValue,
+                timeoutSeconds: object["timeout_seconds"]?.doubleValue
+            )
+            return "\(functionCall.name).wait_for(\(condition.summary))"
         case "cursor_position", "get_cursor_position", "mouse_position":
             return "\(functionCall.name).cursor_position"
         case "screenshot":

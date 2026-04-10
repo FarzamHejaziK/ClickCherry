@@ -42,6 +42,14 @@ Where semantic handles exist, they should be preferred:
 
 Playwright is the right tool for DOM-backed website interaction, but it does not cover all Chrome or system interactions. It does not semantically control all browser chrome UI, OS sheets, permission prompts, or canvas-heavy content.
 
+### 6. Managed Chrome and the default Chrome profile are no longer equivalent automation targets
+
+Recent experiments and official Chrome guidance showed that managed Chrome and the user's default Chrome profile should not be treated as interchangeable CDP targets.
+
+- managed or custom Chrome `user-data-dir` profiles remain viable for Playwright/CDP automation
+- the default Chrome data directory should not be treated as a reliable CDP launch target
+- real-user-session webpage automation should move toward an extension + native-app bridge instead of default-profile CDP takeover
+
 ## Key Concepts
 
 ## Semantic Actions
@@ -87,6 +95,17 @@ Important limits:
 - Chrome must be launched with remote debugging enabled for CDP attachment
 - profile/session choice matters because it determines login state and cookies
 - Playwright is best for webpage content, not every browser-UI surface
+- the default Chrome data directory is no longer the right target for this path; managed or custom profiles should be used instead
+
+## Real-Profile Browser Automation
+
+When the task depends on the user's actual logged-in Chrome session, the browser-semantic path should diverge from managed Playwright:
+
+1. keep Playwright + Node sidecar for managed/custom profiles
+2. use an extension + native-app bridge for the user's real Chrome profile
+3. keep desktop and future accessibility control for browser chrome, OS dialogs, and non-DOM UI
+
+This keeps webpage DOM actions inside the user's real browser session without depending on default-profile CDP relaunch.
 
 ## Routing Matrix
 
@@ -111,6 +130,16 @@ ClickCherry should move to a three-layer action model:
 
 This preserves the current desktop runner, but changes its role from "primary action mechanism" to "last-resort executor" for ambiguous or non-semantic targets.
 
+Within the browser layer, ClickCherry should now assume two execution modes:
+
+- managed-browser mode:
+  - Playwright + Node sidecar
+  - custom `user-data-dir`
+  - best for deterministic automation and regression coverage
+- real-user-session mode:
+  - extension + native-app bridge
+  - best for logged-in workflows that depend on the user's existing Chrome profile
+
 ## Immediate Reliability Recommendations
 
 - Prefer semantic actions over visual clicks whenever possible.
@@ -124,6 +153,8 @@ This preserves the current desktop runner, but changes its role from "primary ac
 The current implementation sequence is now locked to these defaults:
 
 - Phase 2 will use managed Chrome as the default browser-semantic baseline.
+- Phase 2 will not treat the default Chrome profile as a supported CDP relaunch target.
+- Real default-profile browser automation is now expected to move toward an extension + native-app bridge path.
 - Phase 3 will start with standard native controls only:
   - buttons
   - text fields
@@ -134,9 +165,15 @@ The current implementation sequence is now locked to these defaults:
 
 These are intentional scoping decisions, not long-term limits. The design should remain extensible so later phases can add:
 
-- user-profile browser startup or attachment flows
+- richer browser extension capabilities for the user's real browser session
 - deeper AX traversal for more complex app surfaces
 - browser chrome support such as tab strip, toolbar, and omnibox targeting
+
+## Deep-Dive Reference
+
+For the full experiment log, reproduced failures, standalone test matrix, and updated root-cause analysis, see:
+
+- `/Users/ferzamh/code-git-local/ClickCherry/.docs/browser_real_profile_automation_findings.md`
 
 ## Sources Consulted
 
@@ -147,3 +184,5 @@ These are intentional scoping decisions, not long-term limits. The design should
 - Visual test-time scaling work for GUI grounding
 - public Retina / coordinate mismatch automation issues
 - macOS UI automation ecosystem documentation
+- official Chrome guidance on remote debugging restrictions for the default data directory
+- official Playwright guidance on using a separate user data directory for automation

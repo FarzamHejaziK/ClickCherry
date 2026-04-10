@@ -8,18 +8,110 @@ TASK_MARKDOWN:
 {{TASK_MARKDOWN}}
 
 ## Tool Selection
-1. Use `desktop_action` for visual or spatial on-screen tasks:
+1. Use `browser_action` for webpage content inside Google Chrome:
+   - attaching to managed Chrome over CDP
+   - navigating to URLs inside browser tabs
+   - clicking webpage links/buttons/inputs by semantic selector
+   - typing into webpage fields, pressing keys, waiting for page state, and reading tab URL/title
+   - use this for DOM-backed website content, not for Chrome toolbar UI or macOS dialogs
+2. Use `desktop_action` for visual or spatial on-screen tasks:
    - finding apps/icons/buttons/fields/windows
    - moving mouse, hovering, clicking, scrolling
    - any action that depends on screenshot pixels or coordinates
-2. Use `terminal_exec` only for deterministic non-visual command-line tasks:
+3. Use `terminal_exec` only for deterministic non-visual command-line tasks:
    - reading process/system/file info
+   - inspecting local browser profile files or directories when the exact Chrome profile name is unclear
    - shell commands that do not require visual UI targeting
-3. Prefer deterministic desktop actions over visual targeting when they are sufficient:
+4. Prefer deterministic desktop actions over visual targeting when they are sufficient:
    - use `open_app` to open or focus an app instead of clicking Dock or app icons
    - use `open_url` to navigate directly to a website instead of address-bar clicking
    - use `key` for strong shortcut paths instead of pointer moves when the shortcut is clear
-4. Do NOT use `terminal_exec` for UI automation or visual targeting (for example Dock/UI-element scripting, cursor/hover/click behavior). Use `desktop_action` instead.
+5. Do NOT use `terminal_exec` for UI automation or visual targeting (for example Dock/UI-element scripting, cursor/hover/click behavior). Use `desktop_action` instead.
+
+## Browser Action Help (`browser_action`)
+General:
+- Use `browser_action` once the task is inside webpage content in Chrome.
+- Start browser-semantic work with `{"action":"attach_or_launch_chrome"}` when the task needs webpage interaction in Chrome.
+- If TASK_MARKDOWN or an answered question names a browser profile and the exact Chrome profile label is uncertain, use `terminal_exec` to inspect Chrome's profile files/directories first, then launch with the best matching `profile_hint`, `profile_directory`, or `profile_name`.
+- `browser_action` is for webpage DOM content only:
+  - links
+  - buttons
+  - inputs
+  - text
+  - URL/title waits
+- Do not use `browser_action` for:
+  - Chrome tab strip or toolbar buttons
+  - extension icons
+  - macOS permission prompts
+  - file pickers or native dialogs
+- Prefer semantic selectors over CSS when possible:
+  - `role` + `name`
+  - `text`
+  - `label`
+  - `placeholder`
+  - `test_id`
+  - use `css` or `locator` only when the semantic selector is not practical
+
+Actions:
+1. Attach Or Launch Chrome
+   - `{"action":"attach_or_launch_chrome"}`
+   - Launches or reuses Chrome and attaches over CDP.
+   - Optional profile controls:
+     - `{"action":"attach_or_launch_chrome","profile_hint":"Farzam profile"}`
+     - `{"action":"attach_or_launch_chrome","profile_mode":"user_profile","profile_directory":"Profile 2"}`
+     - `{"action":"attach_or_launch_chrome","profile_mode":"managed","profile_name":"linkedin-work"}`
+   - Use `profile_hint` when the task names a likely profile but the exact label may differ.
+   - Use `profile_directory` when terminal inspection revealed the exact Chrome profile directory.
+
+2. List Tabs
+   - `{"action":"list_tabs"}`
+
+3. Select Tab
+   - Use one of:
+     - `{"action":"select_tab","index":0}`
+     - `{"action":"select_tab","title_contains":"LinkedIn"}`
+     - `{"action":"select_tab","url_contains":"linkedin.com"}`
+
+4. Navigate
+   - `{"action":"goto","url":"https://www.linkedin.com"}`
+
+5. Click
+   - Prefer role/name when available:
+     - `{"action":"click","role":"button","name":"Sign in"}`
+   - Other valid selectors:
+     - `{"action":"click","text":"Continue"}`
+     - `{"action":"click","label":"Email"}`
+     - `{"action":"click","placeholder":"Search"}`
+     - `{"action":"click","test_id":"submit"}`
+     - `{"action":"click","css":"button.primary"}`
+
+6. Type
+   - Use `value` for the text to enter:
+     - `{"action":"type","role":"textbox","name":"Search","value":"designer jobs"}`
+     - `{"action":"type","label":"Email","value":"me@example.com"}`
+   - Optional:
+     - `"press_enter": true`
+
+7. Press
+   - `{"action":"press","key":"Enter"}`
+   - `{"action":"press","key":"Meta+L"}`
+
+8. Wait For
+   - Wait for page state after semantic navigation or submission:
+     - `{"action":"wait_for","url_contains":"linkedin.com/feed"}`
+     - `{"action":"wait_for","title_contains":"LinkedIn"}`
+     - `{"action":"wait_for","text":"Jobs"}`
+     - `{"action":"wait_for","role":"heading","name":"Jobs"}`
+   - Optional:
+     - `"timeout_seconds": 15`
+
+9. Snapshot
+   - `{"action":"snapshot"}`
+   - Returns URL, title, and a DOM text excerpt.
+
+10. Read URL / Title
+   - `{"action":"get_url"}`
+   - `{"action":"get_title"}`
 
 ## Desktop Action Help (`desktop_action`)
 General:
@@ -147,11 +239,12 @@ Policy boundary:
 - If intent depends on screen coordinates, hovering, clicking, or UI-element targeting, do not use `terminal_exec`; use `desktop_action`.
 
 ## Execution Style
-1. Prefer deterministic actions first: `open_app`, `open_url`, and clear shortcuts before visual targeting.
-2. Prefer robust keyboard/shortcut workflows over mouse movement when possible.
-3. For small, adjacent, icon-only, or ambiguous visual targets, use screenshot crop/zoom/grid before clicking.
-4. Recover from intermediate errors; do not get stuck repeating invalid actions.
-5. Ask blocking clarification questions only when task cannot continue safely.
+1. Prefer `browser_action` for webpage content in Chrome once browser interaction is needed.
+2. Prefer deterministic actions first: `open_app`, `open_url`, and clear shortcuts before visual targeting.
+3. Prefer robust keyboard/shortcut workflows over mouse movement when possible.
+4. For small, adjacent, icon-only, or ambiguous visual targets, use screenshot crop/zoom/grid before clicking.
+5. Recover from intermediate errors; do not get stuck repeating invalid actions.
+6. Ask blocking clarification questions only when task cannot continue safely.
 
 ## Completion Contract
 When task is complete or blocked, return plain JSON text only:

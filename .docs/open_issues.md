@@ -4,6 +4,38 @@ description: Active unresolved issues with concrete repro details, mitigation, a
 
 # Open Issues
 
+## Issue OI-2026-04-10-019
+- Issue ID: OI-2026-04-10-019
+- Title: Default Chrome profile cannot be relied on as a CDP launch target for browser_action
+- Status: Open
+- Severity: High
+- First Seen: 2026-04-10
+- Scope:
+  - Affects Phase 2 browser-semantic execution when tasks request the user's real everyday Chrome profile.
+  - Most visible in `browser_action.attach_or_launch_chrome(...)` runs that try to reuse or relaunch the default Chrome data directory under CDP control.
+- Repro Steps:
+  1. Keep the user's normal Chrome profile available under `~/Library/Application Support/Google/Chrome`.
+  2. Run a task that requests the real profile, for example `Use farzam chrome profile`.
+  3. Let the runner attempt `browser_action.attach_or_launch_chrome(...)`.
+  4. Observe Chrome relaunch behavior and the browser sidecar's wait for `/json/version`.
+- Observed:
+  - Managed/custom profiles can launch and expose CDP correctly.
+  - The default Chrome profile can visibly reopen, but the requested debugging port does not come up.
+  - Standalone tests reproduced the same failure even after graceful quit, full process drain, and delayed relaunch.
+  - Official Chrome guidance now states that remote debugging switches are not intended for the default Chrome data directory.
+- Expected:
+  - Browser automation should have a reliable way to operate webpage DOM actions for tasks that depend on the user's real logged-in browser session.
+  - The app should not rely on a launch path that the platform no longer supports as its main real-profile strategy.
+- Current Mitigation:
+  - Keep managed/custom profiles as the supported Playwright/CDP baseline.
+  - Do not treat the default Chrome profile as a supported CDP takeover target in the active Phase 2 plan.
+  - Preserve desktop fallback behavior for tasks that cannot yet use a supported real-profile browser-semantic path.
+- Next Action:
+  - Re-scope real-user-session browser automation around an extension + native-app bridge.
+  - Keep managed Playwright mode for custom profiles and deterministic regression coverage.
+  - Add planner policy so real-profile requests do not route into unsupported CDP takeover behavior.
+- Owner: Codex + user validation in local runtime
+
 ## Issue OI-2026-03-29-018
 - Issue ID: OI-2026-03-29-018
 - Title: Execution agent can still misidentify Dock icon identity after correct crop capture
