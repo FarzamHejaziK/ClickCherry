@@ -419,7 +419,7 @@ xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/
   - CI workflow (`xcodebuild` build + unit tests)
   - release workflow baseline
 - Create public contributor docs in `/docs/` and align `README.md`.
-- Track locked open-source decisions and follow-ups in `/.docs/open_source.md`.
+- Track locked open-source decisions and follow-ups in `/.docs/governance/open_source.md`.
 
 ### Automated tests
 - Run unit tests to confirm docs/workflow changes do not regress build/test paths.

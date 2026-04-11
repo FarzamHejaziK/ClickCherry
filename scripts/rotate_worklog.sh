@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-WORKLOG_PATH="${1:-.docs/worklog.md}"
-LEGACY_PATH="${2:-.docs/legacy_worklog.md}"
+WORKLOG_PATH="${1:-.docs/tracking/worklog.md}"
+LEGACY_PATH="${2:-.docs/archive/legacy_worklog.md}"
 KEEP_ENTRIES="${KEEP_ENTRIES:-10}"
 
 if ! [[ "$KEEP_ENTRIES" =~ ^[0-9]+$ ]] || [ "$KEEP_ENTRIES" -lt 1 ]; then
@@ -14,6 +14,8 @@ if [ ! -f "$WORKLOG_PATH" ]; then
   echo "Worklog file not found: $WORKLOG_PATH" >&2
   exit 1
 fi
+
+mkdir -p "$(dirname "$LEGACY_PATH")"
 
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
@@ -52,7 +54,7 @@ sed -n "${first_archived_line},\$p" "$WORKLOG_PATH" > "$archived_entries_file"
 if [ ! -f "$LEGACY_PATH" ]; then
   cat > "$LEGACY_PATH" <<'LEGACY_HEADER'
 ---
-description: Historical worklog entries archived from `.docs/worklog.md`.
+description: Historical worklog entries archived from `.docs/tracking/worklog.md`.
 ---
 
 # Legacy Worklog

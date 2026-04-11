@@ -12,7 +12,7 @@ description: Provisional decisions and open product/design questions that are in
 
 ## Revisit RV-2026-02-11-016
 - Revisit ID: RV-2026-02-11-016
-- Source: `.docs/open_issues.md` (`OI-2026-02-11-007`)
+- Source: `.docs/tracking/open_issues.md` (`OI-2026-02-11-007`)
 - Status: Open
 - Current Baseline: Stable custom top-bar `ClickCherry` branding is deferred; current titlebar-branding behavior is not considered finalized.
 - Why Revisit: Current implementations can produce either unwanted capsule styling or missing icon/name in local runtime.
@@ -56,7 +56,7 @@ description: Provisional decisions and open product/design questions that are in
 
 ## Revisit RV-2026-02-09-012
 - Revisit ID: RV-2026-02-09-012
-- Source: Step 4 implementation note in `.docs/worklog.md`
+- Source: Step 4 implementation note in `.docs/tracking/worklog.md`
 - Status: Open
 - Current Baseline: Execution and extraction prompts are file-based (`prompt.md` + `config.yaml`) and loaded via `PromptCatalogService`; Xcode build excludes prompt files from auto resource copy to avoid flattened-name collisions.
 - Why Revisit: Current mitigation depends on source-path prompt discovery in debug/local builds; production-grade bundle packaging for prompts is not finalized.
@@ -66,7 +66,7 @@ description: Provisional decisions and open product/design questions that are in
 
 ## Revisit RV-2026-02-08-011
 - Revisit ID: RV-2026-02-08-011
-- Source: `.docs/open_issues.md` (`OI-2026-02-07-001`)
+- Source: `.docs/tracking/open_issues.md` (`OI-2026-02-07-001`)
 - Status: Open
 - Current Baseline: Explicit mic selection fallback remains; use `System Default Microphone`.
 - Why Revisit: Explicit device routing fails in some local runs.
@@ -76,7 +76,7 @@ description: Provisional decisions and open product/design questions that are in
 
 ## Revisit RV-2026-02-08-010
 - Revisit ID: RV-2026-02-08-010
-- Source: `.docs/open_issues.md` (`OI-2026-02-08-003`)
+- Source: `.docs/tracking/open_issues.md` (`OI-2026-02-08-003`)
 - Status: Open
 - Current Baseline: Step 4 clarification local UI verification is deferred.
 - Why Revisit: Runtime persistence behavior still needs local confirmation pass.
@@ -86,7 +86,7 @@ description: Provisional decisions and open product/design questions that are in
 
 ## Revisit RV-2026-02-08-009
 - Revisit ID: RV-2026-02-08-009
-- Source: `.docs/PRD.md` (`Open Questions`)
+- Source: `.docs/core/PRD.md` (`Open Questions`)
 - Status: Open
 - Current Baseline: No background daemon in v1; app-open scheduler only.
 - Why Revisit: Product needs may require closed-app scheduling.
@@ -96,7 +96,7 @@ description: Provisional decisions and open product/design questions that are in
 
 ## Revisit RV-2026-02-08-008
 - Revisit ID: RV-2026-02-08-008
-- Source: `.docs/PRD.md` (`Open Questions`)
+- Source: `.docs/core/PRD.md` (`Open Questions`)
 - Status: Open
 - Current Baseline: `HEARTBEAT.md` remains free-form markdown editor.
 - Why Revisit: Structured editor may improve reliability and validation.
@@ -106,7 +106,7 @@ description: Provisional decisions and open product/design questions that are in
 
 ## Revisit RV-2026-02-08-007
 - Revisit ID: RV-2026-02-08-007
-- Source: `.docs/PRD.md` (`Open Questions`)
+- Source: `.docs/core/PRD.md` (`Open Questions`)
 - Status: Open
 - Current Baseline: No explicit minimum automation-fidelity threshold is locked.
 - Why Revisit: Need a measurable v1 success threshold for run reliability.
@@ -116,7 +116,7 @@ description: Provisional decisions and open product/design questions that are in
 
 ## Revisit RV-2026-02-08-006
 - Revisit ID: RV-2026-02-08-006
-- Source: `.docs/design.md` (`Execution-agent baseline behavior`)
+- Source: `.docs/core/design.md` (`Execution-agent baseline behavior`)
 - Status: Open
 - Current Baseline: No max step limit and no max run-duration limit.
 - Why Revisit: Unlimited runs can increase runaway-risk and resource usage.
@@ -126,7 +126,7 @@ description: Provisional decisions and open product/design questions that are in
 
 ## Revisit RV-2026-02-08-005
 - Revisit ID: RV-2026-02-08-005
-- Source: `.docs/design.md` (`Execution-agent baseline behavior`)
+- Source: `.docs/core/design.md` (`Execution-agent baseline behavior`)
 - Status: Open
 - Current Baseline: Screenshot artifacts are captured on failures only.
 - Why Revisit: May be insufficient for debugging successful-but-wrong runs.
@@ -136,7 +136,7 @@ description: Provisional decisions and open product/design questions that are in
 
 ## Revisit RV-2026-02-08-004
 - Revisit ID: RV-2026-02-08-004
-- Source: `.docs/design.md` (`Execution-agent baseline behavior`)
+- Source: `.docs/core/design.md` (`Execution-agent baseline behavior`)
 - Status: Open
 - Current Baseline: Retry policy is `0` retries before asking clarification questions.
 - Why Revisit: Zero retries may increase unnecessary clarification churn.
@@ -146,7 +146,7 @@ description: Provisional decisions and open product/design questions that are in
 
 ## Revisit RV-2026-02-08-003
 - Revisit ID: RV-2026-02-08-003
-- Source: `.docs/design.md` (`Execution-agent baseline behavior`)
+- Source: `.docs/core/design.md` (`Execution-agent baseline behavior`)
 - Status: Open
 - Current Baseline: No app allowlist/blocklist; execute across apps user requests.
 - Why Revisit: Safety policy may require app boundaries for destructive contexts.
@@ -156,7 +156,7 @@ description: Provisional decisions and open product/design questions that are in
 
 ## Revisit RV-2026-02-08-002
 - Revisit ID: RV-2026-02-08-002
-- Source: `.docs/design.md` (`Execution-agent baseline behavior`)
+- Source: `.docs/core/design.md` (`Execution-agent baseline behavior`)
 - Status: Open
 - Current Baseline: No per-step confirmations; all actions are allowed by default.
 - Why Revisit: Safety controls may be required for irreversible actions.
@@ -166,7 +166,7 @@ description: Provisional decisions and open product/design questions that are in
 
 ## Revisit RV-2026-02-08-001
 - Revisit ID: RV-2026-02-08-001
-- Source: `.docs/design.md` (`Run policy with open questions`)
+- Source: `.docs/core/design.md` (`Run policy with open questions`)
 - Status: Open
 - Current Baseline: Allow run with unresolved questions; ask clarifications when run report is ready.
 - Why Revisit: May trade reliability for speed depending on task class.

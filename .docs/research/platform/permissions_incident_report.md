@@ -116,4 +116,4 @@ description: Consolidated report of macOS permission failures, root causes, and 
 ## Notes
 
 - This report is intentionally implementation-focused and non-UI-text specific.
-- Related historical issue tracking remains in `.docs/open_issues.md`.
+- Related historical issue tracking remains in `.docs/tracking/open_issues.md`.

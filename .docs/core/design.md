@@ -364,7 +364,7 @@ This means: if the agent still has unresolved questions, should execution stop o
   - terminal commands that appear to perform UI/visual automation are rejected with an error and redirected to `desktop_action`.
   - examples blocked by policy include AppleScript/UI-element style commands intended to locate/click/hover screen elements.
 - Primary use-case: command-line-first task execution and reliable app control (including `open -a ...`).
-- Revisit candidate: reintroduce safety boundaries only if product policy changes (tracked in `.docs/revisits.md`).
+- Revisit candidate: reintroduce safety boundaries only if product policy changes (tracked in `.docs/tracking/revisits.md`).
 
 ## OpenAI custom desktop tool loop (locked: 2026-02-11)
 
@@ -561,7 +561,7 @@ This means: if the agent still has unresolved questions, should execution stop o
   - capture screenshots for failure cases only.
 - Execution limits policy:
   - no max step limit and no max run-duration limit in current baseline.
-- These are explicitly provisional and tracked for future revision in `.docs/revisits.md`.
+- These are explicitly provisional and tracked for future revision in `.docs/tracking/revisits.md`.
 
 ## Provider key management UX (locked: 2026-02-08)
 
@@ -587,7 +587,7 @@ This means: if the agent still has unresolved questions, should execution stop o
 ## Prompt folder decision (locked: 2026-02-08)
 
 - For each prompt, use one folder under:
-  - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/`
+  - `TaskAgentMacOSApp/TaskAgentMacOSApp/Resources/Prompts/`
 - Each prompt folder must contain:
   - `prompt.md`
   - `config.yaml`
@@ -595,9 +595,9 @@ This means: if the agent still has unresolved questions, should execution stop o
   - `version` (prompt version source of truth)
   - `llm` (model/provider target for that prompt)
 - Initial prompt implemented with this layout:
-  - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/task_extraction/`
-  - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/execution_agent/`
-  - `/Users/farzamh/code-git-local/task-agent-macos/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/execution_agent_openai/`
+  - `TaskAgentMacOSApp/TaskAgentMacOSApp/Resources/Prompts/task_extraction/`
+  - `TaskAgentMacOSApp/TaskAgentMacOSApp/Resources/Prompts/execution_agent/`
+  - `TaskAgentMacOSApp/TaskAgentMacOSApp/Resources/Prompts/execution_agent_openai/`
 - Execution-agent prompt shape decision:
   - use a single prompt template (`prompt.md`) with `{{TASK_MARKDOWN}}` placeholder.
   - do not split execution-agent behavior between hardcoded system/user prompt literals in code.
@@ -639,7 +639,7 @@ This means: if the agent still has unresolved questions, should execution stop o
 ## Open-source governance and release policy (locked: 2026-02-16)
 
 - Repository host:
-  - GitHub (`FarzamHejaziK/task-agent-macos`)
+  - GitHub (`FarzamHejaziK/ClickCherry`)
 - License:
   - MIT
 - Contribution legal attestation:

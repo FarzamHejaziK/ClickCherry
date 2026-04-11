@@ -4,26 +4,57 @@ description: Running implementation log of completed work, test evidence, blocke
 
 # Worklog
 
-> Previous archived entries are in `/Users/ferzamh/code-git-local/ClickCherry/.docs/legacy_worklog.md`.
+> Previous archived entries are in `.docs/archive/legacy_worklog.md`.
+
+## Entry
+- Date: 2026-04-11
+- Step: Reorganize the internal docs layout, merge overlapping automation docs, and align agent rules
+- Changes made:
+  - Reorganized `/.docs/` into:
+    - `/.docs/core/`
+    - `/.docs/tracking/`
+    - `/.docs/governance/`
+    - `/.docs/research/`
+    - `/.docs/archive/`
+  - Added the internal docs map:
+    - `/.docs/README.md`
+  - Merged overlapping automation docs into canonical files:
+    - `/.docs/research/automation/automation_strategy.md`
+    - `/.docs/research/automation/automation_research.md`
+  - Updated active doc references to the new layout and canonical filenames.
+  - Updated:
+    - `AGENTS.md`
+    - `scripts/rotate_worklog.sh`
+  - Kept the active execution queue unchanged because current engineering priorities did not change; only the doc organization and ownership model changed.
+- Automated tests run:
+  - `bash -n /Users/ferzamh/code-git-local/ClickCherry/scripts/rotate_worklog.sh`
+  - stale-reference scan across active docs and `AGENTS.md` using `rg` (pass; no remaining stale active `.docs` path references)
+- Manual tests run:
+  - Inspected the resulting `/.docs/` tree layout.
+  - Reviewed `/.docs/README.md`, `AGENTS.md`, `/.docs/tracking/worklog.md`, and the merged automation docs for path and ownership consistency.
+- Result:
+  - Internal docs now have a clearer folder structure, overlapping automation docs were consolidated, and the active agent rules now point to the correct canonical files and current prompt location.
+- Issues/blockers:
+  - Historical file and command references remain in older `/.docs/tracking/ui_ux_changes.md` entries where they serve as historical record; the active doc cross-links and rules were updated.
 
 ## Entry
 - Date: 2026-04-11
 - Step: Document the generic MCP harness decision and reframe the browser plan around Playwright MCP Bridge
 - Changes made:
   - Updated the design record to lock the app direction as a generic MCP-native agent host rather than a Playwright-specific wrapper:
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/design.md`
+    - `.docs/core/design.md`
   - Updated the automation plan so Phase 2 now centers on:
     - a generic MCP runtime in the app
     - approved MCP server allowlisting
     - Playwright MCP Bridge as the first real-session browser path
     - prompt-level tool policy rather than a bespoke browser abstraction
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/automation_plan.md`
+    - `.docs/research/automation/automation_strategy.md`
   - Updated the browser extension plan so it now treats Playwright MCP Bridge as the first real-session extension path, with a custom ClickCherry extension deferred unless a concrete gap appears:
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/browser_extension_plan.md`
+    - `.docs/research/automation/automation_strategy.md`
   - Updated the active execution queue to prioritize generic MCP runtime work:
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`
+    - `.docs/core/next_steps.md`
   - Recorded this docs-only planning step in:
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/worklog.md`
+    - `.docs/tracking/worklog.md`
 - Automated tests run:
   - N/A (docs-only).
 - Manual tests run:
@@ -38,14 +69,14 @@ description: Running implementation log of completed work, test evidence, blocke
 - Step: Document the Chrome extension implementation plan for real-session browser automation
 - Changes made:
   - Added a dedicated extension plan:
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/browser_extension_plan.md`
+    - `.docs/research/automation/automation_strategy.md`
   - Updated the active automation docs so the extension path is now documented as the concrete real-session browser direction:
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/automation_findings.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/automation_plan.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/browser_real_profile_automation_findings.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/open_issues.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/worklog.md`
+    - `.docs/research/automation/automation_research.md`
+    - `.docs/research/automation/automation_strategy.md`
+    - `.docs/research/automation/automation_research.md`
+    - `.docs/tracking/open_issues.md`
+    - `.docs/core/next_steps.md`
+    - `.docs/tracking/worklog.md`
   - Recorded the V1 extension scoping decision:
     - MV3 extension
     - service worker
@@ -67,13 +98,13 @@ description: Running implementation log of completed work, test evidence, blocke
 - Step: Document the real-profile browser automation experiments and re-scope the Phase 2 plan
 - Changes made:
   - Added a new standalone findings document for the browser-profile investigation:
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/browser_real_profile_automation_findings.md`
+    - `.docs/research/automation/automation_research.md`
   - Updated the active automation docs to reflect the new browser-automation direction:
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/automation_findings.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/automation_plan.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/open_issues.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/worklog.md`
+    - `.docs/research/automation/automation_research.md`
+    - `.docs/research/automation/automation_strategy.md`
+    - `.docs/tracking/open_issues.md`
+    - `.docs/core/next_steps.md`
+    - `.docs/tracking/worklog.md`
   - Captured the local app-run failures, standalone browser-launch experiments, official Chrome / Playwright research, and the resulting architecture decision:
     - managed/custom profiles remain valid for Playwright/CDP
     - the default Chrome profile is not the supported CDP takeover target
@@ -93,10 +124,10 @@ description: Running implementation log of completed work, test evidence, blocke
 - Step: Implement Phase 1 of the semantic automation plan with verification-gated visual clicks
 - Changes made:
   - Updated automation-planning docs:
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/automation_findings.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/automation_plan.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/worklog.md`
+    - `.docs/research/automation/automation_research.md`
+    - `.docs/research/automation/automation_strategy.md`
+    - `.docs/core/next_steps.md`
+    - `.docs/tracking/worklog.md`
   - Hardened the OpenAI execution prompt so deterministic actions are preferred before visual clicking:
     - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Resources/Prompts/execution_agent_openai/v3/prompt.md`
   - Extended the completion payload and runner parsing so final `SUCCESS` after a visual click requires explicit verification status plus screenshot-based evidence:
@@ -111,7 +142,7 @@ description: Running implementation log of completed work, test evidence, blocke
 - Automated tests run:
   - `xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/clickcherry-phase1-dd -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/PromptCatalogServiceTests -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests CODE_SIGNING_ALLOWED=NO test` (pass; 25 tests).
 - Manual tests run:
-  - Not run in this session. Live validation is now queued in `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`.
+  - Not run in this session. Live validation is now queued in `.docs/core/next_steps.md`.
 - Result:
   - Phase 1 is implemented in code and focused automated coverage is green. Manual runtime validation is still required before treating the phase as behaviorally complete.
 - Issues/blockers:
@@ -135,12 +166,12 @@ description: Running implementation log of completed work, test evidence, blocke
   - Moved prompts from `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts` to `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Resources/Prompts` and moved the asset catalog under `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Resources/Assets.xcassets`.
   - Updated `PromptCatalogService` source lookup plus the Xcode prompt-copy build phase so both debug/source lookup and bundled-app prompt loading continue to work after the resource move.
   - Added prompt-loading regression coverage and updated active docs:
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/design.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/plan.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/testing.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/ui_ux_changes.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/worklog.md`
+    - `.docs/core/design.md`
+    - `.docs/core/plan.md`
+    - `.docs/core/next_steps.md`
+    - `.docs/core/testing.md`
+    - `.docs/tracking/ui_ux_changes.md`
+    - `.docs/tracking/worklog.md`
 - Automated tests run:
   - `xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/clickcherry-folder-reorg-build -parallel-testing-enabled NO build` (pass).
   - `xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -derivedDataPath /tmp/clickcherry-folder-reorg-tests -parallel-testing-enabled NO test` (pass).
@@ -158,11 +189,11 @@ description: Running implementation log of completed work, test evidence, blocke
 - Step: Sync overlay implementation learnings and rollback decisions into active docs
 - Changes made:
   - Updated docs:
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/design.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/plan.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/ui_ux_changes.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/worklog.md`
+    - `.docs/core/design.md`
+    - `.docs/core/plan.md`
+    - `.docs/tracking/ui_ux_changes.md`
+    - `.docs/core/next_steps.md`
+    - `.docs/tracking/worklog.md`
   - Added the missing learnings from the execution-overlay work completed in this chat:
     - the final top-anchored transparent overlay behavior and screenshot-driven activity feed
     - visible `Escape` stopping-state persistence until run settlement
@@ -184,11 +215,11 @@ description: Running implementation log of completed work, test evidence, blocke
 - Step: Plan the execution takeover overlay redesign and align docs before implementation
 - Changes made:
   - Updated docs:
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/design.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/plan.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/ui_ux_changes.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/worklog.md`
+    - `.docs/core/design.md`
+    - `.docs/core/plan.md`
+    - `.docs/tracking/ui_ux_changes.md`
+    - `.docs/core/next_steps.md`
+    - `.docs/tracking/worklog.md`
   - Decisions recorded:
     - replace the centered agent takeover HUD with a transparent, top-anchored live activity overlay
     - show the newest action first, keep older actions below, and allow recent model-visible screenshots to appear inline
@@ -223,12 +254,12 @@ description: Running implementation log of completed work, test evidence, blocke
     - added reconnect-once handling for `websocket_connection_limit_reached`
     - preserved request/response exchange logging and added socket lifecycle trace coverage
   - Updated docs:
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/design.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/plan.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/testing.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/LLM_calls_hardening.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/worklog.md`
+    - `.docs/core/design.md`
+    - `.docs/core/plan.md`
+    - `.docs/core/testing.md`
+    - `.docs/research/runtime/LLM_calls_hardening.md`
+    - `.docs/core/next_steps.md`
+    - `.docs/tracking/worklog.md`
 - Automated tests run:
   - `xcodebuild test -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerVisionTests CODE_SIGNING_ALLOWED=NO` (pass; 21 tests).
   - `xcodebuild build -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" CODE_SIGNING_ALLOWED=NO` (pass).
@@ -257,11 +288,11 @@ description: Running implementation log of completed work, test evidence, blocke
     - screenshot tool outputs now echo matching cursor metadata (`current_cursor_x`, `current_cursor_y`, visibility/status)
     - screenshot-side text and structured screenshot metadata now share one cursor contract for replay/debug analysis
   - Updated docs:
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/design.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/testing.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/open_issues.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/worklog.md`
+    - `.docs/core/design.md`
+    - `.docs/core/testing.md`
+    - `.docs/tracking/open_issues.md`
+    - `.docs/core/next_steps.md`
+    - `.docs/tracking/worklog.md`
 - Automated tests run:
   - `xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerVisionTests test` (pass).
   - `xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests/runToolLoopExecutesToolUseAndReturnsSuccess test` (pass).
@@ -285,11 +316,11 @@ description: Running implementation log of completed work, test evidence, blocke
     - `/Users/ferzamh/code-git-local/ClickCherry/scripts/run_overlay_visual_checks.sh`
   - Confirmed the selected-display/global coordinate contract is now consistent across screenshot labels, crop requests, pointer actions, and persisted overlay images.
   - Updated docs:
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/design.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/testing.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/open_issues.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`
-    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/worklog.md`
+    - `.docs/core/design.md`
+    - `.docs/core/testing.md`
+    - `.docs/tracking/open_issues.md`
+    - `.docs/core/next_steps.md`
+    - `.docs/tracking/worklog.md`
 - Automated tests run:
   - `xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/DesktopScreenshotTransformServiceTests test` (pass).
   - `xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerVisionTests test` (pass).
@@ -305,4 +336,3 @@ description: Running implementation log of completed work, test evidence, blocke
   - Deterministic and live-run validation both showed that cursor overlays and grid overlays now align with the real screenshot content and selected-display coordinates.
 - Issues/blockers:
   - Remaining follow-up is not the overlay renderer itself; it is deciding whether cursor state should be surfaced more explicitly to the model in each screenshot turn.
-

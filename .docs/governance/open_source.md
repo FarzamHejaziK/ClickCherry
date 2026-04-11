@@ -14,7 +14,7 @@ description: Open-source strategy decisions, governance, contribution model, and
 ## Locked Decisions (2026-02-16)
 
 - Hosting:
-  - GitHub (`https://github.com/FarzamHejaziK/task-agent-macos`)
+  - GitHub (`https://github.com/FarzamHejaziK/ClickCherry`)
 - License:
   - MIT (`/LICENSE`)
 - Contribution legal model:

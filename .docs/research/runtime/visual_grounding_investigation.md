@@ -4,7 +4,7 @@
 
 This document captures the visual-grounding issue discovered in the OpenAI desktop execution loop, along with the debugging and replay workflow built to investigate it using real app runs.
 
-This is a dedicated investigation note only. It does not replace the ongoing execution queue in `.docs/next_steps.md` or the issue tracker in `.docs/open_issues.md`.
+This is a dedicated investigation note only. It does not replace the ongoing execution queue in `.docs/core/next_steps.md` or the issue tracker in `.docs/tracking/open_issues.md`.
 
 ## Problem Summary
 
@@ -271,6 +271,6 @@ When changing this area, validate all of the following:
 - This document intentionally focuses on the investigation method and findings.
 - It does not serve as the canonical queue, issue tracker, or worklog.
 - Related operational context may also live in:
-  - `.docs/open_issues.md`
-  - `.docs/testing.md`
-  - `.docs/worklog.md`
+  - `.docs/tracking/open_issues.md`
+  - `.docs/core/testing.md`
+  - `.docs/tracking/worklog.md`

@@ -567,7 +567,7 @@ description: Active unresolved issues with concrete repro details, mitigation, a
   - The workflow fails if the final signed app is missing `com.apple.security.device.audio-input`.
   - Clean-slate DMG validation now resets Screen Recording globally and removes duplicate app copies before testing.
 - Next Action:
-  - Monitor future DMG releases for regression using the clean-slate public-artifact checklist in `.docs/testing.md`.
+  - Monitor future DMG releases for regression using the clean-slate public-artifact checklist in `.docs/core/testing.md`.
 - Owner: Codex + user validation in DMG runtime
 - Resolution Date: 2026-03-22
 - Resolution Summary: Closed after A/B signing validation proved the DMG bug was caused by hardened-runtime signing without the microphone entitlement. `v0.1.44` now ships with `com.apple.security.device.audio-input`, and a fresh GitHub DMG install was validated from clean state. Screen Recording stale-name rows were traced to local experimental app copies and cleared with a global `tccutil reset ScreenCapture`.
