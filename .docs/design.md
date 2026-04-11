@@ -218,6 +218,39 @@ This means: if the agent still has unresolved questions, should execution stop o
 - Required providers in v1 onboarding:
   - OpenAI for core agent tasks and task execution (v1 execution provider is OpenAI only).
   - Gemini for video understanding path.
+
+## Generic MCP Harness Decision (locked: 2026-04-11)
+
+- Decision ID: DD-2026-04-11-MCP-HARNESS
+- Date: 2026-04-11
+- Context:
+  - ClickCherry needs browser-semantic automation in the user's real Chrome session.
+  - The previous Phase 2 spike showed that a Playwright/CDP takeover of the default Chrome profile is not the right long-term foundation.
+  - The app also needs room to add other MCP servers later without rebuilding product architecture around one server.
+- Options considered:
+  - Build a Playwright-specific browser wrapper and hide MCP behind app-defined browser actions.
+  - Build a generic MCP harness in the app and expose approved MCP tools to the LLM mostly as-is.
+- Decision:
+  - ClickCherry should implement a generic app-owned MCP harness.
+  - The harness is responsible for:
+    - starting approved MCP servers
+    - maintaining connections and process lifecycle
+    - discovering tools
+    - routing tool calls/results
+    - enforcing an allowlist of approved MCP servers and tools
+    - surfacing startup and transport failures clearly
+  - Tool-usage policy should live primarily at the prompt layer, not in a Playwright-specific code wrapper.
+  - The app should still keep app-native tools where MCP is not the right abstraction:
+    - desktop automation
+    - future accessibility automation
+    - deterministic terminal execution
+- Consequences:
+  - The app becomes an MCP-native agent host rather than a Playwright-specific browser orchestrator.
+  - Playwright MCP becomes one approved server within the general harness, not a privileged special case.
+  - Prompt guidance must now carry more of the routing policy for when to use browser MCP tools versus desktop/native tools.
+- Follow-up actions:
+  - Define the generic MCP runtime objects and approved-server registry.
+  - Integrate Playwright MCP Bridge through that generic harness before deciding whether a custom extension is still needed.
 - Keys are stored locally in Keychain (never plaintext in logs).
 
 ## Execution agent model/provider decision (locked: 2026-02-13)

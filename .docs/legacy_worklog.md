@@ -6290,3 +6290,21 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - Vision-first grounding is implemented in the active OpenAI execution path with crop/zoom, overlay-assisted localization, active coordinate remapping, same-turn visual guardrails, and green automated coverage.
 - Issues/blockers:
   - Interactive desktop validation is still needed to confirm real-world improvement on small targets and to decide whether stateful pointer execution should be the next follow-up.
+
+## Entry
+- Date: 2026-03-29
+- Step: Consolidate execution-agent learnings and reset docs to `v2` baseline direction
+- Changes made:
+  - Updated design/testing/issue/queue documentation to reflect validated learnings from the visual-grounding debugging cycle.
+  - Recorded that prompt baseline is now `execution_agent_openai` `v2`, with experimental prompt variants `v3`–`v7` removed.
+  - Added explicit replay-debug workflow guidance using persisted run screenshots and persisted `-llm-exchanges` request/response payloads.
+  - Added a new open issue documenting remaining Dock icon misidentification risk after correct crop capture.
+  - Updated next-step priorities to focus on runner-side success guardrails and `OpenAIComputerUseRunnerTests` suite stabilization.
+- Automated tests run:
+  - N/A (docs-only).
+- Manual tests run:
+  - N/A (docs-only).
+- Result:
+  - `.docs` now reflects current execution reality and preserves the key diagnostics/playbook learned from the investigation.
+- Issues/blockers:
+  - None.

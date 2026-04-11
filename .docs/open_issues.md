@@ -31,7 +31,8 @@ description: Active unresolved issues with concrete repro details, mitigation, a
   - Do not treat the default Chrome profile as a supported CDP takeover target in the active Phase 2 plan.
   - Preserve desktop fallback behavior for tasks that cannot yet use a supported real-profile browser-semantic path.
 - Next Action:
-  - Re-scope real-user-session browser automation around an extension + native-app bridge.
+  - Implement the extension + native-app bridge path for real-user-session browser automation.
+  - Start with a narrower MV3 DOM-focused extension surface before considering `chrome.debugger`.
   - Keep managed Playwright mode for custom profiles and deterministic regression coverage.
   - Add planner policy so real-profile requests do not route into unsupported CDP takeover behavior.
 - Owner: Codex + user validation in local runtime

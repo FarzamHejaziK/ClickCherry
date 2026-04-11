@@ -7,6 +7,62 @@ description: Running implementation log of completed work, test evidence, blocke
 > Previous archived entries are in `/Users/ferzamh/code-git-local/ClickCherry/.docs/legacy_worklog.md`.
 
 ## Entry
+- Date: 2026-04-11
+- Step: Document the generic MCP harness decision and reframe the browser plan around Playwright MCP Bridge
+- Changes made:
+  - Updated the design record to lock the app direction as a generic MCP-native agent host rather than a Playwright-specific wrapper:
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/design.md`
+  - Updated the automation plan so Phase 2 now centers on:
+    - a generic MCP runtime in the app
+    - approved MCP server allowlisting
+    - Playwright MCP Bridge as the first real-session browser path
+    - prompt-level tool policy rather than a bespoke browser abstraction
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/automation_plan.md`
+  - Updated the browser extension plan so it now treats Playwright MCP Bridge as the first real-session extension path, with a custom ClickCherry extension deferred unless a concrete gap appears:
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/browser_extension_plan.md`
+  - Updated the active execution queue to prioritize generic MCP runtime work:
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`
+  - Recorded this docs-only planning step in:
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/worklog.md`
+- Automated tests run:
+  - N/A (docs-only).
+- Manual tests run:
+  - N/A (docs-only).
+- Result:
+  - The active docs now align on the new architecture decision: generic MCP harness first, Playwright MCP Bridge as the first real-session browser integration, and prompt-level tool policy instead of a Playwright-specific wrapper layer.
+- Issues/blockers:
+  - The generic MCP runtime and Playwright MCP integration are still pending implementation.
+
+## Entry
+- Date: 2026-04-10
+- Step: Document the Chrome extension implementation plan for real-session browser automation
+- Changes made:
+  - Added a dedicated extension plan:
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/browser_extension_plan.md`
+  - Updated the active automation docs so the extension path is now documented as the concrete real-session browser direction:
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/automation_findings.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/automation_plan.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/browser_real_profile_automation_findings.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/open_issues.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/next_steps.md`
+    - `/Users/ferzamh/code-git-local/ClickCherry/.docs/worklog.md`
+  - Recorded the V1 extension scoping decision:
+    - MV3 extension
+    - service worker
+    - content script
+    - native messaging host
+    - DOM-focused active-tab actions first
+    - defer `chrome.debugger` until a proven workflow gap requires it
+- Automated tests run:
+  - N/A (docs-only).
+- Manual tests run:
+  - N/A (docs-only).
+- Result:
+  - The active docs now describe a concrete first extension slice instead of only a high-level re-scope.
+- Issues/blockers:
+  - Extension implementation is still pending.
+
+## Entry
 - Date: 2026-04-10
 - Step: Document the real-profile browser automation experiments and re-scope the Phase 2 plan
 - Changes made:
@@ -250,20 +306,3 @@ description: Running implementation log of completed work, test evidence, blocke
 - Issues/blockers:
   - Remaining follow-up is not the overlay renderer itself; it is deciding whether cursor state should be surfaced more explicitly to the model in each screenshot turn.
 
-## Entry
-- Date: 2026-03-29
-- Step: Consolidate execution-agent learnings and reset docs to `v2` baseline direction
-- Changes made:
-  - Updated design/testing/issue/queue documentation to reflect validated learnings from the visual-grounding debugging cycle.
-  - Recorded that prompt baseline is now `execution_agent_openai` `v2`, with experimental prompt variants `v3`–`v7` removed.
-  - Added explicit replay-debug workflow guidance using persisted run screenshots and persisted `-llm-exchanges` request/response payloads.
-  - Added a new open issue documenting remaining Dock icon misidentification risk after correct crop capture.
-  - Updated next-step priorities to focus on runner-side success guardrails and `OpenAIComputerUseRunnerTests` suite stabilization.
-- Automated tests run:
-  - N/A (docs-only).
-- Manual tests run:
-  - N/A (docs-only).
-- Result:
-  - `.docs` now reflects current execution reality and preserves the key diagnostics/playbook learned from the investigation.
-- Issues/blockers:
-  - None.

@@ -529,6 +529,32 @@ For the user's real Chrome profile, move to an extension + native-app bridge:
 - the native app remains the orchestrator
 - desktop or accessibility control still handles browser chrome, OS dialogs, and non-DOM fallbacks
 
+## Extension Direction
+
+The extension path should begin with a narrower first release than the most powerful possible browser-control design.
+
+### Recommended V1
+
+- Manifest V3 extension
+- service worker
+- content scripts
+- native messaging host
+- active-tab DOM actions
+- visible screenshot capture for the current tab
+- explicit user-facing UX
+
+### Recommended V1 exclusions
+
+- no default dependence on `chrome.debugger`
+- no hidden full-browser takeover positioning
+- no silent send/post/purchase actions
+
+The first goal is not "maximum power." The first goal is a trustworthy, review-friendlier real-session browser layer that can handle common logged-in webpage tasks.
+
+For the concrete implementation outline, see:
+
+- `/Users/ferzamh/code-git-local/ClickCherry/.docs/browser_extension_plan.md`
+
 ## Proposed Follow-Up Work
 
 1. Stop treating real default Chrome profiles as a supported CDP takeover target in the active Phase 2 plan.
@@ -542,6 +568,7 @@ For the user's real Chrome profile, move to an extension + native-app bridge:
    - OS dialogs
    - non-DOM UI
    - canvas / image-only / custom-rendered surfaces
+5. Implement the first extension slice with a DOM-only, store-safer scope before considering `chrome.debugger`.
 
 ## Decision
 

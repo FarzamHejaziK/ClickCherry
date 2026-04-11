@@ -50,6 +50,17 @@ Recent experiments and official Chrome guidance showed that managed Chrome and t
 - the default Chrome data directory should not be treated as a reliable CDP launch target
 - real-user-session webpage automation should move toward an extension + native-app bridge instead of default-profile CDP takeover
 
+### 7. Real-session Chrome automation through an extension is viable, but store risk depends heavily on scope
+
+Recent product and policy research suggests that Chrome does allow browser automation extensions in the general category, but store risk rises quickly when the extension becomes too broad, too hidden, or too powerful by default.
+
+Key implications:
+
+- a narrow, explicit MV3 extension is a realistic first release shape
+- a visible side panel and active-tab oriented workflow are safer than hidden background control
+- `chrome.debugger` is powerful, but likely higher-risk than a DOM-only extension baseline
+- sensitive outbound actions should require user confirmation
+
 ## Key Concepts
 
 ## Semantic Actions
@@ -107,6 +118,19 @@ When the task depends on the user's actual logged-in Chrome session, the browser
 
 This keeps webpage DOM actions inside the user's real browser session without depending on default-profile CDP relaunch.
 
+## Extension V1 Shape
+
+The current recommended first release for real-session browser automation is:
+
+- Manifest V3 extension
+- service worker
+- content scripts
+- native messaging host
+- active-tab DOM actions
+- screenshots and simple page-state reads
+
+The first version should avoid relying on `chrome.debugger` unless concrete workflow gaps prove that the DOM-only path is insufficient.
+
 ## Routing Matrix
 
 | Target surface | Preferred action type | Notes |
@@ -139,6 +163,7 @@ Within the browser layer, ClickCherry should now assume two execution modes:
 - real-user-session mode:
   - extension + native-app bridge
   - best for logged-in workflows that depend on the user's existing Chrome profile
+  - first release should be a narrower DOM-first extension rather than a full-power debugger-backed extension
 
 ## Immediate Reliability Recommendations
 
@@ -155,6 +180,7 @@ The current implementation sequence is now locked to these defaults:
 - Phase 2 will use managed Chrome as the default browser-semantic baseline.
 - Phase 2 will not treat the default Chrome profile as a supported CDP relaunch target.
 - Real default-profile browser automation is now expected to move toward an extension + native-app bridge path.
+- The first real-session extension release should start with a store-safer DOM-focused surface and defer `chrome.debugger`.
 - Phase 3 will start with standard native controls only:
   - buttons
   - text fields
@@ -166,6 +192,7 @@ The current implementation sequence is now locked to these defaults:
 These are intentional scoping decisions, not long-term limits. The design should remain extensible so later phases can add:
 
 - richer browser extension capabilities for the user's real browser session
+- optional `chrome.debugger` capabilities for proven workflow gaps
 - deeper AX traversal for more complex app surfaces
 - browser chrome support such as tab strip, toolbar, and omnibox targeting
 
@@ -174,6 +201,7 @@ These are intentional scoping decisions, not long-term limits. The design should
 For the full experiment log, reproduced failures, standalone test matrix, and updated root-cause analysis, see:
 
 - `/Users/ferzamh/code-git-local/ClickCherry/.docs/browser_real_profile_automation_findings.md`
+- `/Users/ferzamh/code-git-local/ClickCherry/.docs/browser_extension_plan.md`
 
 ## Sources Consulted
 
@@ -186,3 +214,4 @@ For the full experiment log, reproduced failures, standalone test matrix, and up
 - macOS UI automation ecosystem documentation
 - official Chrome guidance on remote debugging restrictions for the default data directory
 - official Playwright guidance on using a separate user data directory for automation
+- current Chrome extension and Web Store policy guidance relevant to extension-based browser automation
