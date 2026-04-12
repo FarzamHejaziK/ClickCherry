@@ -35,7 +35,7 @@ description: Map of the internal documentation layout and the canonical files to
 - Deferred decisions: `/.docs/tracking/revisits.md`
 - UI/UX tracking: `/.docs/tracking/ui_ux_changes.md`
 - Open-source strategy: `/.docs/governance/open_source.md`
-- Automation strategy: `/.docs/research/automation/automation_strategy.md`
+- Automation strategy: `/.docs/research/automation/automation_strategy/README.md`
 - Automation research: `/.docs/research/automation/automation_research.md`
 
 ## Maintenance Rules

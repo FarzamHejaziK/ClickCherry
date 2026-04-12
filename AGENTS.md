@@ -96,8 +96,9 @@
 - `.docs/tracking/ui_ux_changes.md`:
   - Update when UI/UX plans, decisions, or implementation direction changes.
   - Explicitly state how each entry aligns with `.docs/core/plan.md` and `.docs/core/design.md`.
-- `.docs/research/automation/automation_strategy.md`:
-  - Update when semantic automation direction, browser automation architecture, MCP policy, or phased implementation strategy changes.
+- `.docs/research/automation/automation_strategy/README.md`:
+  - Treat this as the canonical entry point for the automation strategy doc set.
+  - Update the relevant file within `automation_strategy/` when semantic automation direction, browser automation architecture, MCP policy, phased implementation strategy, or the browser-extension V1 plan changes.
 - `.docs/research/automation/automation_research.md`:
   - Update when automation findings, real-profile browser research, or implementation-shaping external research changes.
 - `.docs/research/runtime/*`:

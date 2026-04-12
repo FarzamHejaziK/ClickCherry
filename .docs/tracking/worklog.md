@@ -7,6 +7,37 @@ description: Running implementation log of completed work, test evidence, blocke
 > Previous archived entries are in `.docs/archive/legacy_worklog.md`.
 
 ## Entry
+- Date: 2026-04-12
+- Step: Split the automation strategy into a folder-based doc set and align agent rules
+- Changes made:
+  - Split the single-file automation strategy into:
+    - `/.docs/research/automation/automation_strategy/README.md`
+    - `/.docs/research/automation/automation_strategy/overview.md`
+    - `/.docs/research/automation/automation_strategy/architecture.md`
+    - `/.docs/research/automation/automation_strategy/implementation_plan.md`
+    - `/.docs/research/automation/automation_strategy/browser_extension_v1.md`
+  - Replaced `/.docs/research/automation/automation_strategy.md` with a compatibility pointer to the new folder-based doc set.
+  - Updated the internal docs map and relevant automation cross-references:
+    - `/.docs/README.md`
+    - `/.docs/research/automation/automation_research.md`
+  - Updated `AGENTS.md` so the canonical automation-strategy entry now points to:
+    - `/.docs/research/automation/automation_strategy/README.md`
+  - Kept `/.docs/core/next_steps.md` unchanged because current engineering priorities did not change.
+- Automated tests run:
+  - `rg -n 'automation_strategy\\.md|automation_strategy/' AGENTS.md .docs --glob '!**/archive/**' --glob '!**/*.bak'`
+  - `find .docs/research/automation/automation_strategy -maxdepth 1 -type f | sort`
+- Manual tests run:
+  - Reviewed the new automation-strategy folder layout and confirmed the content split matched the intended ownership:
+    - overview
+    - architecture
+    - implementation plan
+    - browser-extension V1
+- Result:
+  - The automation strategy is now easier to navigate and update, and `AGENTS.md` now points to the folder-based canonical entry instead of the old monolithic file.
+- Issues/blockers:
+  - Historical worklog entries still mention `automation_strategy.md`, but the compatibility pointer preserves those references.
+
+## Entry
 - Date: 2026-04-11
 - Step: Reorganize the internal docs layout, merge overlapping automation docs, and align agent rules
 - Changes made:

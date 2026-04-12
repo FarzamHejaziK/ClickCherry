@@ -219,7 +219,7 @@ These are intentional scoping decisions, not long-term limits. The design should
 For the full experiment log, reproduced failures, standalone test matrix, and updated root-cause analysis, see:
 
 - `.docs/research/automation/automation_research.md`
-- `.docs/research/automation/automation_strategy.md`
+- `.docs/research/automation/automation_strategy/README.md`
 
 ## Sources Consulted
 
@@ -788,7 +788,7 @@ The first goal is not "maximum power." The first goal is a trustworthy, review-f
 
 For the concrete implementation outline, see:
 
-- `.docs/research/automation/automation_strategy.md`
+- `.docs/research/automation/automation_strategy/README.md`
 
 ## Proposed Follow-Up Work
 
