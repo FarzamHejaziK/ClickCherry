@@ -6308,3 +6308,106 @@ description: Historical worklog entries archived from `.docs/worklog.md`.
   - `.docs` now reflects current execution reality and preserves the key diagnostics/playbook learned from the investigation.
 - Issues/blockers:
   - None.
+
+## Entry
+- Date: 2026-04-01
+- Step: Enable Responses WebSocket transport for the OpenAI execution runner with HTTP fallback
+- Changes made:
+  - Updated OpenAI execution transport and runner wiring in:
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomation/OpenAIComputerUseRunner.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomation/OpenAIComputerUseRunner+Transport.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomation/OpenAIResponsesModels.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Models/MainShell/MainShellStateStore.swift`
+  - Added and updated focused transport tests in:
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests.swift`
+  - Behavior changes:
+    - added an internal transport abstraction with `http`, `webSocketPreferred`, and `webSocketOnly` modes
+    - defaulted the app path to `webSocketPreferred` via `UserDefaults`-backed runner configuration
+    - moved the existing HTTP `/v1/responses` flow into a dedicated HTTP transport session
+    - added a Responses WebSocket transport that reuses one socket across turns, sends `response.create`, and normalizes stream events back into `OpenAIResponsesResponse`
+    - added fallback from initial WebSocket connect failure and `previous_response_not_found` to HTTP
+    - added reconnect-once handling for `websocket_connection_limit_reached`
+    - preserved request/response exchange logging and added socket lifecycle trace coverage
+  - Updated docs:
+    - `.docs/core/design.md`
+    - `.docs/core/plan.md`
+    - `.docs/core/testing.md`
+    - `.docs/research/runtime/LLM_calls_hardening.md`
+    - `.docs/core/next_steps.md`
+    - `.docs/tracking/worklog.md`
+- Automated tests run:
+  - `xcodebuild test -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -parallel-testing-enabled NO -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerVisionTests CODE_SIGNING_ALLOWED=NO` (pass; 21 tests).
+  - `xcodebuild build -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" CODE_SIGNING_ALLOWED=NO` (pass).
+- Manual tests run:
+  - Launched `/Users/ferzamh/Library/Developer/Xcode/DerivedData/TaskAgentMacOSApp-gskaqmcqndoejiefhqxytxdhbljh/Build/Products/Debug/ClickCherry Dev.app`, confirmed the debug app process started, then terminated it after startup verification.
+  - Live provider-backed HTTP vs WebSocket execution comparison was not run in this session.
+- Result:
+  - The active OpenAI execution runner now prefers Responses WebSocket transport while preserving HTTP as the recovery path, and focused automated coverage is green.
+- Issues/blockers:
+  - Live provider-backed validation is still needed to measure latency improvement and confirm real-world fallback behavior against the OpenAI service.
+
+## Entry
+- Date: 2026-03-31
+- Step: Make cursor state explicit in the execution prompt and screenshot tool metadata
+- Changes made:
+  - Updated the execution prompt in:
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Prompts/execution_agent_openai/v3/prompt.md`
+  - Updated cursor-context handling in:
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomation/OpenAIComputerUseRunner+Capture.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/OpenAIAutomation/OpenAIComputerUseRunner+ScreenshotActions.swift`
+  - Added and updated tests in:
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSAppTests/OpenAIComputerUseRunnerVisionTests.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests.swift`
+  - Behavior changes:
+    - the prompt now tells the model to treat `CURRENT_CURSOR` as the authoritative cursor location for each screenshot
+    - screenshot tool outputs now echo matching cursor metadata (`current_cursor_x`, `current_cursor_y`, visibility/status)
+    - screenshot-side text and structured screenshot metadata now share one cursor contract for replay/debug analysis
+  - Updated docs:
+    - `.docs/core/design.md`
+    - `.docs/core/testing.md`
+    - `.docs/tracking/open_issues.md`
+    - `.docs/core/next_steps.md`
+    - `.docs/tracking/worklog.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerVisionTests test` (pass).
+  - `xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerTests/runToolLoopExecutesToolUseAndReturnsSuccess test` (pass).
+  - `xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" build` (pass).
+- Manual tests run:
+  - Inspected the rendered execution prompt and confirmed the cursor-grounding section explicitly marks `CURRENT_CURSOR` as authoritative.
+  - Inspected the screenshot tool output shape and confirmed it now echoes the same cursor coordinates and visibility state used in screenshot-side text context.
+- Result:
+  - Cursor state is now explicit both in the model instructions and in the structured screenshot metadata, without changing the stable selected-display coordinate contract.
+- Issues/blockers:
+  - The broader `OpenAIComputerUseRunnerTests` whole-suite run still exposes the pre-existing harness/test-fixture issue and remains separate from this cursor-contract change.
+
+## Entry
+- Date: 2026-03-31
+- Step: Validate and lock the selected-display screenshot overlay contract after the live cursor/grid fixes
+- Changes made:
+  - Updated overlay rendering so cursor rings and grid lines use the same visual coordinate space as screenshot content in:
+    - `/Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp/Services/DesktopScreenshotTransformService.swift`
+  - Added deterministic overlay validation scripts:
+    - `/Users/ferzamh/code-git-local/ClickCherry/scripts/generate_overlay_visual_checks.swift`
+    - `/Users/ferzamh/code-git-local/ClickCherry/scripts/run_overlay_visual_checks.sh`
+  - Confirmed the selected-display/global coordinate contract is now consistent across screenshot labels, crop requests, pointer actions, and persisted overlay images.
+  - Updated docs:
+    - `.docs/core/design.md`
+    - `.docs/core/testing.md`
+    - `.docs/tracking/open_issues.md`
+    - `.docs/core/next_steps.md`
+    - `.docs/tracking/worklog.md`
+- Automated tests run:
+  - `xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/DesktopScreenshotTransformServiceTests test` (pass).
+  - `xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" -only-testing:TaskAgentMacOSAppTests/OpenAIComputerUseRunnerVisionTests test` (pass).
+  - `xcodebuild -project /Users/ferzamh/code-git-local/ClickCherry/TaskAgentMacOSApp/TaskAgentMacOSApp.xcodeproj -scheme TaskAgentMacOSApp -destination "platform=macOS" build` (pass).
+- Manual tests run:
+  - Ran `/Users/ferzamh/code-git-local/ClickCherry/scripts/run_overlay_visual_checks.sh` and visually inspected:
+    - `/tmp/clickcherry-overlay-visual-checks/02-full-cursor-overlay.png`
+    - `/tmp/clickcherry-overlay-visual-checks/03-full-grid-overlay.png`
+    - `/tmp/clickcherry-overlay-visual-checks/04-crop-grid-overlay.png`
+    - `/tmp/clickcherry-overlay-visual-checks/05-crop-grid-and-cursor-overlay.png`
+  - Inspected live run artifacts for `/Users/ferzamh/Library/Application Support/TaskAgentMacOS/workspace-71982e82-c391-471f-bdea-d607d49c231b/runs/agent-run-2026-03-31T15-48-20.791Z-ae265ffd.json`, including the grid screenshot and final full-display screenshot.
+- Result:
+  - Deterministic and live-run validation both showed that cursor overlays and grid overlays now align with the real screenshot content and selected-display coordinates.
+- Issues/blockers:
+  - Remaining follow-up is not the overlay renderer itself; it is deciding whether cursor state should be surfaced more explicitly to the model in each screenshot turn.

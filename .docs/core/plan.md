@@ -168,6 +168,57 @@ description: Step-by-step implementation plan with code scope, automated tests, 
 - Reopen task/relaunch app and confirm clarification + run state persists.
 - Confirm any future cursor-motion polish does not materially slow visible desktop actions before adopting it.
 
+### Browser Extension V1 Reset (updated: 2026-04-13)
+
+#### Code
+- Keep the generic MCP runtime work as reusable infrastructure, but remove Playwright MCP Bridge from the critical-path browser plan.
+- Implement a first-party real-session browser path using:
+  - a ClickCherry MV3 Chrome extension
+  - a native messaging bridge between Chrome and the app
+  - direct app-to-extension browser orchestration for v1
+- Keep browser scope intentionally narrow in the first slice:
+  - DOM snapshot / DOM reads
+  - click
+  - type / fill
+  - key press
+  - scroll
+  - wait-for element or text
+  - URL / title reads
+- Keep screenshots in the app, not the extension, for the first release.
+- Keep `chrome.debugger` out of v1.
+- Keep managed Playwright out of the main user flow; preserve it only as a parked fallback/research path for isolated browser sessions.
+- Preserve `desktop_action` as the browser fallback for:
+  - browser chrome
+  - OS dialogs
+  - non-DOM surfaces
+  - canvas-heavy or otherwise non-semantic UI
+
+#### Automated tests
+- Unit tests for native messaging host registration and pairing state persistence.
+- Unit tests for extension-bridge protocol encoding/decoding.
+- Unit tests for DOM action request/response mapping in the app-side browser bridge client.
+- Unit tests for browser routing policy:
+  - webpage DOM -> extension path
+  - browser chrome / OS / non-DOM -> desktop fallback
+- Characterization tests for any parked managed-Playwright code paths that remain in-tree.
+
+#### Manual test
+- Install the ClickCherry extension in a local Chrome profile and complete one-time pairing from the app.
+- Verify reconnect works without repeated user setup.
+- Validate DOM-backed actions on simple pages:
+  - read URL/title
+  - click a link or button
+  - fill a field
+  - wait for page text
+- Validate logged-in flows on sites such as LinkedIn and Google Docs.
+- Validate that browser chrome and OS dialogs still route through desktop fallback.
+
+#### Exit criteria
+- ClickCherry can connect to a Chrome profile through a first-party pairing flow controlled by the app.
+- The app can execute the first DOM-focused browser action slice without relying on Playwright MCP Bridge.
+- Desktop fallback remains intact for browser chrome, OS dialogs, and non-DOM surfaces.
+- The docs, implementation queue, and open issues all reflect the first-party extension direction.
+
 ### Maintainability follow-up: OpenAI execution-runner split
 
 #### Code

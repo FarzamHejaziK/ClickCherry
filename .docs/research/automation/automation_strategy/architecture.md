@@ -8,13 +8,13 @@ description: Architecture and routing model for ClickCherry automation.
 
 ClickCherry should evolve toward three action layers:
 
-1. Browser-semantic MCP tools
+1. Browser-semantic extension bridge
    - for webpage content in Chrome and other supported browsers
-   - exposed through a generic app-owned MCP harness
-   - first approved browser server:
-     - Playwright MCP in extension mode for the user's real Chrome session
-   - optional later browser server:
-     - Playwright MCP in managed/custom-profile mode
+   - first release uses a first-party Chrome extension plus a direct app bridge
+   - transport target for v1:
+     - native messaging
+   - optional later evolution:
+     - expose the same browser surface through MCP if cross-server composition becomes valuable
 
 2. `accessibility_action`
    - for native macOS UI
@@ -57,9 +57,9 @@ This routing policy is cross-cutting and applies as the three layers come online
 Within the browser-semantic layer, the planner should assume:
 
 1. real user Chrome session required:
-   - use Playwright MCP Bridge through the generic MCP harness
+   - use the first-party extension bridge
 2. managed/custom browser mode explicitly requested or later enabled:
-   - use managed Playwright MCP mode
+   - use managed Playwright
 3. browser chrome / OS / non-DOM:
    - use accessibility, deterministic actions, or desktop fallback
 
@@ -76,22 +76,24 @@ Policy examples:
 
 Recommended approach:
 
-- Swift-hosted generic MCP runtime
-- approved MCP server registry / allowlist
-- Playwright MCP as the first browser server
-- Playwright MCP Bridge as the first real-session browser integration
+- first-party MV3 extension
+- native messaging bridge
+- app-owned pairing and reconnect flow
+- content-script DOM automation first
+- optional future MCP adapter only if and when a broader tool-host architecture proves valuable
 
 Why:
 
-- keeps the app extensible beyond one browser server
-- reduces adaptation work when Playwright MCP evolves
-- lets prompt policy guide tool use without a heavy Playwright-specific facade
+- gives ClickCherry control over onboarding, trust, diagnostics, and reconnect behavior
+- avoids opaque third-party handshake flows
 - avoids fighting Chrome's default-profile remote debugging restrictions when real user-session automation is required
+- keeps v1 closer to Chrome Web Store-safer permissions by deferring `chrome.debugger`
 
 Extension recommendation:
 
-- use Playwright MCP Bridge first as the off-the-shelf real-session extension path
-- only consider a custom extension after the generic MCP harness is in place and a concrete capability gap is proven
+- use a first-party ClickCherry extension as the main real-session path
+- defer `chrome.debugger` until concrete workflow gaps prove the DOM-only path is insufficient
+- treat Playwright MCP Bridge as research/fallback only
 
 ### Accessibility Layer
 
@@ -113,4 +115,4 @@ Managed Playwright remains useful and should stay in the product for:
 - isolated browser testing
 - workflows that do not require the user's live browser state
 
-The extension path is not a replacement for that mode. It is the correct complement for real-session browser use.
+The extension path is not a replacement for that mode. It is the correct main path for real-session browser use.

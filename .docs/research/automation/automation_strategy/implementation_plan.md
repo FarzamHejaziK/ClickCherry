@@ -26,48 +26,47 @@ Why first:
 - lowest-risk change
 - immediate improvement without introducing new external runtime dependencies
 
-### Phase 2: Browser Semantic Control Through MCP
+### Phase 2: Browser Semantic Control Through A First-Party Extension
 
 Focus:
 
-- add a generic MCP runtime to the app
-- expose approved browser MCP tools to the LLM mostly as-is
-- connect the first real-session browser backend through Playwright MCP Bridge extension mode
+- build a first-party Chrome extension for real-session browser control
+- connect the app to the extension through native messaging
+- expose a narrow DOM-focused browser action surface for webpage work
 
 Proposed capabilities:
 
-- MCP server lifecycle:
-  - start approved server
-  - reconnect / recover
-  - discover tools
-  - route tool calls
-- first approved browser server:
-  - Playwright MCP with extension bridge
+- pairing and reconnect:
+  - connect Chrome
+  - trust a specific browser profile
+  - reconnect automatically after first approval
 - first expected browser tool surface:
-  - page snapshot
+  - page snapshot / DOM reads
   - click
   - type / fill
   - key press
-  - screenshot
-  - page evaluation / read helpers as needed
+  - scroll
+  - wait-for element/text
+  - URL/title reads
 
 Implementation note:
 
-- the app should host a general MCP client/runtime in Swift
-- Playwright MCP should run as an approved external server process
-- ClickCherry should not depend on a Playwright-specific browser wrapper contract for LLM usage
+- the app should own the bridge lifecycle directly for v1
+- browser v1 should not depend on Playwright MCP Bridge startup or token pairing
+- screenshots should remain app-owned in this phase
+- browser v1 should not depend on `chrome.debugger`
 
 Profile/session note:
 
-- the first real-session path should use the user's existing Chrome session through the Playwright MCP Bridge extension
+- the first real-session path should use the user's existing Chrome session through the ClickCherry extension
 - do not treat the default Chrome data directory as a supported CDP takeover path
-- managed/custom profile Playwright can remain a later supplemental mode through the same MCP harness if needed
+- managed/custom profile Playwright can remain a later supplemental mode if needed
 
 Real-user-session note:
 
-- when the task depends on the user's real logged-in Chrome profile, the recommended direction is Playwright MCP Bridge through the generic MCP harness
+- when the task depends on the user's real logged-in Chrome profile, the recommended direction is the first-party extension bridge
 - browser chrome, OS dialogs, and non-DOM surfaces should remain with desktop and future accessibility layers
-- if Playwright MCP Bridge proves insufficient, reassess whether a custom extension is needed after the generic MCP harness exists
+- if the initial direct bridge later needs broader tool-host reuse, reassess whether an MCP adapter is valuable after the first-party extension is stable
 
 ### Phase 3: Native Accessibility Control
 
@@ -85,7 +84,7 @@ Each incremental step should include both automated and manual verification.
 
 - unit tests for routing and tool output semantics
 - runner tests that assert unverified click responses and required follow-up evidence
-- future sidecar contract tests for browser actions
+- future extension bridge contract tests for browser actions
 - future AX tests for native semantic actions where feasible
 
 ### Manual
@@ -97,19 +96,16 @@ Each incremental step should include both automated and manual verification.
 
 ## Immediate Next Steps
 
-1. Implement the generic MCP harness in the app:
-   - approved server registry
-   - lifecycle/process management
-   - tool discovery
-   - tool invocation routing
-2. Integrate Playwright MCP Bridge as the first real-session browser path.
-3. Update the execution prompt so browser MCP tools are preferred for webpage DOM work.
-4. Keep desktop/native fallback for browser chrome, OS dialogs, and non-DOM surfaces.
-5. Revisit managed/custom-profile Playwright mode only after the real-session MCP path is working.
-6. Implement `accessibility_action` after the browser-semantic architecture is stable.
+1. Preserve the reusable generic MCP pieces already explored in the app, but take Playwright MCP Bridge off the critical path for browser v1.
+2. Define the first-party extension/app bridge protocol and pairing flow.
+3. Implement the MV3 extension skeleton and native messaging host.
+4. Update the execution prompt so browser extension tools are preferred for webpage DOM work.
+5. Keep desktop/native fallback for browser chrome, OS dialogs, and non-DOM surfaces.
+6. Revisit managed/custom-profile Playwright mode only after the real-session extension path is working.
+7. Implement `accessibility_action` after the browser-semantic architecture is stable.
 
 ## Open Questions
 
-- How should the app present approved MCP server availability and health in product UX?
-- Which browser MCP tools should be exposed directly versus filtered out from the allowlist?
-- What concrete capability gap would justify a custom extension after Playwright MCP Bridge integration?
+- What exact browser action schema should the app expose to the run agent for the first DOM-focused slice?
+- How should connected Chrome profiles be represented in product UX after pairing?
+- What concrete workflow gap would justify adding `chrome.debugger` after the DOM-only release?

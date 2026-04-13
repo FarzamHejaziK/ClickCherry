@@ -27,12 +27,13 @@ Improve execution reliability by routing tasks to the most semantic control surf
 
 ## Locked Decisions
 
-- Phase 2 should be implemented as a generic MCP harness in the app rather than a Playwright-specific wrapper layer.
-- The app should maintain an allowlist of approved MCP servers and tools.
-- Tool-usage policy should live primarily in the execution prompt, not in a bespoke browser abstraction.
+- The generic MCP runtime work remains useful infrastructure, but browser v1 does not depend on MCP.
 - Phase 2 will not treat the default Chrome profile as a supported CDP relaunch target.
-- The first real-session browser integration should use Playwright MCP Bridge extension mode through the generic MCP harness.
-- Managed/custom-profile Playwright remains an optional later browser mode, not the main real-session path.
+- The first real-session browser integration should use a first-party Chrome extension and a direct app-to-extension bridge.
+- The preferred bridge transport for browser v1 is native messaging.
+- Browser v1 should use content scripts and standard extension APIs only; do not include `chrome.debugger` in the first release.
+- App-owned screenshots remain the default screenshot and visual verification path.
+- Managed/custom-profile Playwright remains a parked fallback/research mode, not the main real-session path.
 - Phase 3 starts with standard controls first:
   - buttons
   - text fields

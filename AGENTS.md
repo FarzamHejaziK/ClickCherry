@@ -12,6 +12,7 @@
   - Before proceeding with a large implementation, briefly propose the intended file breakdown and explain why that structure will be easier to maintain, review, and test.
   - Exclusions may include generated files, vendor files, or files the user explicitly wants kept as a single artifact.
 - Follow the `.docs/` update contract below for file ownership and maintenance rules.
+- Use `$clickcherry-doc-sync` for work that may affect internal docs, testing guidance, prompts, UI/UX tracking, open issues, automation strategy, or open-source governance. Let the skill prepare the proposed `.docs` approval list before editing any internal docs.
 - Never push changes (run `git push`) unless the user explicitly requests it in the current thread.
 - Prefer repo-relative paths inside docs and `AGENTS.md`; avoid machine-specific absolute paths unless a tool requires them.
 - New internal docs should live under the existing `.docs/` folders. Do not create new top-level `.docs/*.md` files unless the user asks or there is a strong reason.

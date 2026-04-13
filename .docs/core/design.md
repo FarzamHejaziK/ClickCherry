@@ -253,6 +253,41 @@ This means: if the agent still has unresolved questions, should execution stop o
   - Integrate Playwright MCP Bridge through that generic harness before deciding whether a custom extension is still needed.
 - Keys are stored locally in Keychain (never plaintext in logs).
 
+## Real-Session Browser V1 Decision (locked: 2026-04-13)
+
+- Decision ID: DD-2026-04-13-BROWSER-V1-DIRECT-BRIDGE
+- Date: 2026-04-13
+- Context:
+  - The Playwright MCP Bridge spike showed that the app can host a generic MCP runtime, but the off-the-shelf bridge remains a poor main-product fit for real-session Chrome automation.
+  - Startup can stall silently while waiting for bridge approval, reliable auto-connect depends on a copied bridge token, and the onboarding/diagnostics UX is not under ClickCherry's control.
+  - The product requirement is a user-friendly, trustworthy "Connect Chrome" flow for the user's real browser profile, not a developer-oriented token or inspector workflow.
+- Options considered:
+  - Keep Playwright MCP Bridge as the main real-session browser path.
+  - Keep the generic MCP runtime, but build a first-party browser extension and expose it through MCP immediately.
+  - Build a first-party Chrome extension with a direct app-to-extension bridge for v1, and treat MCP as optional future infrastructure.
+- Decision:
+  - ClickCherry should move away from Playwright MCP Bridge as the main real-session browser path.
+  - Browser v1 should use a first-party Chrome extension with a direct bridge to the app.
+  - The preferred transport for v1 is Chrome native messaging, not a localhost socket.
+  - The first version should avoid `chrome.debugger` and use content scripts plus standard extension APIs only.
+  - The extension should provide semantic DOM actions; screenshots remain app-owned in v1 because the app already has the broader visible-surface capture path needed for verification and fallback.
+  - Managed Playwright remains parked as a fallback/research path for controlled automation sessions, but it is no longer the main real-session browser plan.
+- Consequences:
+  - The browser integration becomes product-controlled:
+    - onboarding
+    - pairing
+    - reconnect
+    - diagnostics
+    - profile trust state
+  - Browser v1 can stay closer to Chrome Web Store-safe permissions by avoiding `chrome.debugger`.
+  - The app no longer needs to block browser progress on Playwright Bridge token setup.
+  - The existing generic MCP runtime is still usable for future integrations, but browser v1 does not depend on it.
+- Follow-up actions:
+  - Define the direct app-extension protocol and pairing flow.
+  - Build the MV3 extension skeleton and native messaging host.
+  - Implement the first DOM-focused browser action set.
+  - Keep screenshots and visual fallback in the app while the extension owns semantic page actions.
+
 ## Execution agent model/provider decision (locked: 2026-02-13)
 
 - Task execution agent provider for Step 4 is OpenAI tool-loop execution via the Responses API:

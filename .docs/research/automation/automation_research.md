@@ -79,6 +79,23 @@ Key implications:
 - `chrome.debugger` is powerful, but likely higher-risk than a DOM-only extension baseline
 - sensitive outbound actions should require user confirmation
 
+### 8. Playwright MCP Bridge was useful as a spike, but not as the main product path
+
+Recent local experiments and prompt/runtime integration work produced a clear product signal:
+
+- the generic MCP harness work was useful infrastructure
+- the Playwright MCP Bridge was useful for learning where the handshake and trust boundaries sit
+- the bridge is still a poor fit for ClickCherry's main real-session browser path
+
+The main issues were:
+
+- the bridge startup can stall without obvious user-facing feedback while waiting for approval or bridge connection
+- reliable automatic connection depends on a bridge token copied from the extension page
+- the trust/onboarding UX is controlled by the bridge, not by ClickCherry
+- this is acceptable for a developer tool, but weak for a consumer-facing product
+
+This means the main browser question is no longer "Can Playwright MCP technically work?" It is "Does Playwright MCP Bridge provide a product-controlled connection flow?" The current answer is no.
+
 ## Key Concepts
 
 ## Semantic Actions
@@ -130,8 +147,8 @@ Important limits:
 
 When the task depends on the user's actual logged-in Chrome session, the browser-semantic path should diverge from managed Playwright:
 
-1. keep Playwright + Node sidecar for managed/custom profiles
-2. use an extension + native-app bridge for the user's real Chrome profile
+1. keep managed Playwright as a parked fallback or research path for isolated/custom profiles
+2. use a first-party extension + native-app bridge for the user's real Chrome profile
 3. keep desktop and future accessibility control for browser chrome, OS dialogs, and non-DOM UI
 
 This keeps webpage DOM actions inside the user's real browser session without depending on default-profile CDP relaunch.
@@ -145,9 +162,24 @@ The current recommended first release for real-session browser automation is:
 - content scripts
 - native messaging host
 - active-tab DOM actions
-- screenshots and simple page-state reads
+- simple page-state reads
 
 The first version should avoid relying on `chrome.debugger` unless concrete workflow gaps prove that the DOM-only path is insufficient.
+The first version should also avoid extension-owned screenshots because the app already has the broader screenshot path needed for verification and visual fallback.
+
+## Handshake Direction
+
+The current preferred handshake for ClickCherry's own extension is:
+
+1. user installs the ClickCherry extension
+2. app offers an explicit `Connect Chrome` flow
+3. extension discovers the native messaging host and requests pairing
+4. user approves pairing once
+5. app stores trust state locally in Keychain
+6. extension stores profile-local trust state in `chrome.storage.local`
+7. reconnect becomes automatic for that Chrome profile
+
+This is intentionally different from the Playwright MCP Bridge token-copy flow. The goal is to make pairing a product-controlled first-run experience rather than a developer-style setup step.
 
 ## Routing Matrix
 
@@ -179,7 +211,7 @@ Within the browser layer, ClickCherry should now assume two execution modes:
   - custom `user-data-dir`
   - best for deterministic automation and regression coverage
 - real-user-session mode:
-  - extension + native-app bridge
+  - first-party extension + native-app bridge
   - best for logged-in workflows that depend on the user's existing Chrome profile
   - first release should be a narrower DOM-first extension rather than a full-power debugger-backed extension
 
@@ -197,8 +229,10 @@ The current implementation sequence is now locked to these defaults:
 
 - Phase 2 will use managed Chrome as the default browser-semantic baseline.
 - Phase 2 will not treat the default Chrome profile as a supported CDP relaunch target.
-- Real default-profile browser automation is now expected to move toward an extension + native-app bridge path.
+- Real default-profile browser automation is now expected to move toward a first-party extension + native-app bridge path.
 - The first real-session extension release should start with a store-safer DOM-focused surface and defer `chrome.debugger`.
+- Playwright MCP Bridge is now treated as research/fallback learning, not the main real-session browser path.
+- App-owned screenshots remain the first screenshot/verification surface in the extension-first plan.
 - Phase 3 will start with standard native controls only:
   - buttons
   - text fields

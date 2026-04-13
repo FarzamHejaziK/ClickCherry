@@ -4,6 +4,37 @@ description: Active unresolved issues with concrete repro details, mitigation, a
 
 # Open Issues
 
+## Issue OI-2026-04-13-020
+- Issue ID: OI-2026-04-13-020
+- Title: Playwright MCP Bridge handshake and onboarding are too opaque for the main real-session browser path
+- Status: Open
+- Severity: High
+- First Seen: 2026-04-13
+- Scope:
+  - Affects the attempted Playwright MCP Bridge integration for real-session Chrome automation.
+  - Most visible when the app starts `@playwright/mcp --extension` and the server waits on extension approval, token pairing, or bridge connection without a product-controlled UX.
+- Repro Steps:
+  1. Install the Playwright MCP Bridge extension in Chrome.
+  2. Start the app or a standalone MCP client without a saved bridge token.
+  3. Run a task that should require browser-semantic tools.
+  4. Observe the bridge page and app run trace.
+- Observed:
+  - The MCP server can start and stay alive while never completing the handshake.
+  - Reliable auto-connect depends on a copied bridge token or opaque interactive approval.
+  - The onboarding, approval, and reconnect UX is not controlled by ClickCherry.
+  - This creates a poor main-product experience even when the underlying transport is technically working.
+- Expected:
+  - The app should provide a product-controlled "Connect Chrome" flow with clear pairing, reconnect, and diagnostics.
+  - Real-session browser automation should not depend on token copy/paste from a third-party extension page.
+- Current Mitigation:
+  - Treat Playwright MCP Bridge as research/fallback only, not the main product path.
+  - Keep improved startup diagnostics in the app so failures remain understandable while the new browser path is built.
+- Next Action:
+  - Build a first-party Chrome extension with a direct app bridge and one-time product-controlled pairing.
+  - Start with content scripts and standard extension APIs only; defer `chrome.debugger`.
+  - Keep screenshots and visual fallback in the app.
+- Owner: Codex + user validation in local runtime
+
 ## Issue OI-2026-04-10-019
 - Issue ID: OI-2026-04-10-019
 - Title: Default Chrome profile cannot be relied on as a CDP launch target for browser_action
@@ -28,13 +59,13 @@ description: Active unresolved issues with concrete repro details, mitigation, a
   - The app should not rely on a launch path that the platform no longer supports as its main real-profile strategy.
 - Current Mitigation:
   - Keep managed/custom profiles as the supported Playwright/CDP baseline.
-  - Do not treat the default Chrome profile as a supported CDP takeover target in the active Phase 2 plan.
+  - Do not treat the default Chrome profile as a supported CDP takeover target in the active browser plan.
   - Preserve desktop fallback behavior for tasks that cannot yet use a supported real-profile browser-semantic path.
 - Next Action:
-  - Implement the extension + native-app bridge path for real-user-session browser automation.
+  - Implement the first-party Chrome extension + native-app bridge path for real-user-session browser automation.
   - Start with a narrower MV3 DOM-focused extension surface before considering `chrome.debugger`.
-  - Keep managed Playwright mode for custom profiles and deterministic regression coverage.
-  - Add planner policy so real-profile requests do not route into unsupported CDP takeover behavior.
+  - Keep managed Playwright mode parked for custom profiles and deterministic regression coverage.
+  - Add planner policy so real-profile requests do not route into unsupported CDP takeover behavior or Playwright MCP Bridge as the default path.
 - Owner: Codex + user validation in local runtime
 
 ## Issue OI-2026-03-29-018
