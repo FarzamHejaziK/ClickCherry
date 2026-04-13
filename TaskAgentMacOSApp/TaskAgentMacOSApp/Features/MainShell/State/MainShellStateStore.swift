@@ -41,6 +41,7 @@ final class MainShellStateStore {
     let heartbeatQuestionService: HeartbeatQuestionService
     let automationEngine: any AutomationEngine
     let apiKeyStore: any APIKeyStore
+    let browserBridgeTokenStore: any BrowserBridgeTokenStore
     let permissionService: any PermissionService
     let captureService: any RecordingCaptureService
     let overlayService: any RecordingOverlayService
@@ -73,6 +74,7 @@ final class MainShellStateStore {
     var selectedTaskID: String?
     var route: MainShellRoute
     var providerSetupState: ProviderSetupState
+    var browserAutomationSetupState: BrowserAutomationSetupState
     var newTaskTitle: String
     var heartbeatMarkdown: String
     var clarificationQuestions: [HeartbeatQuestion]
@@ -96,6 +98,8 @@ final class MainShellStateStore {
     var clarificationStatusMessage: String?
     var apiKeyStatusMessage: String?
     var apiKeyErrorMessage: String?
+    var browserAutomationStatusMessage: String?
+    var browserAutomationErrorMessage: String?
     var errorMessage: String?
     var llmUserFacingIssue: LLMUserFacingIssue?
     var missingProviderKeyDialog: MissingProviderKeyDialog?
@@ -119,6 +123,7 @@ final class MainShellStateStore {
     var pendingDeleteTaskID: String?
 
     static let openAIResponsesTransportModeUserDefaultsKey = "openai.responses.transport.mode"
+    static let playwrightMCPBridgeTokenEnvironmentKey = "PLAYWRIGHT_MCP_EXTENSION_TOKEN"
 
     static func loadOpenAIResponsesTransportMode(from defaults: UserDefaults) -> OpenAIResponsesTransportMode {
         guard let raw = defaults.string(forKey: openAIResponsesTransportModeUserDefaultsKey),
@@ -134,6 +139,7 @@ final class MainShellStateStore {
         heartbeatQuestionService: HeartbeatQuestionService = HeartbeatQuestionService(),
         automationEngine: (any AutomationEngine)? = nil,
         apiKeyStore: any APIKeyStore = KeychainAPIKeyStore(),
+        browserBridgeTokenStore: any BrowserBridgeTokenStore = KeychainBrowserBridgeTokenStore(),
         userDefaults: UserDefaults = .standard,
         permissionService: any PermissionService = MacPermissionService(),
         captureService: any RecordingCaptureService = ShellRecordingCaptureService(),
@@ -153,12 +159,19 @@ final class MainShellStateStore {
         let runDisplayIndexBox = LockedBox<Int>(1)
         self.taskService = taskService
         self.apiKeyStore = apiKeyStore
+        self.browserBridgeTokenStore = browserBridgeTokenStore
         self.permissionService = permissionService
         self.taskExtractionService = taskExtractionService ?? TaskExtractionService(
             llmClient: GeminiVideoLLMClient(apiKeyStore: apiKeyStore)
         )
         self.heartbeatQuestionService = heartbeatQuestionService
         self.runScreenshotDisplayIndexBox = runDisplayIndexBox
+        Self.applyPlaywrightMCPBridgeTokenEnvironment(
+            token: try? browserBridgeTokenStore.readPlaywrightMCPBridgeToken()
+        )
+        let mcpServerManager = MCPServerManager(
+            serverDefinitions: ApprovedMCPServers.defaultDefinitions()
+        )
         let openAIRunner = OpenAIComputerUseRunner(
             apiKeyStore: apiKeyStore,
             callLogSink: { entry in
@@ -174,6 +187,7 @@ final class MainShellStateStore {
                 traceRecorder.record(entry)
             },
             transportMode: Self.loadOpenAIResponsesTransportMode(from: userDefaults),
+            mcpServerManager: mcpServerManager,
             screenshotProvider: {
                 let displayIndex = runDisplayIndexBox.value
                 let excludedWindowNumbers = [
@@ -205,6 +219,9 @@ final class MainShellStateStore {
             hasOpenAIKey: apiKeyStore.hasKey(for: .openAI),
             hasGeminiKey: apiKeyStore.hasKey(for: .gemini)
         )
+        self.browserAutomationSetupState = BrowserAutomationSetupState(
+            hasPlaywrightMCPBridgeToken: browserBridgeTokenStore.hasPlaywrightMCPBridgeToken()
+        )
         self.newTaskTitle = ""
         self.heartbeatMarkdown = ""
         self.clarificationQuestions = []
@@ -228,6 +245,8 @@ final class MainShellStateStore {
         self.clarificationStatusMessage = nil
         self.apiKeyStatusMessage = nil
         self.apiKeyErrorMessage = nil
+        self.browserAutomationStatusMessage = nil
+        self.browserAutomationErrorMessage = nil
         self.errorMessage = nil
         self.llmUserFacingIssue = nil
         self.missingProviderKeyDialog = nil
@@ -316,6 +335,15 @@ final class MainShellStateStore {
             return nil
         }
         return clarificationQuestions.first(where: { $0.id == selectedClarificationQuestionID })
+    }
+
+    static func applyPlaywrightMCPBridgeTokenEnvironment(token: String?) {
+        let trimmedToken = token?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if trimmedToken.isEmpty {
+            unsetenv(playwrightMCPBridgeTokenEnvironmentKey)
+        } else {
+            setenv(playwrightMCPBridgeTokenEnvironmentKey, trimmedToken, 1)
+        }
     }
 
 }

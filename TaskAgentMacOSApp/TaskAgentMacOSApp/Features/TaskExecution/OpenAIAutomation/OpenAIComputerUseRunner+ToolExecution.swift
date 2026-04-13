@@ -6,6 +6,10 @@ extension OpenAIComputerUseRunner {
         executor: any DesktopActionExecutor
     ) async throws -> ToolExecutionResult {
         let toolName = functionCall.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if let mcpResult = await executeMCPFunctionCallIfAvailable(functionCall) {
+            return mcpResult
+        }
+
         guard toolName == "desktop_action" || toolName == "terminal_exec" else {
             return ToolExecutionResult(
                 callID: functionCall.callID,

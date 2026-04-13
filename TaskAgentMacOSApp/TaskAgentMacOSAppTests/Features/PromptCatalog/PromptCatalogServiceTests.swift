@@ -34,7 +34,7 @@ struct PromptCatalogServiceTests {
     func defaultCatalogFindsReorganizedSourcePrompts() throws {
         let loaded = try PromptCatalogService().loadPrompt(named: "execution_agent_openai")
 
-        #expect(loaded.config.version == "v3")
+        #expect(loaded.config.version == "v4")
         #expect(loaded.sourceURL?.path.contains("/Resources/Prompts/execution_agent_openai/") == true)
     }
 
@@ -42,6 +42,9 @@ struct PromptCatalogServiceTests {
     func executionAgentPromptRequiresVerificationAfterVisualClicks() throws {
         let loaded = try PromptCatalogService().loadPrompt(named: "execution_agent_openai")
 
+        #expect(loaded.prompt.contains("If webpage content can be targeted through browser MCP tools, use those tools first"))
+        #expect(loaded.prompt.contains("Only call MCP browser tools that are actually present in `AVAILABLE_MCP_TOOLS`"))
+        #expect(loaded.prompt.contains("Do not use browser MCP tools for browser chrome, OS-level prompts, file pickers, or non-DOM surfaces"))
         #expect(loaded.prompt.contains("use `open_app` to open or focus an app instead of clicking Dock or app icons"))
         #expect(loaded.prompt.contains("do not return `SUCCESS` unless the latest screenshot verifies the intended outcome"))
         #expect(loaded.prompt.contains("\"verification_status\":\"verified|not_needed|unclear\""))

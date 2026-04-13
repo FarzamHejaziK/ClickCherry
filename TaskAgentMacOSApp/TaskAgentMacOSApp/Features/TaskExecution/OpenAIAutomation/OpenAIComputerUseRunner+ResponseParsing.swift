@@ -206,6 +206,10 @@ extension OpenAIComputerUseRunner {
     }
 
     func summarizeFunctionCall(_ functionCall: ParsedFunctionCall) -> String {
+        if let mcpSummary = summarizeMCPFunctionCallIfAvailable(functionCall) {
+            return mcpSummary
+        }
+
         guard
             let data = functionCall.arguments.data(using: .utf8),
             let object = try? jsonDecoder.decode([String: OpenAIJSONValue].self, from: data)

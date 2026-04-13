@@ -189,6 +189,7 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
     let sleepNanoseconds: @Sendable (UInt64) async -> Void
     let screenshotProvider: () throws -> OpenAICapturedScreenshot
     let cursorPositionProvider: () -> (x: Int, y: Int)?
+    let mcpServerManager: (any MCPServerManaging)?
     let screenshotLogSink: ((LLMScreenshotLogEntry) -> Void)?
     let callLogSink: ((LLMCallLogEntry) -> Void)?
     let exchangeLogSink: ((LLMExchangeLogEntry) -> Void)?
@@ -210,6 +211,7 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
     var selectedDisplayCoordinateSpaceOriginX: Int = 0
     var selectedDisplayCoordinateSpaceOriginY: Int = 0
     var activeVisionState: OpenAIVisionViewState?
+    var activeMCPPreparedTools: MCPPreparedTools = .empty
 
     init(
         apiKeyStore: any APIKeyStore,
@@ -228,6 +230,7 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
         },
         beforeScreenshotCapture: (@Sendable () -> Void)? = nil,
         afterScreenshotCapture: (@Sendable () -> Void)? = nil,
+        mcpServerManager: (any MCPServerManaging)? = nil,
         screenshotProvider: @escaping () throws -> OpenAICapturedScreenshot = OpenAIComputerUseRunner.captureMainDisplayScreenshot,
         cursorPositionProvider: @escaping () -> (x: Int, y: Int)? = OpenAIComputerUseRunner.currentCursorPosition
     ) {
@@ -250,6 +253,7 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
         )
         self.transportRetryPolicy = transportRetryPolicy
         self.sleepNanoseconds = sleepNanoseconds
+        self.mcpServerManager = mcpServerManager
         self.screenshotProvider = {
             beforeScreenshotCapture?()
             defer { afterScreenshotCapture?() }
@@ -307,22 +311,21 @@ final class OpenAIComputerUseRunner: LLMExecutionToolLoopRunner {
         if let reasoningEffort = promptTemplate.config.reasoningEffort {
             recordTrace(kind: .info, "Reasoning settings: effort=\(reasoningEffort) summary=\(promptTemplate.config.reasoningSummary ?? "none").")
         }
+        let mcpPreparedTools = await prepareMCPToolsForRun()
         recordTrace(
             kind: .info,
-            "Execution started (model=\(promptTemplate.config.llm), tools=desktop_action,terminal_exec)."
+            "Execution started (model=\(promptTemplate.config.llm), tools=\(toolNamesForTrace()))."
         )
 
         let renderedPrompt = renderPrompt(promptTemplate.prompt, taskMarkdown: taskMarkdown, screenshot: initialScreenshot)
         let initialPromptText = appendVisualCoordinateContext(to: renderedPrompt, screenshot: initialScreenshot)
+        let promptText = appendMCPRuntimeContext(to: initialPromptText, preparedTools: mcpPreparedTools)
 
-        let tools = [
-            desktopActionToolDefinition(),
-            terminalExecToolDefinition()
-        ]
+        let tools = combinedToolDefinitions(mcpPreparedTools: mcpPreparedTools)
 
         let initialInput = [
             userTextAndImageInput(
-                text: initialPromptText,
+                text: promptText,
                 screenshot: initialScreenshot,
                 source: .initialPromptImage
             )

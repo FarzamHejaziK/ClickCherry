@@ -65,6 +65,10 @@ struct ProviderSetupState: Equatable {
     }
 }
 
+struct BrowserAutomationSetupState: Equatable {
+    var hasPlaywrightMCPBridgeToken: Bool
+}
+
 enum LLMProvider: String, Equatable, Sendable, Codable {
     case openAI
     case gemini

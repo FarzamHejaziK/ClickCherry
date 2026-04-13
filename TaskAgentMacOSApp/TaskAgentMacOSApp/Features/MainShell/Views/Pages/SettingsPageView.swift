@@ -15,6 +15,8 @@ struct MainShellSettingsView: View {
     @State private var geminiKeyInput = ""
     @State private var isOpenAIKeyVisible = false
     @State private var isGeminiKeyVisible = false
+    @State private var playwrightBridgeTokenInput = ""
+    @State private var isPlaywrightBridgeTokenVisible = false
 
     @State private var permissionStatuses = PermissionStatuses()
 
@@ -31,6 +33,7 @@ struct MainShellSettingsView: View {
             case .modelSetup:
                 // Ensure the Saved/Not Saved pills reflect the current Keychain state when entering this page.
                 mainShellStateStore.refreshProviderKeysState()
+                mainShellStateStore.refreshBrowserAutomationState()
             case .permissions:
                 while !Task.isCancelled {
                     refreshPermissionStatuses()
@@ -40,6 +43,7 @@ struct MainShellSettingsView: View {
         }
         .onAppear {
             mainShellStateStore.refreshProviderKeysState()
+            mainShellStateStore.refreshBrowserAutomationState()
             refreshPermissionStatuses()
         }
     }
@@ -176,6 +180,23 @@ struct MainShellSettingsView: View {
                 }
             )
 
+            BridgeTokenEntryPanelView(
+                title: "Browser Automation",
+                subtitle: "Save the Playwright MCP Bridge token so ClickCherry can connect to your real Chrome session without relying on shell environment variables or re-approving every run.",
+                tokenInput: $playwrightBridgeTokenInput,
+                isTokenVisible: $isPlaywrightBridgeTokenVisible,
+                saved: mainShellStateStore.browserAutomationSetupState.hasPlaywrightMCPBridgeToken,
+                onSave: {
+                    if mainShellStateStore.savePlaywrightMCPBridgeToken(playwrightBridgeTokenInput) {
+                        playwrightBridgeTokenInput = ""
+                    }
+                },
+                onClear: {
+                    mainShellStateStore.clearPlaywrightMCPBridgeToken()
+                    playwrightBridgeTokenInput = ""
+                }
+            )
+
             if let apiKeyStatusMessage = mainShellStateStore.apiKeyStatusMessage {
                 Text(apiKeyStatusMessage)
                     .foregroundStyle(.green)
@@ -183,6 +204,16 @@ struct MainShellSettingsView: View {
 
             if let apiKeyErrorMessage = mainShellStateStore.apiKeyErrorMessage {
                 Text(apiKeyErrorMessage)
+                    .foregroundStyle(.red)
+            }
+
+            if let browserAutomationStatusMessage = mainShellStateStore.browserAutomationStatusMessage {
+                Text(browserAutomationStatusMessage)
+                    .foregroundStyle(.green)
+            }
+
+            if let browserAutomationErrorMessage = mainShellStateStore.browserAutomationErrorMessage {
+                Text(browserAutomationErrorMessage)
                     .foregroundStyle(.red)
             }
 
